@@ -1,28 +1,42 @@
+{-# LANGUAGE UndecidableInstances #-}
+
 module Zmq
-  ( CanReturnEMFILE
+  ( BindError
+  , ConnectError
+  , CanReturnEADDRINUSE
+  , CanReturnEADDRNOTAVAIL
+  , CanReturnEINVAL
+  , CanReturnEMFILE
+  , CanReturnEMTHREAD
+  , CanReturnENODEV
+  , CanReturnEPROTONOSUPPORT
+  , Endpoint(..)
   , Error(..)
   , Function(..)
   , Socket
   , SocketError
+  , SocketType
+  , Transport(..)
   , bind
+  , connect
   , socket
-    -- * Re-exports
-  , Zmq.SocketType
-  , Zmq.Sub
   ) where
 
 import Control.Exception (mask)
 import Data.Coerce (coerce)
+import Data.Kind (Constraint)
 import Data.Text (Text)
 import Foreign.C
 import Foreign.ForeignPtr
 import Foreign.Ptr
 import System.IO.Unsafe (unsafePerformIO)
 import qualified Data.Text as Text
-import qualified System.ZMQ4 as Zmq
-import qualified System.ZMQ4.Internal as Zmq
+import qualified GHC.TypeLits as TypeLits
 import qualified System.ZMQ4.Internal.Base as Zmq
 
+
+type BindError
+  = Error 'Function'Bind
 
 type family CanReturnEADDRINUSE ( function :: Function ) :: Bool where
   CanReturnEADDRINUSE 'Function'Bind = 'True
@@ -34,6 +48,7 @@ type family CanReturnEADDRNOTAVAIL ( function :: Function ) :: Bool where
 
 type family CanReturnEINVAL ( function :: Function ) :: Bool where
   CanReturnEINVAL 'Function'Bind = 'True
+  CanReturnEINVAL 'Function'Connect = 'True
   CanReturnEINVAL _ = 'False
 
 type family CanReturnEMFILE ( function :: Function ) :: Bool where
@@ -42,11 +57,8 @@ type family CanReturnEMFILE ( function :: Function ) :: Bool where
 
 type family CanReturnEMTHREAD ( function :: Function ) :: Bool where
   CanReturnEMTHREAD 'Function'Bind = 'True
+  CanReturnEMTHREAD 'Function'Connect = 'True
   CanReturnEMTHREAD _ = 'False
-
-type family CanReturnENOCOMPATPROTO ( function :: Function ) :: Bool where
-  CanReturnENOCOMPATPROTO 'Function'Bind = 'True
-  CanReturnENOCOMPATPROTO _ = 'False
 
 type family CanReturnENODEV ( function :: Function ) :: Bool where
   CanReturnENODEV 'Function'Bind = 'True
@@ -54,10 +66,44 @@ type family CanReturnENODEV ( function :: Function ) :: Bool where
 
 type family CanReturnEPROTONOSUPPORT ( function :: Function ) :: Bool where
   CanReturnEPROTONOSUPPORT 'Function'Bind = 'True
+  CanReturnEPROTONOSUPPORT 'Function'Connect = 'True
   CanReturnEPROTONOSUPPORT _ = 'False
 
-type BindError
-  = Error 'Function'Bind
+type family CompatibleTransport ( typ :: SocketType ) ( transport :: Transport ) :: Constraint where
+  CompatibleTransport 'Pub  'Transport'Epgm = ()
+  CompatibleTransport 'Pub  'Transport'Pgm  = ()
+  CompatibleTransport 'Sub  'Transport'Epgm = ()
+  CompatibleTransport 'Sub  'Transport'Pgm  = ()
+  CompatibleTransport 'XPub 'Transport'Epgm = ()
+  CompatibleTransport 'XPub 'Transport'Pgm  = ()
+  CompatibleTransport 'XSub 'Transport'Pgm  = ()
+  CompatibleTransport 'XSub 'Transport'Epgm = ()
+
+  CompatibleTransport typ 'Transport'Epgm =
+    TypeLits.TypeError
+      ( 'TypeLits.ShowType typ
+        'TypeLits.:<>:
+        'TypeLits.Text "is not compatible with the `epgm` transport."
+      )
+  CompatibleTransport typ 'Transport'Pgm  =
+    TypeLits.TypeError
+      ( 'TypeLits.ShowType typ
+        'TypeLits.:<>:
+        'TypeLits.Text "is not compatible with the `pgm` transport."
+      )
+
+  CompatibleTransport typ transport = ()
+
+type ConnectError
+  = Error 'Function'Connect
+
+data Endpoint ( transport :: Transport ) where
+  Epgm   :: Text -> Endpoint 'Transport'Epgm
+  Inproc :: Text -> Endpoint 'Transport'Inproc
+  Ipc    :: Text -> Endpoint 'Transport'Ipc
+  Pgm    :: Text -> Endpoint 'Transport'Pgm
+  Tcp    :: Text -> Endpoint 'Transport'Tcp
+  Vmci   :: Text -> Endpoint 'Transport'Vmci
 
 data Error ( function :: Function ) where
   EADDRINUSE      :: ( CanReturnEADDRINUSE      function ~ 'True ) => Error function
@@ -65,7 +111,6 @@ data Error ( function :: Function ) where
   EINVAL          :: ( CanReturnEINVAL          function ~ 'True ) => Error function
   EMFILE          :: ( CanReturnEMFILE          function ~ 'True ) => Error function
   EMTHREAD        :: ( CanReturnEMTHREAD        function ~ 'True ) => Error function
-  ENOCOMPATPROTO  :: ( CanReturnENOCOMPATPROTO  function ~ 'True ) => Error function
   ENODEV          :: ( CanReturnENODEV          function ~ 'True ) => Error function
   EPROTONOSUPPORT :: ( CanReturnEPROTONOSUPPORT function ~ 'True ) => Error function
 
@@ -76,28 +121,52 @@ instance Show ( Error function ) where
     EINVAL          -> "EINVAL"
     EMFILE          -> "EMFILE"
     EMTHREAD        -> "EMTHREAD"
-    ENOCOMPATPROTO  -> "ENOCOMPATPROTO"
+    ENODEV          -> "ENODEV"
     EPROTONOSUPPORT -> "EPROTONOSUPPORT"
 
 data Function
   = Function'Bind
+  | Function'Connect
   | Function'Socket
 
-newtype Socket a
+class IsSocketType ( a :: SocketType ) where
+  socketType :: CInt
+
+instance IsSocketType 'Sub where
+  socketType =
+    coerce Zmq.sub
+
+newtype Socket ( a :: SocketType )
   = Socket
   { unSocket :: ForeignPtr () }
 
 type SocketError
   = Error 'Function'Socket
 
+data SocketType
+  = Pub
+  | Sub
+  | XPub
+  | XSub
+
+data Transport
+  = Transport'Epgm
+  | Transport'Inproc
+  | Transport'Ipc
+  | Transport'Pgm
+  | Transport'Tcp
+  | Transport'Vmci
+
+-- | <http://api.zeromq.org/4-3:zmq-bind>
 bind
-  :: Socket a
-  -> Text
+  :: CompatibleTransport typ transport
+  => Socket typ
+  -> Endpoint transport
   -> IO ( Either BindError () )
-bind sock address =
+bind sock endpoint =
   withForeignPtr ( unSocket sock ) \ptr ->
-    withCString ( Text.unpack address ) \c_address ->
-      Zmq.c_zmq_bind ptr c_address >>= \case
+    withCString ( endpointToString endpoint ) \c_endpoint ->
+      Zmq.c_zmq_bind ptr c_endpoint >>= \case
         0 ->
           pure ( Right () )
 
@@ -107,9 +176,32 @@ bind sock address =
             EADDRNOTAVAIL_   -> pure ( Left EADDRNOTAVAIL )
             EINVAL_          -> pure ( Left EINVAL )
             EMTHREAD_        -> pure ( Left EMTHREAD )
-            ENOCOMPATPROTO_  -> pure ( Left ENOCOMPATPROTO )
             ENODEV_          -> pure ( Left ENODEV )
             EPROTONOSUPPORT_ -> pure ( Left EPROTONOSUPPORT )
+            -- ENOCOMPATPROTO: CompatibleTransport should prevent it
+            -- ENOTSOCK: type system should prevent it
+            -- ETERM: global context should prevent it
+            n -> unexpectedErrno "bind" n
+
+-- | <http://api.zeromq.org/4-3:zmq-connect>
+connect
+  :: CompatibleTransport typ transport
+  => Socket typ
+  -> Endpoint transport
+  -> IO ( Either ConnectError () )
+connect sock endpoint =
+  withForeignPtr ( unSocket sock ) \ptr ->
+    withCString ( endpointToString endpoint ) \c_endpoint ->
+      Zmq.c_zmq_connect ptr c_endpoint >>= \case
+        0 ->
+          pure ( Right () )
+
+        _ ->
+          errno >>= \case
+            EINVAL_          -> pure ( Left EINVAL )
+            EMTHREAD_        -> pure ( Left EMTHREAD )
+            EPROTONOSUPPORT_ -> pure ( Left EPROTONOSUPPORT )
+            -- ENOCOMPATPROTO: CompatibleTransport should prevent it
             -- ENOTSOCK: type system should prevent it
             -- ETERM: global context should prevent it
             n -> unexpectedErrno "bind" n
@@ -120,15 +212,27 @@ context =
   unsafePerformIO ( coerce Zmq.c_zmq_ctx_new )
 {-# NOINLINE context #-}
 
+endpointToString
+  :: Endpoint transport
+  -> String
+endpointToString = \case
+  Epgm   address -> "epgm://"   ++ Text.unpack address
+  Inproc address -> "inproc://" ++ Text.unpack address
+  Ipc    address -> "ipc://"    ++ Text.unpack address
+  Pgm    address -> "pgm://"    ++ Text.unpack address
+  Tcp    address -> "tcp://"    ++ Text.unpack address
+  Vmci   address -> "vmci://"   ++ Text.unpack address
+
+-- | <http://api.zeromq.org/4-3:zmq-socket>
 socket
-  :: Zmq.SocketType a
+  :: IsSocketType a
   => IO ( Either SocketError ( Socket a ) )
 socket =
   socket_
 
 socket_
   :: forall a.
-     Zmq.SocketType a
+     IsSocketType a
   => IO ( Either SocketError ( Socket a ) )
 socket_ =
   mask \unmask -> do
@@ -150,10 +254,6 @@ socket_ =
           newForeignPtr zmq_close ptr
 
         unmask ( pure ( Right ( coerce foreignPtr ) ) )
-
-socketType :: forall a. Zmq.SocketType a => CInt
-socketType =
-  coerce ( Zmq.zmqSocketType ( undefined :: a ) )
 
 errno :: IO Errno
 errno =
@@ -177,9 +277,6 @@ pattern EMFILE_ <- ((== eMFILE) -> True)
 
 pattern EMTHREAD_ :: Errno
 pattern EMTHREAD_ <- ((== coerce Zmq.eMTHREAD) -> True)
-
-pattern ENOCOMPATPROTO_ :: Errno
-pattern ENOCOMPATPROTO_ <- ((== coerce Zmq.eNOCOMPATPROTO) -> True)
 
 pattern ENODEV_ :: Errno
 pattern ENODEV_ <- ((== eNODEV) -> True)

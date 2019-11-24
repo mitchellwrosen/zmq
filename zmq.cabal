@@ -20,6 +20,7 @@ library
     ScopedTypeVariables
     TypeApplications
     TypeFamilies
+    TypeOperators
     ViewPatterns
 
   default-language:
