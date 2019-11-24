@@ -7,6 +7,7 @@ library
   build-depends:
     base,
     bytestring,
+    text,
     zeromq4-haskell ^>= 0.8.0,
 
   default-extensions:
