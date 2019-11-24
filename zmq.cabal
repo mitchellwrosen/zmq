@@ -9,6 +9,18 @@ library
     bytestring,
     zeromq4-haskell ^>= 0.8.0,
 
+  default-extensions:
+    AllowAmbiguousTypes
+    BlockArguments
+    DataKinds
+    GADTs
+    LambdaCase
+    PatternSynonyms
+    ScopedTypeVariables
+    TypeApplications
+    TypeFamilies
+    ViewPatterns
+
   default-language:
     Haskell2010
 
