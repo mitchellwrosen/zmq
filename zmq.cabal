@@ -1,0 +1,22 @@
+cabal-version: 2.4
+
+name: zmq
+version: 0
+
+library
+  build-depends:
+    base,
+    bytestring,
+    zeromq4-haskell ^>= 0.8.0,
+
+  default-language:
+    Haskell2010
+
+  exposed-modules:
+    Zmq
+
+  ghc-options:
+    -Wall
+
+  hs-source-dirs:
+    src
