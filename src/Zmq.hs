@@ -20,6 +20,7 @@ module Zmq
   , bind
   , connect
   , socket
+  , unbind
   ) where
 
 import Control.Exception (mask)
@@ -49,6 +50,7 @@ type family CanReturnEADDRNOTAVAIL ( function :: Function ) :: Bool where
 type family CanReturnEINVAL ( function :: Function ) :: Bool where
   CanReturnEINVAL 'Function'Bind = 'True
   CanReturnEINVAL 'Function'Connect = 'True
+  CanReturnEINVAL 'Function'Unbind = 'True
   CanReturnEINVAL _ = 'False
 
 type family CanReturnEMFILE ( function :: Function ) :: Bool where
@@ -63,6 +65,10 @@ type family CanReturnEMTHREAD ( function :: Function ) :: Bool where
 type family CanReturnENODEV ( function :: Function ) :: Bool where
   CanReturnENODEV 'Function'Bind = 'True
   CanReturnENODEV _ = 'False
+
+type family CanReturnENOENT ( function :: Function ) :: Bool where
+  CanReturnENOENT 'Function'Unbind = 'True
+  CanReturnENOENT _ = 'False
 
 type family CanReturnEPROTONOSUPPORT ( function :: Function ) :: Bool where
   CanReturnEPROTONOSUPPORT 'Function'Bind = 'True
@@ -112,6 +118,7 @@ data Error ( function :: Function ) where
   EMFILE          :: ( CanReturnEMFILE          function ~ 'True ) => Error function
   EMTHREAD        :: ( CanReturnEMTHREAD        function ~ 'True ) => Error function
   ENODEV          :: ( CanReturnENODEV          function ~ 'True ) => Error function
+  ENOENT          :: ( CanReturnENOENT          function ~ 'True ) => Error function
   EPROTONOSUPPORT :: ( CanReturnEPROTONOSUPPORT function ~ 'True ) => Error function
 
 instance Show ( Error function ) where
@@ -122,12 +129,14 @@ instance Show ( Error function ) where
     EMFILE          -> "EMFILE"
     EMTHREAD        -> "EMTHREAD"
     ENODEV          -> "ENODEV"
+    ENOENT          -> "ENOENT"
     EPROTONOSUPPORT -> "EPROTONOSUPPORT"
 
 data Function
   = Function'Bind
   | Function'Connect
   | Function'Socket
+  | Function'Unbind
 
 class IsSocketType ( a :: SocketType ) where
   socketType :: CInt
@@ -156,6 +165,9 @@ data Transport
   | Transport'Pgm
   | Transport'Tcp
   | Transport'Vmci
+
+type UnbindError
+  = Error 'Function'Unbind
 
 -- | <http://api.zeromq.org/4-3:zmq-bind>
 bind
@@ -204,7 +216,7 @@ connect sock endpoint =
             -- ENOCOMPATPROTO: CompatibleTransport should prevent it
             -- ENOTSOCK: type system should prevent it
             -- ETERM: global context should prevent it
-            n -> unexpectedErrno "bind" n
+            n -> unexpectedErrno "connect" n
 
 -- | Global context.
 context :: Zmq.ZMQCtx
@@ -222,6 +234,10 @@ endpointToString = \case
   Pgm    address -> "pgm://"    ++ Text.unpack address
   Tcp    address -> "tcp://"    ++ Text.unpack address
   Vmci   address -> "vmci://"   ++ Text.unpack address
+
+errno :: IO Errno
+errno =
+  coerce Zmq.c_zmq_errno
 
 -- | <http://api.zeromq.org/4-3:zmq-socket>
 socket
@@ -255,9 +271,25 @@ socket_ =
 
         unmask ( pure ( Right ( coerce foreignPtr ) ) )
 
-errno :: IO Errno
-errno =
-  coerce Zmq.c_zmq_errno
+unbind
+  :: CompatibleTransport typ transport
+  => Socket typ
+  -> Endpoint transport
+  -> IO ( Either UnbindError () )
+unbind sock endpoint =
+  withForeignPtr ( unSocket sock ) \ptr ->
+    withCString ( endpointToString endpoint ) \c_endpoint ->
+      Zmq.c_zmq_unbind ptr c_endpoint >>= \case
+        0 ->
+          pure ( Right () )
+
+        _ ->
+          errno >>= \case
+            EINVAL_ -> pure ( Left EINVAL )
+            ENOENT_ -> pure ( Left ENOENT )
+            -- ENOTSOCK: type system should prevent it
+            -- ETERM: global context should prevent it
+            n -> unexpectedErrno "unbind" n
 
 unexpectedErrno :: String -> Errno -> a
 unexpectedErrno message ( Errno n ) =
@@ -280,6 +312,9 @@ pattern EMTHREAD_ <- ((== coerce Zmq.eMTHREAD) -> True)
 
 pattern ENODEV_ :: Errno
 pattern ENODEV_ <- ((== eNODEV) -> True)
+
+pattern ENOENT_ :: Errno
+pattern ENOENT_ <- ((== eNOENT) -> True)
 
 pattern EPROTONOSUPPORT_ :: Errno
 pattern EPROTONOSUPPORT_ <- ((== coerce Zmq.ePROTONOSUPPORT) -> True)
