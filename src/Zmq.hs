@@ -24,6 +24,7 @@ module Zmq
   ) where
 
 import Control.Exception (mask)
+import Control.Monad.IO.Class
 import Data.Coerce (coerce)
 import Data.Kind (Constraint)
 import Data.Text (Text)
@@ -171,11 +172,21 @@ type UnbindError
 
 -- | <http://api.zeromq.org/4-3:zmq-bind>
 bind
+  :: ( CompatibleTransport typ transport
+     , MonadIO m
+     )
+  => Socket typ
+  -> Endpoint transport
+  -> m ( Either BindError () )
+bind sock endpoint =
+  liftIO ( bindIO sock endpoint )
+
+bindIO
   :: CompatibleTransport typ transport
   => Socket typ
   -> Endpoint transport
   -> IO ( Either BindError () )
-bind sock endpoint =
+bindIO sock endpoint =
   withForeignPtr ( unSocket sock ) \ptr ->
     withCString ( endpointToString endpoint ) \c_endpoint ->
       Zmq.c_zmq_bind ptr c_endpoint >>= \case
@@ -197,11 +208,21 @@ bind sock endpoint =
 
 -- | <http://api.zeromq.org/4-3:zmq-connect>
 connect
+  :: ( CompatibleTransport typ transport
+     , MonadIO m
+     )
+  => Socket typ
+  -> Endpoint transport
+  -> m ( Either ConnectError () )
+connect sock endpoint =
+  liftIO ( connectIO sock endpoint )
+
+connectIO
   :: CompatibleTransport typ transport
   => Socket typ
   -> Endpoint transport
   -> IO ( Either ConnectError () )
-connect sock endpoint =
+connectIO sock endpoint =
   withForeignPtr ( unSocket sock ) \ptr ->
     withCString ( endpointToString endpoint ) \c_endpoint ->
       Zmq.c_zmq_connect ptr c_endpoint >>= \case
@@ -241,16 +262,18 @@ errno =
 
 -- | <http://api.zeromq.org/4-3:zmq-socket>
 socket
-  :: IsSocketType a
-  => IO ( Either SocketError ( Socket a ) )
+  :: ( IsSocketType a
+     , MonadIO m
+     )
+  => m ( Either SocketError ( Socket a ) )
 socket =
-  socket_
+  liftIO socketIO
 
-socket_
+socketIO
   :: forall a.
      IsSocketType a
   => IO ( Either SocketError ( Socket a ) )
-socket_ =
+socketIO =
   mask \unmask -> do
     ptr :: Ptr () <-
       Zmq.c_zmq_socket context ( socketType @a )
@@ -272,11 +295,21 @@ socket_ =
         unmask ( pure ( Right ( coerce foreignPtr ) ) )
 
 unbind
+  :: ( CompatibleTransport typ transport
+     , MonadIO m
+     )
+  => Socket typ
+  -> Endpoint transport
+  -> m ( Either UnbindError () )
+unbind sock endpoint =
+  liftIO ( unbindIO sock endpoint )
+
+unbindIO
   :: CompatibleTransport typ transport
   => Socket typ
   -> Endpoint transport
   -> IO ( Either UnbindError () )
-unbind sock endpoint =
+unbindIO sock endpoint =
   withForeignPtr ( unSocket sock ) \ptr ->
     withCString ( endpointToString endpoint ) \c_endpoint ->
       Zmq.c_zmq_unbind ptr c_endpoint >>= \case
