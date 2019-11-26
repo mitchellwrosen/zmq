@@ -10,6 +10,9 @@ library
     text,
     zeromq4-haskell ^>= 0.8.0,
 
+  build-tool-depends:
+    hsc2hs:hsc2hs ^>= 0.68,
+
   default-extensions:
     AllowAmbiguousTypes
     BlockArguments
@@ -34,3 +37,10 @@ library
 
   hs-source-dirs:
     src
+
+  other-modules:
+    Zmq.FFI
+    Zmq.Internal
+
+  pkgconfig-depends:
+    libzmq == 4.3.2

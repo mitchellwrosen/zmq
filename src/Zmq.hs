@@ -9,7 +9,6 @@ module Zmq
   , CanReturnEMFILE
   , CanReturnEMTHREAD
   , CanReturnENODEV
-  , CanReturnEPROTONOSUPPORT
   , Endpoint(..)
   , Error(..)
   , Function(..)
@@ -20,22 +19,22 @@ module Zmq
   , bind
   , connect
   , disconnect
+  , main
   , socket
   , unbind
   ) where
 
-import Control.Exception (mask)
+import Control.Exception (bracket_, evaluate, mask)
 import Control.Monad.IO.Class
 import Data.Coerce (coerce)
-import Data.Kind (Constraint)
-import Data.Text (Text)
+import Data.Functor ((<&>))
 import Foreign.C
 import Foreign.ForeignPtr
 import Foreign.Ptr
 import System.IO.Unsafe (unsafePerformIO)
-import qualified Data.Text as Text
-import qualified GHC.TypeLits as TypeLits
 import qualified System.ZMQ4.Internal.Base as Zmq
+
+import Zmq.Internal
 
 
 type BindError
@@ -69,54 +68,17 @@ type family CanReturnENODEV ( function :: Function ) :: Bool where
   CanReturnENODEV 'Function'Bind = 'True
   CanReturnENODEV _ = 'False
 
-type family CanReturnENOENT ( function :: Function ) :: Bool where
-  CanReturnENOENT 'Function'Disconnect = 'True
-  CanReturnENOENT 'Function'Unbind = 'True
-  CanReturnENOENT _ = 'False
+-- type family CanReturnENOENT ( function :: Function ) :: Bool where
+--   CanReturnENOENT _ = 'False
 
-type family CanReturnEPROTONOSUPPORT ( function :: Function ) :: Bool where
-  CanReturnEPROTONOSUPPORT 'Function'Bind = 'True
-  CanReturnEPROTONOSUPPORT 'Function'Connect = 'True
-  CanReturnEPROTONOSUPPORT _ = 'False
-
-type family CompatibleTransport ( typ :: SocketType ) ( transport :: Transport ) :: Constraint where
-  CompatibleTransport 'Pub  'Transport'Epgm = ()
-  CompatibleTransport 'Pub  'Transport'Pgm  = ()
-  CompatibleTransport 'Sub  'Transport'Epgm = ()
-  CompatibleTransport 'Sub  'Transport'Pgm  = ()
-  CompatibleTransport 'XPub 'Transport'Epgm = ()
-  CompatibleTransport 'XPub 'Transport'Pgm  = ()
-  CompatibleTransport 'XSub 'Transport'Pgm  = ()
-  CompatibleTransport 'XSub 'Transport'Epgm = ()
-
-  CompatibleTransport typ 'Transport'Epgm =
-    TypeLits.TypeError
-      ( 'TypeLits.ShowType typ
-        'TypeLits.:<>:
-        'TypeLits.Text "is not compatible with the `epgm` transport."
-      )
-  CompatibleTransport typ 'Transport'Pgm  =
-    TypeLits.TypeError
-      ( 'TypeLits.ShowType typ
-        'TypeLits.:<>:
-        'TypeLits.Text "is not compatible with the `pgm` transport."
-      )
-
-  CompatibleTransport typ transport = ()
+-- type family CanReturnEPROTONOSUPPORT ( function :: Function ) :: Bool where
+--   CanReturnEPROTONOSUPPORT _ = 'False
 
 type ConnectError
   = Error 'Function'Connect
 
 type DisconnectError
   = Error 'Function'Disconnect
-
-data Endpoint ( transport :: Transport ) where
-  Epgm   :: Text -> Endpoint 'Transport'Epgm
-  Inproc :: Text -> Endpoint 'Transport'Inproc
-  Ipc    :: Text -> Endpoint 'Transport'Ipc
-  Pgm    :: Text -> Endpoint 'Transport'Pgm
-  Tcp    :: Text -> Endpoint 'Transport'Tcp
-  Vmci   :: Text -> Endpoint 'Transport'Vmci
 
 data Error ( function :: Function ) where
   EADDRINUSE      :: ( CanReturnEADDRINUSE      function ~ 'True ) => Error function
@@ -125,8 +87,8 @@ data Error ( function :: Function ) where
   EMFILE          :: ( CanReturnEMFILE          function ~ 'True ) => Error function
   EMTHREAD        :: ( CanReturnEMTHREAD        function ~ 'True ) => Error function
   ENODEV          :: ( CanReturnENODEV          function ~ 'True ) => Error function
-  ENOENT          :: ( CanReturnENOENT          function ~ 'True ) => Error function
-  EPROTONOSUPPORT :: ( CanReturnEPROTONOSUPPORT function ~ 'True ) => Error function
+  -- ENOENT          :: ( CanReturnENOENT          function ~ 'True ) => Error function
+  -- EPROTONOSUPPORT :: ( CanReturnEPROTONOSUPPORT function ~ 'True ) => Error function
 
 instance Show ( Error function ) where
   show = \case
@@ -136,8 +98,8 @@ instance Show ( Error function ) where
     EMFILE          -> "EMFILE"
     EMTHREAD        -> "EMTHREAD"
     ENODEV          -> "ENODEV"
-    ENOENT          -> "ENOENT"
-    EPROTONOSUPPORT -> "EPROTONOSUPPORT"
+    -- ENOENT          -> "ENOENT"
+    -- EPROTONOSUPPORT -> "EPROTONOSUPPORT"
 
 data Function
   = Function'Bind
@@ -159,20 +121,6 @@ newtype Socket ( a :: SocketType )
 
 type SocketError
   = Error 'Function'Socket
-
-data SocketType
-  = Pub
-  | Sub
-  | XPub
-  | XSub
-
-data Transport
-  = Transport'Epgm
-  | Transport'Inproc
-  | Transport'Ipc
-  | Transport'Pgm
-  | Transport'Tcp
-  | Transport'Vmci
 
 type UnbindError
   = Error 'Function'Unbind
@@ -201,17 +149,20 @@ bindIO sock endpoint =
           pure ( Right () )
 
         _ ->
-          errno >>= \case
-            EADDRINUSE_      -> pure ( Left EADDRINUSE )
-            EADDRNOTAVAIL_   -> pure ( Left EADDRNOTAVAIL )
-            EINVAL_          -> pure ( Left EINVAL )
-            EMTHREAD_        -> pure ( Left EMTHREAD )
-            ENODEV_          -> pure ( Left ENODEV )
-            EPROTONOSUPPORT_ -> pure ( Left EPROTONOSUPPORT )
+          errno <&> \case
+            EADDRINUSE_    -> Left EADDRINUSE
+            EADDRNOTAVAIL_ -> Left EADDRNOTAVAIL
+            EINVAL_        -> Left EINVAL
+            EMTHREAD_      -> Left EMTHREAD
+            ENODEV_        -> Left ENODEV
+
+            ENOTSOCK_      -> Right ()
+            ETERM_         -> Right ()
+
             -- ENOCOMPATPROTO: CompatibleTransport should prevent it
-            -- ENOTSOCK: type system should prevent it
-            -- ETERM: global context should prevent it
-            n -> unexpectedErrno "bind" n
+            -- EPROTONOSUPPORT: CPP should prevent it
+
+            n -> errUnexpectedErrno "bind" n
 
 -- | <http://api.zeromq.org/4-3:zmq-connect>
 connect
@@ -237,14 +188,17 @@ connectIO sock endpoint =
           pure ( Right () )
 
         _ ->
-          errno >>= \case
-            EINVAL_          -> pure ( Left EINVAL )
-            EMTHREAD_        -> pure ( Left EMTHREAD )
-            EPROTONOSUPPORT_ -> pure ( Left EPROTONOSUPPORT )
+          errno <&> \case
+            EINVAL_   -> Left EINVAL
+            EMTHREAD_ -> Left EMTHREAD
+
+            ENOTSOCK_ -> Right ()
+            ETERM_    -> Right ()
+
             -- ENOCOMPATPROTO: CompatibleTransport should prevent it
-            -- ENOTSOCK: type system should prevent it
-            -- ETERM: global context should prevent it
-            n -> unexpectedErrno "connect" n
+            -- EPROTONOSUPPORT: CPP should prevent it
+
+            n -> errUnexpectedErrno "connect" n
 
 -- | Global context.
 context :: Zmq.ZMQCtx
@@ -252,6 +206,7 @@ context =
   unsafePerformIO ( coerce Zmq.c_zmq_ctx_new )
 {-# NOINLINE context #-}
 
+-- | <http://api.zeromq.org/4-3:zmq-disconnect>
 disconnect
   :: ( CompatibleTransport typ transport
      , MonadIO m
@@ -275,23 +230,23 @@ disconnectIO sock endpoint =
           pure ( Right () )
 
         _ ->
-          errno >>= \case
-            EINVAL_ -> pure ( Left EINVAL )
-            ENOENT_ -> pure ( Left ENOENT )
-            -- ENOTSOCK: type system should prevent it
-            -- ETERM: global context should prevent it
-            n -> unexpectedErrno "unbind" n
+          errno <&> \case
+            EINVAL_   -> Left EINVAL
 
-endpointToString
-  :: Endpoint transport
-  -> String
-endpointToString = \case
-  Epgm   address -> "epgm://"   ++ Text.unpack address
-  Inproc address -> "inproc://" ++ Text.unpack address
-  Ipc    address -> "ipc://"    ++ Text.unpack address
-  Pgm    address -> "pgm://"    ++ Text.unpack address
-  Tcp    address -> "tcp://"    ++ Text.unpack address
-  Vmci   address -> "vmci://"   ++ Text.unpack address
+            ENOENT_   -> Right ()
+            ENOTSOCK_ -> Right ()
+            ETERM_    -> Right ()
+
+            n -> errUnexpectedErrno "disconnect" n
+
+-- | Run an action in the context of a global ZeroMQ context. This should wrap
+-- your @main@ function; functions from this library that are called outside of
+-- this context will fail at runtime with 'error'.
+main :: IO a -> IO a
+main =
+  bracket_
+    ( evaluate context )
+    ( Zmq.c_zmq_ctx_term context )
 
 errno :: IO Errno
 errno =
@@ -318,12 +273,15 @@ socketIO =
     if ptr == nullPtr
       then
         unmask do
-          errno >>= \case
-            EMFILE_ -> pure ( Left EMFILE )
-            -- EFAULT: global context should prevent it
+          errno <&> \case
+            EMFILE_ -> Left EMFILE
+
+            EFAULT_ -> errInvalidContext
+            ETERM_  -> errInvalidContext
+
             -- EINVAL: type system should prevent it
-            -- ETERM: global context should prevent it
-            n -> unexpectedErrno "socket" n
+
+            n -> errUnexpectedErrno "socket" n
 
       else do
         foreignPtr :: ForeignPtr () <-
@@ -354,16 +312,21 @@ unbindIO sock endpoint =
           pure ( Right () )
 
         _ ->
-          errno >>= \case
-            EINVAL_ -> pure ( Left EINVAL )
-            ENOENT_ -> pure ( Left ENOENT )
-            -- ENOTSOCK: type system should prevent it
-            -- ETERM: global context should prevent it
-            n -> unexpectedErrno "unbind" n
+          errno <&> \case
+            EINVAL_   -> Right ()
+            ENOENT_   -> Right ()
+            ENOTSOCK_ -> Right ()
+            ETERM_    -> Right ()
 
-unexpectedErrno :: String -> Errno -> a
-unexpectedErrno message ( Errno n ) =
-  error ( message ++ ": unexpected errno " ++ show n )
+            n -> errUnexpectedErrno "unbind" n
+
+errInvalidContext :: a
+errInvalidContext =
+  error "Invalid ZeroMQ context. Did you forget to call 'Zmq.main'?"
+
+errUnexpectedErrno :: String -> Errno -> a
+errUnexpectedErrno func ( Errno n ) =
+  error ( func ++ ": unexpected errno " ++ show n )
 
 pattern EADDRINUSE_ :: Errno
 pattern EADDRINUSE_ <- ((== coerce Zmq.eADDRINUSE) -> True)
@@ -373,6 +336,9 @@ pattern EADDRNOTAVAIL_ <- ((== coerce Zmq.eADDRNOTAVAIL) -> True)
 
 pattern EINVAL_ :: Errno
 pattern EINVAL_ <- ((== eINVAL) -> True)
+
+pattern EFAULT_ :: Errno
+pattern EFAULT_ <- ((== eFAULT) -> True)
 
 pattern EMFILE_ :: Errno
 pattern EMFILE_ <- ((== eMFILE) -> True)
@@ -386,8 +352,11 @@ pattern ENODEV_ <- ((== eNODEV) -> True)
 pattern ENOENT_ :: Errno
 pattern ENOENT_ <- ((== eNOENT) -> True)
 
-pattern EPROTONOSUPPORT_ :: Errno
-pattern EPROTONOSUPPORT_ <- ((== coerce Zmq.ePROTONOSUPPORT) -> True)
+pattern ENOTSOCK_ :: Errno
+pattern ENOTSOCK_ <- ((== coerce Zmq.eNOTSOCK) -> True)
+
+pattern ETERM_ :: Errno
+pattern ETERM_ <- ((== coerce Zmq.eTERM) -> True)
 
 foreign import ccall unsafe "&zmq_close"
   zmq_close :: FunPtr ( Ptr () -> IO () )
