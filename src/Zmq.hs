@@ -39,8 +39,8 @@ import System.IO.Unsafe (unsafePerformIO)
 import qualified Data.ByteString as ByteString
 import qualified Data.ByteString.Unsafe as ByteString
 import qualified GHC.TypeLits as TypeLits
-import qualified System.ZMQ4.Internal.Base as ZMQ4
 
+import Zmq.FFI
 import Zmq.Internal
 
 
@@ -145,8 +145,9 @@ class IsSocketType ( a :: SocketType ) where
   socketType :: CInt
 
 instance IsSocketType 'Sub where
+  socketType :: CInt
   socketType =
-    coerce ZMQ4.sub
+    zMQ_SUB
 
 newtype Socket ( a :: SocketType )
   = Socket
@@ -177,12 +178,12 @@ bindIO
 bindIO sock endpoint =
   withForeignPtr ( unSocket sock ) \ptr ->
     withCString ( endpointToString endpoint ) \c_endpoint ->
-      ZMQ4.c_zmq_bind ptr c_endpoint >>= \case
+      zmq_bind ptr c_endpoint >>= \case
         0 ->
           pure ( Right () )
 
         _ ->
-          errno <&> \case
+          zmq_errno <&> \case
             EADDRINUSE_    -> Left EADDRINUSE
             EADDRNOTAVAIL_ -> Left EADDRNOTAVAIL
             EINVAL_        -> Left EINVAL
@@ -195,7 +196,7 @@ bindIO sock endpoint =
             -- ENOCOMPATPROTO: CompatibleTransport should prevent it
             -- EPROTONOSUPPORT: CPP should prevent it
 
-            n -> errUnexpectedErrno "bind" n
+            n -> errUnexpectedErrno "zmq_bind" n
 
 -- | <http://api.zeromq.org/4-3:zmq-connect>
 connect
@@ -216,12 +217,12 @@ connectIO
 connectIO sock endpoint =
   withForeignPtr ( unSocket sock ) \ptr ->
     withCString ( endpointToString endpoint ) \c_endpoint ->
-      ZMQ4.c_zmq_connect ptr c_endpoint >>= \case
+      zmq_connect ptr c_endpoint >>= \case
         0 ->
           pure ( Right () )
 
         _ ->
-          errno <&> \case
+          zmq_errno <&> \case
             EINVAL_   -> Left EINVAL
             EMTHREAD_ -> Left EMTHREAD
 
@@ -231,12 +232,12 @@ connectIO sock endpoint =
             -- ENOCOMPATPROTO: CompatibleTransport should prevent it
             -- EPROTONOSUPPORT: CPP should prevent it
 
-            n -> errUnexpectedErrno "connect" n
+            n -> errUnexpectedErrno "zmq_connect" n
 
 -- | Global context.
-context :: ZMQ4.ZMQCtx
+context :: Ptr ()
 context =
-  unsafePerformIO ( coerce ZMQ4.c_zmq_ctx_new )
+  unsafePerformIO zmq_ctx_new
 {-# NOINLINE context #-}
 
 -- | <http://api.zeromq.org/4-3:zmq-disconnect>
@@ -258,19 +259,19 @@ disconnectIO
 disconnectIO sock endpoint =
   withForeignPtr ( unSocket sock ) \ptr ->
     withCString ( endpointToString endpoint ) \c_endpoint ->
-      ZMQ4.c_zmq_disconnect ptr c_endpoint >>= \case
+      zmq_disconnect ptr c_endpoint >>= \case
         0 ->
           pure ( Right () )
 
         _ ->
-          errno <&> \case
+          zmq_errno <&> \case
             EINVAL_   -> Left EINVAL
 
             ENOENT_   -> Right ()
             ENOTSOCK_ -> Right ()
             ETERM_    -> Right ()
 
-            n -> errUnexpectedErrno "disconnect" n
+            n -> errUnexpectedErrno "zmq_disconnect" n
 
 -- | Run an action in the context of a global ZeroMQ context. This should wrap
 -- your @main@ function; functions from this library that are called outside of
@@ -279,24 +280,31 @@ main :: IO a -> IO a
 main =
   bracket_
     ( evaluate context )
-    ( ZMQ4.c_zmq_ctx_term context )
+    ( fix \again ->
+        zmq_ctx_term context >>= \case
+          0 ->
+            pure ()
 
-errno :: IO Errno
-errno =
-  coerce ZMQ4.c_zmq_errno
+          _ ->
+            zmq_errno >>= \case
+              EFAULT_ -> pure ()
+              EINTR_  -> again
+
+              n -> errUnexpectedErrno "zmq_ctx_term" n
+    )
 
 setByteStringSockOpt
   :: Socket a
-  -> ZMQ4.ZMQOption
+  -> CInt
   -> ByteString
   -> IO CInt
 setByteStringSockOpt sock key value =
   withForeignPtr ( unSocket sock ) \ptr ->
     ByteString.unsafeUseAsCString value \c_value ->
-      ZMQ4.c_zmq_setsockopt
+      zmq_setsockopt
         ptr
-        ( coerce key )
-        ( castPtr c_value )
+        key
+        c_value
         ( fromIntegral ( ByteString.length value ) )
 
 -- | <http://api.zeromq.org/4-3:zmq-socket>
@@ -315,12 +323,12 @@ socketIO
 socketIO =
   mask \unmask -> do
     ptr :: Ptr () <-
-      ZMQ4.c_zmq_socket context ( socketType @a )
+      zmq_socket context ( socketType @a )
 
     if ptr == nullPtr
       then
         unmask do
-          errno <&> \case
+          zmq_errno <&> \case
             EMFILE_ -> Left EMFILE
 
             EFAULT_ -> errInvalidContext
@@ -328,7 +336,7 @@ socketIO =
 
             -- EINVAL: type system should prevent it
 
-            n -> errUnexpectedErrno "socket" n
+            n -> errUnexpectedErrno "zmq_socket" n
 
       else do
         foreignPtr :: ForeignPtr () <-
@@ -351,19 +359,19 @@ subscribeIO
   -> IO ()
 subscribeIO sock prefix =
   fix \again ->
-    setByteStringSockOpt sock ZMQ4.subscribe prefix >>= \case
+    setByteStringSockOpt sock zMQ_SUBSCRIBE prefix >>= \case
       0 ->
         pure ()
 
       _ ->
-        errno >>= \case
+        zmq_errno >>= \case
           EINTR_    -> again
           ENOTSOCK_ -> pure ()
           ETERM_    -> pure ()
 
           -- EINVAL: type system should prevent it ->
 
-          n -> errUnexpectedErrno "subscribe" n
+          n -> errUnexpectedErrno "zmq_setsockopt" n
 
 unbind
   :: ( CompatibleTransport typ transport
@@ -383,18 +391,18 @@ unbindIO
 unbindIO sock endpoint =
   withForeignPtr ( unSocket sock ) \ptr ->
     withCString ( endpointToString endpoint ) \c_endpoint ->
-      ZMQ4.c_zmq_unbind ptr c_endpoint >>= \case
+      zmq_unbind ptr c_endpoint >>= \case
         0 ->
           pure ( Right () )
 
         _ ->
-          errno <&> \case
+          zmq_errno <&> \case
             EINVAL_   -> Right ()
             ENOENT_   -> Right ()
             ENOTSOCK_ -> Right ()
             ETERM_    -> Right ()
 
-            n -> errUnexpectedErrno "unbind" n
+            n -> errUnexpectedErrno "zmq_unbind" n
 
 errInvalidContext :: a
 errInvalidContext =
@@ -405,10 +413,10 @@ errUnexpectedErrno func ( Errno n ) =
   error ( func ++ ": unexpected errno " ++ show n )
 
 pattern EADDRINUSE_ :: Errno
-pattern EADDRINUSE_ <- ((== coerce ZMQ4.eADDRINUSE) -> True)
+pattern EADDRINUSE_ <- ((== Zmq.FFI.eADDRINUSE) -> True)
 
 pattern EADDRNOTAVAIL_ :: Errno
-pattern EADDRNOTAVAIL_ <- ((== coerce ZMQ4.eADDRNOTAVAIL) -> True)
+pattern EADDRNOTAVAIL_ <- ((== Zmq.FFI.eADDRNOTAVAIL) -> True)
 
 pattern EINTR_ :: Errno
 pattern EINTR_ <- ((== eINTR) -> True)
@@ -423,7 +431,7 @@ pattern EMFILE_ :: Errno
 pattern EMFILE_ <- ((== eMFILE) -> True)
 
 pattern EMTHREAD_ :: Errno
-pattern EMTHREAD_ <- ((== coerce ZMQ4.eMTHREAD) -> True)
+pattern EMTHREAD_ <- ((== Zmq.FFI.eMTHREAD) -> True)
 
 pattern ENODEV_ :: Errno
 pattern ENODEV_ <- ((== eNODEV) -> True)
@@ -432,10 +440,10 @@ pattern ENOENT_ :: Errno
 pattern ENOENT_ <- ((== eNOENT) -> True)
 
 pattern ENOTSOCK_ :: Errno
-pattern ENOTSOCK_ <- ((== coerce ZMQ4.eNOTSOCK) -> True)
+pattern ENOTSOCK_ <- ((== Zmq.FFI.eNOTSOCK) -> True)
 
 pattern ETERM_ :: Errno
-pattern ETERM_ <- ((== coerce ZMQ4.eTERM) -> True)
+pattern ETERM_ <- ((== Zmq.FFI.eTERM) -> True)
 
 foreign import ccall unsafe "&zmq_close"
   zmq_close :: FunPtr ( Ptr () -> IO () )
