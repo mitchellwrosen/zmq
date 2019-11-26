@@ -14,6 +14,9 @@ module Zmq.Internal
 import Data.Kind (Constraint)
 import Data.Text (Text)
 import qualified Data.Text as Text
+#if defined ZMQ_HAVE_OPENPGM
+import qualified GHC.TypeLits as TypeLits
+#endif
 
 
 --------------------------------------------------------------------------------
@@ -26,22 +29,22 @@ type family CompatibleTransport ( typ :: SocketType ) ( transport :: Transport )
   CompatibleTransport Pub  TransportPgm  = ()
   CompatibleTransport Sub  TransportEpgm = ()
   CompatibleTransport Sub  TransportPgm  = ()
-  CompatibleTransport XPub TransportEpgm = ()
-  CompatibleTransport XPub TransportPgm  = ()
-  CompatibleTransport XSub TransportPgm  = ()
-  CompatibleTransport XSub TransportEpgm = ()
+  -- CompatibleTransport XPub TransportEpgm = ()
+  -- CompatibleTransport XPub TransportPgm  = ()
+  -- CompatibleTransport XSub TransportPgm  = ()
+  -- CompatibleTransport XSub TransportEpgm = ()
 
   CompatibleTransport typ TransportEpgm =
     TypeLits.TypeError
       ( TypeLits.ShowType typ
         TypeLits.:<>:
-        TypeLits.Text "is not compatible with the `epgm` transport."
+        TypeLits.Text " sockets are not compatible with the `epgm` transport."
       )
   CompatibleTransport typ TransportPgm  =
     TypeLits.TypeError
       ( TypeLits.ShowType typ
         TypeLits.:<>:
-        TypeLits.Text "is not compatible with the `pgm` transport."
+        TypeLits.Text " sockets are not compatible with the `pgm` transport."
       )
 #endif
 
@@ -116,5 +119,5 @@ data Transport where
 data SocketType
   = Pub
   | Sub
-  | XPub
-  | XSub
+  -- | XPub
+  -- | XSub

@@ -21,24 +21,45 @@ module Zmq
   , disconnect
   , main
   , socket
+  , subscribe
   , unbind
   ) where
 
 import Control.Exception (bracket_, evaluate, mask)
 import Control.Monad.IO.Class
+import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
+import Data.Kind (Constraint)
+import Data.Function (fix)
 import Data.Functor ((<&>))
 import Foreign.C
 import Foreign.ForeignPtr
 import Foreign.Ptr
 import System.IO.Unsafe (unsafePerformIO)
-import qualified System.ZMQ4.Internal.Base as Zmq
+import qualified Data.ByteString as ByteString
+import qualified Data.ByteString.Unsafe as ByteString
+import qualified GHC.TypeLits as TypeLits
+import qualified System.ZMQ4.Internal.Base as ZMQ4
 
 import Zmq.Internal
 
 
 type BindError
   = Error 'Function'Bind
+
+type family CanReceive ( typ :: SocketType ) :: Constraint where
+  CanReceive 'Sub = ()
+  -- CanReceive 'XPub = ()
+  -- CanReceive 'XSub = ()
+
+  CanReceive typ =
+    TypeLits.TypeError
+      ( 'TypeLits.Text "Cannot receive on a "
+        'TypeLits.:<>:
+        'TypeLits.ShowType typ
+        'TypeLits.:<>:
+        'TypeLits.Text " socket."
+      )
 
 type family CanReturnEADDRINUSE ( function :: Function ) :: Bool where
   CanReturnEADDRINUSE 'Function'Bind = 'True
@@ -73,6 +94,18 @@ type family CanReturnENODEV ( function :: Function ) :: Bool where
 
 -- type family CanReturnEPROTONOSUPPORT ( function :: Function ) :: Bool where
 --   CanReturnEPROTONOSUPPORT _ = 'False
+
+type family CanSend ( typ :: SocketType ) :: Constraint where
+  CanSend 'Pub = ()
+
+  CanSend typ =
+    TypeLits.TypeError
+      ( 'TypeLits.Text "Cannot send on a "
+        'TypeLits.:<>:
+        'TypeLits.ShowType typ
+        'TypeLits.:<>:
+        'TypeLits.Text " socket."
+      )
 
 type ConnectError
   = Error 'Function'Connect
@@ -113,7 +146,7 @@ class IsSocketType ( a :: SocketType ) where
 
 instance IsSocketType 'Sub where
   socketType =
-    coerce Zmq.sub
+    coerce ZMQ4.sub
 
 newtype Socket ( a :: SocketType )
   = Socket
@@ -144,7 +177,7 @@ bindIO
 bindIO sock endpoint =
   withForeignPtr ( unSocket sock ) \ptr ->
     withCString ( endpointToString endpoint ) \c_endpoint ->
-      Zmq.c_zmq_bind ptr c_endpoint >>= \case
+      ZMQ4.c_zmq_bind ptr c_endpoint >>= \case
         0 ->
           pure ( Right () )
 
@@ -183,7 +216,7 @@ connectIO
 connectIO sock endpoint =
   withForeignPtr ( unSocket sock ) \ptr ->
     withCString ( endpointToString endpoint ) \c_endpoint ->
-      Zmq.c_zmq_connect ptr c_endpoint >>= \case
+      ZMQ4.c_zmq_connect ptr c_endpoint >>= \case
         0 ->
           pure ( Right () )
 
@@ -201,9 +234,9 @@ connectIO sock endpoint =
             n -> errUnexpectedErrno "connect" n
 
 -- | Global context.
-context :: Zmq.ZMQCtx
+context :: ZMQ4.ZMQCtx
 context =
-  unsafePerformIO ( coerce Zmq.c_zmq_ctx_new )
+  unsafePerformIO ( coerce ZMQ4.c_zmq_ctx_new )
 {-# NOINLINE context #-}
 
 -- | <http://api.zeromq.org/4-3:zmq-disconnect>
@@ -225,7 +258,7 @@ disconnectIO
 disconnectIO sock endpoint =
   withForeignPtr ( unSocket sock ) \ptr ->
     withCString ( endpointToString endpoint ) \c_endpoint ->
-      Zmq.c_zmq_disconnect ptr c_endpoint >>= \case
+      ZMQ4.c_zmq_disconnect ptr c_endpoint >>= \case
         0 ->
           pure ( Right () )
 
@@ -246,11 +279,25 @@ main :: IO a -> IO a
 main =
   bracket_
     ( evaluate context )
-    ( Zmq.c_zmq_ctx_term context )
+    ( ZMQ4.c_zmq_ctx_term context )
 
 errno :: IO Errno
 errno =
-  coerce Zmq.c_zmq_errno
+  coerce ZMQ4.c_zmq_errno
+
+setByteStringSockOpt
+  :: Socket a
+  -> ZMQ4.ZMQOption
+  -> ByteString
+  -> IO CInt
+setByteStringSockOpt sock key value =
+  withForeignPtr ( unSocket sock ) \ptr ->
+    ByteString.unsafeUseAsCString value \c_value ->
+      ZMQ4.c_zmq_setsockopt
+        ptr
+        ( coerce key )
+        ( castPtr c_value )
+        ( fromIntegral ( ByteString.length value ) )
 
 -- | <http://api.zeromq.org/4-3:zmq-socket>
 socket
@@ -268,7 +315,7 @@ socketIO
 socketIO =
   mask \unmask -> do
     ptr :: Ptr () <-
-      Zmq.c_zmq_socket context ( socketType @a )
+      ZMQ4.c_zmq_socket context ( socketType @a )
 
     if ptr == nullPtr
       then
@@ -289,6 +336,35 @@ socketIO =
 
         unmask ( pure ( Right ( coerce foreignPtr ) ) )
 
+-- | <http://api.zeromq.org/4-3:zmq-setsockopt#toc56>
+subscribe
+  :: MonadIO m
+  => Socket 'Sub
+  -> ByteString
+  -> m ()
+subscribe sock prefix =
+  liftIO ( subscribeIO sock prefix )
+
+subscribeIO
+  :: Socket 'Sub
+  -> ByteString
+  -> IO ()
+subscribeIO sock prefix =
+  fix \again ->
+    setByteStringSockOpt sock ZMQ4.subscribe prefix >>= \case
+      0 ->
+        pure ()
+
+      _ ->
+        errno >>= \case
+          EINTR_    -> again
+          ENOTSOCK_ -> pure ()
+          ETERM_    -> pure ()
+
+          -- EINVAL: type system should prevent it ->
+
+          n -> errUnexpectedErrno "subscribe" n
+
 unbind
   :: ( CompatibleTransport typ transport
      , MonadIO m
@@ -307,7 +383,7 @@ unbindIO
 unbindIO sock endpoint =
   withForeignPtr ( unSocket sock ) \ptr ->
     withCString ( endpointToString endpoint ) \c_endpoint ->
-      Zmq.c_zmq_unbind ptr c_endpoint >>= \case
+      ZMQ4.c_zmq_unbind ptr c_endpoint >>= \case
         0 ->
           pure ( Right () )
 
@@ -329,10 +405,13 @@ errUnexpectedErrno func ( Errno n ) =
   error ( func ++ ": unexpected errno " ++ show n )
 
 pattern EADDRINUSE_ :: Errno
-pattern EADDRINUSE_ <- ((== coerce Zmq.eADDRINUSE) -> True)
+pattern EADDRINUSE_ <- ((== coerce ZMQ4.eADDRINUSE) -> True)
 
 pattern EADDRNOTAVAIL_ :: Errno
-pattern EADDRNOTAVAIL_ <- ((== coerce Zmq.eADDRNOTAVAIL) -> True)
+pattern EADDRNOTAVAIL_ <- ((== coerce ZMQ4.eADDRNOTAVAIL) -> True)
+
+pattern EINTR_ :: Errno
+pattern EINTR_ <- ((== eINTR) -> True)
 
 pattern EINVAL_ :: Errno
 pattern EINVAL_ <- ((== eINVAL) -> True)
@@ -344,7 +423,7 @@ pattern EMFILE_ :: Errno
 pattern EMFILE_ <- ((== eMFILE) -> True)
 
 pattern EMTHREAD_ :: Errno
-pattern EMTHREAD_ <- ((== coerce Zmq.eMTHREAD) -> True)
+pattern EMTHREAD_ <- ((== coerce ZMQ4.eMTHREAD) -> True)
 
 pattern ENODEV_ :: Errno
 pattern ENODEV_ <- ((== eNODEV) -> True)
@@ -353,10 +432,10 @@ pattern ENOENT_ :: Errno
 pattern ENOENT_ <- ((== eNOENT) -> True)
 
 pattern ENOTSOCK_ :: Errno
-pattern ENOTSOCK_ <- ((== coerce Zmq.eNOTSOCK) -> True)
+pattern ENOTSOCK_ <- ((== coerce ZMQ4.eNOTSOCK) -> True)
 
 pattern ETERM_ :: Errno
-pattern ETERM_ <- ((== coerce Zmq.eTERM) -> True)
+pattern ETERM_ <- ((== coerce ZMQ4.eTERM) -> True)
 
 foreign import ccall unsafe "&zmq_close"
   zmq_close :: FunPtr ( Ptr () -> IO () )
