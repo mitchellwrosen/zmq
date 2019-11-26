@@ -19,6 +19,7 @@ module Zmq
   , Transport(..)
   , bind
   , connect
+  , disconnect
   , socket
   , unbind
   ) where
@@ -51,6 +52,7 @@ type family CanReturnEADDRNOTAVAIL ( function :: Function ) :: Bool where
 type family CanReturnEINVAL ( function :: Function ) :: Bool where
   CanReturnEINVAL 'Function'Bind = 'True
   CanReturnEINVAL 'Function'Connect = 'True
+  CanReturnEINVAL 'Function'Disconnect = 'True
   CanReturnEINVAL 'Function'Unbind = 'True
   CanReturnEINVAL _ = 'False
 
@@ -68,6 +70,7 @@ type family CanReturnENODEV ( function :: Function ) :: Bool where
   CanReturnENODEV _ = 'False
 
 type family CanReturnENOENT ( function :: Function ) :: Bool where
+  CanReturnENOENT 'Function'Disconnect = 'True
   CanReturnENOENT 'Function'Unbind = 'True
   CanReturnENOENT _ = 'False
 
@@ -104,6 +107,9 @@ type family CompatibleTransport ( typ :: SocketType ) ( transport :: Transport )
 type ConnectError
   = Error 'Function'Connect
 
+type DisconnectError
+  = Error 'Function'Disconnect
+
 data Endpoint ( transport :: Transport ) where
   Epgm   :: Text -> Endpoint 'Transport'Epgm
   Inproc :: Text -> Endpoint 'Transport'Inproc
@@ -136,6 +142,7 @@ instance Show ( Error function ) where
 data Function
   = Function'Bind
   | Function'Connect
+  | Function'Disconnect
   | Function'Socket
   | Function'Unbind
 
@@ -244,6 +251,36 @@ context :: Zmq.ZMQCtx
 context =
   unsafePerformIO ( coerce Zmq.c_zmq_ctx_new )
 {-# NOINLINE context #-}
+
+disconnect
+  :: ( CompatibleTransport typ transport
+     , MonadIO m
+     )
+  => Socket typ
+  -> Endpoint transport
+  -> m ( Either DisconnectError () )
+disconnect sock endpoint =
+  liftIO ( disconnectIO sock endpoint )
+
+disconnectIO
+  :: CompatibleTransport typ transport
+  => Socket typ
+  -> Endpoint transport
+  -> IO ( Either DisconnectError () )
+disconnectIO sock endpoint =
+  withForeignPtr ( unSocket sock ) \ptr ->
+    withCString ( endpointToString endpoint ) \c_endpoint ->
+      Zmq.c_zmq_disconnect ptr c_endpoint >>= \case
+        0 ->
+          pure ( Right () )
+
+        _ ->
+          errno >>= \case
+            EINVAL_ -> pure ( Left EINVAL )
+            ENOENT_ -> pure ( Left ENOENT )
+            -- ENOTSOCK: type system should prevent it
+            -- ETERM: global context should prevent it
+            n -> unexpectedErrno "unbind" n
 
 endpointToString
   :: Endpoint transport
