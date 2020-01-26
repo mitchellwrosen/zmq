@@ -4,9 +4,9 @@ module Zmq.API.Subscribe
 
 import Zmq.API.SetSockOpt
 import Zmq.Error
-import Zmq.FFI
 import Zmq.Prelude
 import Zmq.Socket
+import qualified Zmq.FFI as FFI
 
 
 -- | <http://api.zeromq.org/4-3:zmq-setsockopt#toc56>
@@ -24,12 +24,12 @@ subscribeIO
   -> IO ()
 subscribeIO sock prefix =
   fix \again ->
-    setByteStringSockOpt sock zMQ_SUBSCRIBE prefix >>= \case
+    setByteStringSockOpt sock FFI.zMQ_SUBSCRIBE prefix >>= \case
       0 ->
         pure ()
 
       _ ->
-        zmq_errno >>= \case
+        FFI.zmq_errno >>= \case
           EINTR_    -> again
           ENOTSOCK_ -> pure ()
           ETERM_    -> pure ()

@@ -5,11 +5,11 @@ module Zmq.API.Bind
 
 
 import Zmq.Error
-import Zmq.FFI
 import Zmq.Internal
 import Zmq.Function
 import Zmq.Prelude
 import Zmq.Socket
+import qualified Zmq.FFI as FFI
 
 
 type BindError
@@ -34,12 +34,12 @@ bindIO
 bindIO sock endpoint =
   withForeignPtr ( unSocket sock ) \ptr ->
     withCString ( endpointToString endpoint ) \c_endpoint ->
-      zmq_bind ptr c_endpoint >>= \case
+      FFI.zmq_bind ptr c_endpoint >>= \case
         0 ->
           pure ( Right () )
 
         _ ->
-          zmq_errno <&> \case
+          FFI.zmq_errno <&> \case
             EADDRINUSE_    -> Left EADDRINUSE
             EADDRNOTAVAIL_ -> Left EADDRNOTAVAIL
             EINVAL_        -> Left EINVAL

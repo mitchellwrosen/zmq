@@ -7,6 +7,12 @@ module Zmq.FFI where
 import Foreign.C
 import Foreign.Ptr
 
+type Context
+  = Ptr ()
+
+type Socket
+  = Ptr ()
+
 eADDRINUSE :: Errno
 eADDRINUSE =
   Errno ( #const EADDRINUSE )
@@ -108,31 +114,31 @@ zMQ_SUBSCRIBE =
   #const ZMQ_SUBSCRIBE
 
 foreign import ccall safe "zmq_bind"
-  zmq_bind :: Ptr () -> CString -> IO CInt
+  zmq_bind :: Socket -> CString -> IO CInt
 
 foreign import ccall unsafe "&zmq_close"
-  zmq_close :: FunPtr ( Ptr () -> IO () )
+  zmq_close :: FunPtr ( Socket -> IO () )
 
 foreign import ccall safe "zmq_connect"
-  zmq_connect :: Ptr () -> CString -> IO CInt
+  zmq_connect :: Socket -> CString -> IO CInt
 
 foreign import ccall unsafe "zmq_ctx_new"
-  zmq_ctx_new :: IO ( Ptr () )
+  zmq_ctx_new :: IO Context
 
 foreign import ccall safe "zmq_ctx_term"
-  zmq_ctx_term :: Ptr () -> IO CInt
+  zmq_ctx_term :: Context -> IO CInt
 
 foreign import ccall safe "zmq_disconnect"
-  zmq_disconnect :: Ptr () -> CString -> IO CInt
+  zmq_disconnect :: Socket -> CString -> IO CInt
 
 foreign import ccall unsafe "zmq_errno"
   zmq_errno :: IO Errno
 
 foreign import ccall unsafe "zmq_setsockopt"
-  zmq_setsockopt :: Ptr () -> CInt -> Ptr a -> CSize -> IO CInt
+  zmq_setsockopt :: Socket -> CInt -> Ptr a -> CSize -> IO CInt
 
 foreign import ccall unsafe "zmq_socket"
-  zmq_socket :: Ptr () -> CInt -> IO ( Ptr () )
+  zmq_socket :: Context -> CInt -> IO Socket
 
 foreign import ccall safe "zmq_unbind"
-  zmq_unbind :: Ptr () -> CString -> IO CInt
+  zmq_unbind :: Socket -> CString -> IO CInt

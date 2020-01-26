@@ -9,8 +9,8 @@ module Zmq.Socket
 import qualified GHC.TypeLits as TypeLits
 
 import Zmq.Internal
-import Zmq.FFI
 import Zmq.Prelude
+import qualified Zmq.FFI as FFI
 
 
 newtype Socket ( a :: SocketType )
@@ -51,9 +51,9 @@ class IsSocketType ( a :: SocketType ) where
 instance IsSocketType 'Pub where
   socketType :: CInt
   socketType =
-    zMQ_PUB
+    FFI.zMQ_PUB
 
 instance IsSocketType 'Sub where
   socketType :: CInt
   socketType =
-    zMQ_SUB
+    FFI.zMQ_SUB

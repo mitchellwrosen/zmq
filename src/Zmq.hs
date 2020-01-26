@@ -34,11 +34,11 @@ import Zmq.API.Subscribe
 import Zmq.API.Unbind
 import Zmq.Context
 import Zmq.Error
-import Zmq.FFI
 import Zmq.Function
 import Zmq.Internal
 import Zmq.Prelude
 import Zmq.Socket
+import qualified Zmq.FFI as FFI
 
 
 -- | Run an action in the context of a global ZeroMQ context. This should wrap
@@ -51,12 +51,12 @@ main =
     ( fix \again -> do
         performGC -- trigger socket finalizers
 
-        zmq_ctx_term context >>= \case
+        FFI.zmq_ctx_term context >>= \case
           0 ->
             pure ()
 
           _ ->
-            zmq_errno >>= \case
+            FFI.zmq_errno >>= \case
               EFAULT_ -> pure ()
               EINTR_  -> again
 

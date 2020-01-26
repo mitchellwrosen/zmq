@@ -5,9 +5,9 @@ module Zmq.API.SetSockOpt
 import qualified Data.ByteString as ByteString
 import qualified Data.ByteString.Unsafe as ByteString
 
-import Zmq.FFI
 import Zmq.Prelude
 import Zmq.Socket
+import qualified Zmq.FFI as FFI
 
 
 setByteStringSockOpt
@@ -18,7 +18,7 @@ setByteStringSockOpt
 setByteStringSockOpt sock key value =
   withForeignPtr ( unSocket sock ) \ptr ->
     ByteString.unsafeUseAsCString value \c_value ->
-      zmq_setsockopt
+      FFI.zmq_setsockopt
         ptr
         key
         c_value

@@ -4,11 +4,11 @@ module Zmq.API.Connect
   ) where
 
 import Zmq.Error
-import Zmq.FFI
 import Zmq.Function
 import Zmq.Internal
 import Zmq.Prelude
 import Zmq.Socket
+import qualified Zmq.FFI as FFI
 
 
 type ConnectError
@@ -33,12 +33,12 @@ connectIO
 connectIO sock endpoint =
   withForeignPtr ( unSocket sock ) \ptr ->
     withCString ( endpointToString endpoint ) \c_endpoint ->
-      zmq_connect ptr c_endpoint >>= \case
+      FFI.zmq_connect ptr c_endpoint >>= \case
         0 ->
           pure ( Right () )
 
         _ ->
-          zmq_errno <&> \case
+          FFI.zmq_errno <&> \case
             EINVAL_   -> Left EINVAL
             EMTHREAD_ -> Left EMTHREAD
 
