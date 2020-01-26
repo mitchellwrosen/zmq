@@ -43,10 +43,9 @@ connectIO socket endpoint =
             EINVAL_   -> Left EINVAL
             EMTHREAD_ -> Left EMTHREAD
 
-            ENOTSOCK_ -> Right ()
             ETERM_    -> Right ()
 
             -- ENOCOMPATPROTO: CompatibleTransport should prevent it
             -- EPROTONOSUPPORT: CPP should prevent it
 
-            n -> errUnexpectedErrno "zmq_connect" n
+            n -> bugUnexpectedErrno "zmq_connect" n

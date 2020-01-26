@@ -2,6 +2,7 @@ module Zmq
   ( BindError
   , ConnectError
   , DisconnectError
+  , SendError
   , CanReturnEADDRINUSE
   , CanReturnEADDRNOTAVAIL
   , CanReturnEINVAL
@@ -19,6 +20,7 @@ module Zmq
   , connect
   , disconnect
   , main
+  , send
   , socket
   , subscribe
   , unbind
@@ -26,18 +28,20 @@ module Zmq
 
 import System.Mem (performGC)
 
-import Zmq.API.Bind
-import Zmq.API.Connect
-import Zmq.API.Disconnect
-import Zmq.API.Socket
-import Zmq.API.Subscribe
-import Zmq.API.Unbind
-import Zmq.Context
-import Zmq.Error
+import Zmq.API.Bind (BindError, bind)
+import Zmq.API.Connect (ConnectError, connect)
+import Zmq.API.Disconnect (DisconnectError, disconnect)
+import Zmq.API.Send (SendError, send)
+import Zmq.API.Socket (SocketError, socket)
+import Zmq.API.Subscribe (subscribe)
+import Zmq.API.Unbind (unbind)
+import Zmq.Context (context)
+import Zmq.Endpoint (Endpoint(..))
+import Zmq.Error (Error(..), pattern EFAULT_, pattern EINTR_, bugUnexpectedErrno)
 import Zmq.Function
-import Zmq.Internal
+import Zmq.Internal (Transport(..))
 import Zmq.Prelude
-import Zmq.Socket
+import Zmq.Socket (Socket, SocketType(..))
 import qualified Zmq.FFI as FFI
 
 
@@ -60,5 +64,5 @@ main =
               EFAULT_ -> pure ()
               EINTR_  -> again
 
-              n -> errUnexpectedErrno "zmq_ctx_term" n
+              n -> bugUnexpectedErrno "zmq_ctx_term" n
     )

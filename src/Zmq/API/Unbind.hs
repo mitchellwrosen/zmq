@@ -41,7 +41,6 @@ unbindIO socket endpoint =
           FFI.zmq_errno <&> \case
             EINVAL_   -> Right ()
             ENOENT_   -> Right ()
-            ENOTSOCK_ -> Right ()
             ETERM_    -> Right ()
 
-            n -> errUnexpectedErrno "zmq_unbind" n
+            n -> bugUnexpectedErrno "zmq_unbind" n

@@ -47,11 +47,10 @@ bindIO socket endpoint =
             EMTHREAD_      -> Left EMTHREAD
             ENODEV_        -> Left ENODEV
 
-            ENOTSOCK_      -> Right ()
             ETERM_         -> Right ()
 
             -- ENOCOMPATPROTO: CompatibleTransport should prevent it
             -- EPROTONOSUPPORT: CPP should prevent it
 
-            n -> errUnexpectedErrno "zmq_bind" n
+            n -> bugUnexpectedErrno "zmq_bind" n
 

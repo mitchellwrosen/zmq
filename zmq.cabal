@@ -16,11 +16,13 @@ library
     AllowAmbiguousTypes
     BlockArguments
     DataKinds
+    FlexibleInstances
     GADTs
     InstanceSigs
     LambdaCase
     OverloadedStrings
     PatternSynonyms
+    RankNTypes
     ScopedTypeVariables
     TypeApplications
     TypeFamilies
@@ -43,6 +45,10 @@ library
     Zmq.API.Bind
     Zmq.API.Connect
     Zmq.API.Disconnect
+    Zmq.API.GetSockOpt
+    Zmq.API.PollerDestroy
+    Zmq.API.PollerNew
+    Zmq.API.Send
     Zmq.API.SetSockOpt
     Zmq.API.Socket
     Zmq.API.Subscribe
@@ -54,8 +60,10 @@ library
     Zmq.Function
     Zmq.Internal
     Zmq.Internal.Tests
+    Zmq.Poller
     Zmq.Prelude
     Zmq.Socket
+    Zmq.Util.SBool
 
   pkgconfig-depends:
     libzmq == 4.3.2

@@ -4,6 +4,7 @@ data Function
   = Function'Bind
   | Function'Connect
   | Function'Disconnect
+  | Function'Send
   | Function'Socket
   | Function'Unbind
 
@@ -14,6 +15,12 @@ type family CanReturnEADDRINUSE ( function :: Function ) :: Bool where
 type family CanReturnEADDRNOTAVAIL ( function :: Function ) :: Bool where
   CanReturnEADDRNOTAVAIL 'Function'Bind = 'True
   CanReturnEADDRNOTAVAIL _ = 'False
+
+type family CanReturnEHOSTUNREACH ( function :: Function ) :: Bool where
+  -- TODO only a few socket types (stream, server, router if flag set) can
+  -- return EHOSTUNREACH on send
+  CanReturnEHOSTUNREACH 'Function'Send = 'True
+  CanReturnEHOSTUNREACH _ = 'False
 
 type family CanReturnEINVAL ( function :: Function ) :: Bool where
   CanReturnEINVAL 'Function'Bind = 'True
@@ -40,4 +47,3 @@ type family CanReturnENODEV ( function :: Function ) :: Bool where
 
 -- type family CanReturnEPROTONOSUPPORT ( function :: Function ) :: Bool where
 --   CanReturnEPROTONOSUPPORT _ = 'False
-

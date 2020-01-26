@@ -44,7 +44,7 @@ socketIO =
 
             -- EINVAL: type system should prevent it
 
-            n -> errUnexpectedErrno "zmq_socket" n
+            n -> bugUnexpectedErrno "zmq_socket" n
 
       else do
         foreignPtr :: ForeignPtr () <-

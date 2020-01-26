@@ -31,9 +31,8 @@ subscribeIO sock prefix =
       _ ->
         FFI.zmq_errno >>= \case
           EINTR_    -> again
-          ENOTSOCK_ -> pure ()
           ETERM_    -> pure ()
 
           -- EINVAL: type system should prevent it ->
 
-          n -> errUnexpectedErrno "zmq_setsockopt" n
+          n -> bugUnexpectedErrno "zmq_setsockopt" n

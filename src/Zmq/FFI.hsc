@@ -7,111 +7,73 @@ module Zmq.FFI where
 import Foreign.C
 import Foreign.Ptr
 
-type Context
-  = Ptr ()
+type Context = Ptr ()
+type Poller  = Ptr ()
+type Socket  = Ptr ()
 
-type Socket
-  = Ptr ()
-
-eADDRINUSE :: Errno
-eADDRINUSE =
-  Errno ( #const EADDRINUSE )
-
-eADDRNOTAVAIL :: Errno
-eADDRNOTAVAIL =
-  Errno ( #const EADDRNOTAVAIL )
-
-eAFNOSUPPORT :: Errno
-eAFNOSUPPORT =
-  Errno ( #const EAFNOSUPPORT )
-
-eCONNABORTED :: Errno
-eCONNABORTED =
-  Errno ( #const ECONNABORTED )
-
-eCONNREFUSED :: Errno
-eCONNREFUSED =
-  Errno ( #const ECONNREFUSED )
-
-eCONNRESET :: Errno
-eCONNRESET =
-  Errno ( #const ECONNRESET )
-
-eFSM :: Errno
-eFSM =
-  Errno ( #const EFSM )
-
-eHOSTUNREACH :: Errno
-eHOSTUNREACH =
-  Errno ( #const EHOSTUNREACH )
-
-eINPROGRESS :: Errno
-eINPROGRESS =
-  Errno ( #const EINPROGRESS )
-
-eMSGSIZE :: Errno
-eMSGSIZE =
-  Errno ( #const EMSGSIZE )
-
-eMTHREAD :: Errno
-eMTHREAD =
-  Errno ( #const EMTHREAD )
-
-eNETDOWN :: Errno
-eNETDOWN =
-  Errno ( #const ENETDOWN )
-
-eNETRESET :: Errno
-eNETRESET =
-  Errno ( #const ENETRESET )
-
-eNETUNREACH :: Errno
-eNETUNREACH =
-  Errno ( #const ENETUNREACH )
-
-eNOBUFS :: Errno
-eNOBUFS =
-  Errno ( #const ENOBUFS )
-
-eNOCOMPATPROTO :: Errno
-eNOCOMPATPROTO =
-  Errno ( #const ENOCOMPATPROTO )
-
-eNOTCONN :: Errno
-eNOTCONN =
-  Errno ( #const ENOTCONN )
-
-eNOTSOCK :: Errno
-eNOTSOCK =
-  Errno ( #const ENOTSOCK )
-
-eNOTSUP :: Errno
-eNOTSUP =
-  Errno ( #const ENOTSUP )
-
+eADDRINUSE      :: Errno
+eADDRNOTAVAIL   :: Errno
+eAFNOSUPPORT    :: Errno
+eCONNABORTED    :: Errno
+eCONNREFUSED    :: Errno
+eCONNRESET      :: Errno
+eFSM            :: Errno
+eHOSTUNREACH    :: Errno
+eINPROGRESS     :: Errno
+eMSGSIZE        :: Errno
+eMTHREAD        :: Errno
+eNETDOWN        :: Errno
+eNETRESET       :: Errno
+eNETUNREACH     :: Errno
+eNOBUFS         :: Errno
+eNOCOMPATPROTO  :: Errno
+eNOTCONN        :: Errno
+eNOTSOCK        :: Errno
+eNOTSUP         :: Errno
 ePROTONOSUPPORT :: Errno
-ePROTONOSUPPORT =
-  Errno ( #const EPROTONOSUPPORT )
+eTERM           :: Errno
+eTIMEDOUT       :: Errno
+eADDRINUSE      = Errno ( #const EADDRINUSE )
+eADDRNOTAVAIL   = Errno ( #const EADDRNOTAVAIL )
+eAFNOSUPPORT    = Errno ( #const EAFNOSUPPORT )
+eCONNABORTED    = Errno ( #const ECONNABORTED )
+eCONNREFUSED    = Errno ( #const ECONNREFUSED )
+eCONNRESET      = Errno ( #const ECONNRESET )
+eFSM            = Errno ( #const EFSM )
+eHOSTUNREACH    = Errno ( #const EHOSTUNREACH )
+eINPROGRESS     = Errno ( #const EINPROGRESS )
+eMSGSIZE        = Errno ( #const EMSGSIZE )
+eMTHREAD        = Errno ( #const EMTHREAD )
+eNETDOWN        = Errno ( #const ENETDOWN )
+eNETRESET       = Errno ( #const ENETRESET )
+eNETUNREACH     = Errno ( #const ENETUNREACH )
+eNOBUFS         = Errno ( #const ENOBUFS )
+eNOCOMPATPROTO  = Errno ( #const ENOCOMPATPROTO )
+eNOTCONN        = Errno ( #const ENOTCONN )
+eNOTSOCK        = Errno ( #const ENOTSOCK )
+eNOTSUP         = Errno ( #const ENOTSUP )
+ePROTONOSUPPORT = Errno ( #const EPROTONOSUPPORT )
+eTERM           = Errno ( #const ETERM )
+eTIMEDOUT       = Errno ( #const ETIMEDOUT )
 
-eTERM :: Errno
-eTERM =
-  Errno ( #const ETERM )
 
-eTIMEDOUT :: Errno
-eTIMEDOUT =
-  Errno ( #const ETIMEDOUT )
-
-zMQ_PUB :: CInt
-zMQ_PUB =
-  #const ZMQ_PUB
-
-zMQ_SUB :: CInt
-zMQ_SUB =
-  #const ZMQ_SUB
-
+zMQ_DONTWAIT  :: CInt
+zMQ_EVENTS    :: CInt
+zMQ_FD        :: CInt
+zMQ_POLLIN    :: CInt
+zMQ_POLLOUT   :: CInt
+zMQ_PUB       :: CInt
+zMQ_SUB       :: CInt
 zMQ_SUBSCRIBE :: CInt
-zMQ_SUBSCRIBE =
-  #const ZMQ_SUBSCRIBE
+zMQ_DONTWAIT  = #const ZMQ_DONTWAIT
+zMQ_EVENTS    = #const ZMQ_EVENTS
+zMQ_FD        = #const ZMQ_FD
+zMQ_POLLIN    = #const ZMQ_POLLIN
+zMQ_POLLOUT   = #const ZMQ_POLLOUT
+zMQ_PUB       = #const ZMQ_PUB
+zMQ_SUB       = #const ZMQ_SUB
+zMQ_SUBSCRIBE = #const ZMQ_SUBSCRIBE
+
 
 foreign import ccall safe "zmq_bind"
   zmq_bind :: Socket -> CString -> IO CInt
@@ -133,6 +95,18 @@ foreign import ccall safe "zmq_disconnect"
 
 foreign import ccall unsafe "zmq_errno"
   zmq_errno :: IO Errno
+
+foreign import ccall unsafe "zmq_getsockopt"
+  zmq_getsockopt :: Socket -> CInt -> Ptr a -> Ptr CSize -> IO CInt
+
+-- foreign import ccall unsafe "zmq_poller_destroy"
+--   zmq_poller_destroy :: Ptr Poller -> IO CInt
+
+-- foreign import ccall unsafe "zmq_poller_new"
+--   zmq_poller_new :: IO Poller
+
+foreign import ccall safe "zmq_send"
+  zmq_send :: Socket -> Ptr a -> CSize -> CInt -> IO CInt
 
 foreign import ccall unsafe "zmq_setsockopt"
   zmq_setsockopt :: Socket -> CInt -> Ptr a -> CSize -> IO CInt

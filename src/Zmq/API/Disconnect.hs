@@ -43,8 +43,7 @@ disconnectIO socket endpoint =
             EINVAL_   -> Left EINVAL
 
             ENOENT_   -> Right ()
-            ENOTSOCK_ -> Right ()
             ETERM_    -> Right ()
 
-            n -> errUnexpectedErrno "zmq_disconnect" n
+            n -> bugUnexpectedErrno "zmq_disconnect" n
 
