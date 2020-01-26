@@ -13,7 +13,7 @@ module Zmq
   , Function(..)
   , Socket
   , SocketError
-  , SocketType
+  , SocketType(..)
   , Transport(..)
   , bind
   , connect

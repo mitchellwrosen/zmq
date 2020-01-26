@@ -19,6 +19,7 @@ library
     GADTs
     InstanceSigs
     LambdaCase
+    OverloadedStrings
     PatternSynonyms
     ScopedTypeVariables
     TypeApplications
@@ -51,6 +52,7 @@ library
     Zmq.FFI
     Zmq.Function
     Zmq.Internal
+    Zmq.Internal.Tests
     Zmq.Prelude
     Zmq.Socket
 

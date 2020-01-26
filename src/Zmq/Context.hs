@@ -13,4 +13,3 @@ context :: Ptr ()
 context =
   unsafePerformIO zmq_ctx_new
 {-# NOINLINE context #-}
-

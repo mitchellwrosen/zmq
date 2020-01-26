@@ -16,7 +16,8 @@ type SocketError
 
 -- | <http://api.zeromq.org/4-3:zmq-socket>
 socket
-  :: ( IsSocketType a
+  :: forall a m.
+     ( IsSocketType a
      , MonadIO m
      )
   => m ( Either SocketError ( Socket a ) )
@@ -50,4 +51,3 @@ socketIO =
           newForeignPtr zmq_close ptr
 
         unmask ( pure ( Right ( coerce foreignPtr ) ) )
-

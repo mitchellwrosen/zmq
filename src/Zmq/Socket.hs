@@ -9,7 +9,7 @@ module Zmq.Socket
 import qualified GHC.TypeLits as TypeLits
 
 import Zmq.Internal
-import Zmq.FFI (zMQ_SUB)
+import Zmq.FFI
 import Zmq.Prelude
 
 
@@ -47,6 +47,11 @@ type family CanSend ( typ :: SocketType ) :: Constraint where
 
 class IsSocketType ( a :: SocketType ) where
   socketType :: CInt
+
+instance IsSocketType 'Pub where
+  socketType :: CInt
+  socketType =
+    zMQ_PUB
 
 instance IsSocketType 'Sub where
   socketType :: CInt
