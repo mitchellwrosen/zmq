@@ -1,0 +1,1 @@
+-c "cabal repl -O0 zmq:lib:zmq" --restart zmq.cabal
