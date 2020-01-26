@@ -39,8 +39,20 @@ library
     src
 
   other-modules:
+    Zmq.API.Bind
+    Zmq.API.Connect
+    Zmq.API.Disconnect
+    Zmq.API.SetSockOpt
+    Zmq.API.Socket
+    Zmq.API.Subscribe
+    Zmq.API.Unbind
+    Zmq.Context
+    Zmq.Error
     Zmq.FFI
+    Zmq.Function
     Zmq.Internal
+    Zmq.Prelude
+    Zmq.Socket
 
   pkgconfig-depends:
     libzmq == 4.3.2

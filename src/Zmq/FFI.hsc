@@ -110,6 +110,9 @@ zMQ_SUBSCRIBE =
 foreign import ccall safe "zmq_bind"
   zmq_bind :: Ptr () -> CString -> IO CInt
 
+foreign import ccall unsafe "&zmq_close"
+  zmq_close :: FunPtr ( Ptr () -> IO () )
+
 foreign import ccall safe "zmq_connect"
   zmq_connect :: Ptr () -> CString -> IO CInt
 
