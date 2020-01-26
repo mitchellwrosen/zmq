@@ -3,6 +3,7 @@ module Zmq.API.Disconnect
   , DisconnectError
   ) where
 
+import Zmq.Endpoint
 import Zmq.Error
 import Zmq.Function
 import Zmq.Internal
@@ -22,17 +23,17 @@ disconnect
   => Socket typ
   -> Endpoint transport
   -> m ( Either DisconnectError () )
-disconnect sock endpoint =
-  liftIO ( disconnectIO sock endpoint )
+disconnect socket endpoint =
+  liftIO ( disconnectIO socket endpoint )
 
 disconnectIO
   :: CompatibleTransport typ transport
   => Socket typ
   -> Endpoint transport
   -> IO ( Either DisconnectError () )
-disconnectIO sock endpoint =
-  withForeignPtr ( unSocket sock ) \ptr ->
-    withCString ( endpointToString endpoint ) \c_endpoint ->
+disconnectIO socket endpoint =
+  withSocket socket \ptr ->
+    withEndpoint endpoint \c_endpoint ->
       FFI.zmq_disconnect ptr c_endpoint >>= \case
         0 ->
           pure ( Right () )

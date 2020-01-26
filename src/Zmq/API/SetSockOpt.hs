@@ -15,8 +15,8 @@ setByteStringSockOpt
   -> CInt
   -> ByteString
   -> IO CInt
-setByteStringSockOpt sock key value =
-  withForeignPtr ( unSocket sock ) \ptr ->
+setByteStringSockOpt socket key value =
+  withSocket socket \ptr ->
     ByteString.unsafeUseAsCString value \c_value ->
       FFI.zmq_setsockopt
         ptr

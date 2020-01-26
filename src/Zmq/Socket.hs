@@ -2,6 +2,7 @@
 
 module Zmq.Socket
   ( Socket(..)
+  , withSocket
   , SocketType(..)
   , IsSocketType(..)
   ) where
@@ -17,6 +18,12 @@ newtype Socket ( a :: SocketType )
   = Socket
   { unSocket :: ForeignPtr () }
 
+withSocket
+  :: Socket typ
+  -> ( Ptr () -> IO a )
+  -> IO a
+withSocket socket =
+  withForeignPtr ( unSocket socket )
 
 type family CanReceive ( typ :: SocketType ) :: Constraint where
   CanReceive 'Sub = ()
@@ -45,7 +52,7 @@ type family CanSend ( typ :: SocketType ) :: Constraint where
       )
 
 
-class IsSocketType ( a :: SocketType ) where
+class IsSocketType ( typ :: SocketType ) where
   socketType :: CInt
 
 instance IsSocketType 'Pub where

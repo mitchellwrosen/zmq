@@ -9,6 +9,6 @@ import Data.Coerce as X (coerce)
 import Data.Function as X (fix)
 import Data.Functor as X
 import Data.Kind as X (Constraint)
-import Foreign.C as X (CInt, withCString)
+import Foreign.C as X (CInt, CString, withCString)
 import Foreign.ForeignPtr as X (ForeignPtr, newForeignPtr, withForeignPtr)
 import Foreign.Ptr as X (Ptr, nullPtr)

@@ -48,6 +48,7 @@ library
     Zmq.API.Subscribe
     Zmq.API.Unbind
     Zmq.Context
+    Zmq.Endpoint
     Zmq.Error
     Zmq.FFI
     Zmq.Function

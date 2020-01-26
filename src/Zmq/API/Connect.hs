@@ -3,6 +3,7 @@ module Zmq.API.Connect
   , ConnectError
   ) where
 
+import Zmq.Endpoint
 import Zmq.Error
 import Zmq.Function
 import Zmq.Internal
@@ -22,17 +23,17 @@ connect
   => Socket typ
   -> Endpoint transport
   -> m ( Either ConnectError () )
-connect sock endpoint =
-  liftIO ( connectIO sock endpoint )
+connect socket endpoint =
+  liftIO ( connectIO socket endpoint )
 
 connectIO
   :: CompatibleTransport typ transport
   => Socket typ
   -> Endpoint transport
   -> IO ( Either ConnectError () )
-connectIO sock endpoint =
-  withForeignPtr ( unSocket sock ) \ptr ->
-    withCString ( endpointToString endpoint ) \c_endpoint ->
+connectIO socket endpoint =
+  withSocket socket \ptr ->
+    withEndpoint endpoint \c_endpoint ->
       FFI.zmq_connect ptr c_endpoint >>= \case
         0 ->
           pure ( Right () )
@@ -49,4 +50,3 @@ connectIO sock endpoint =
             -- EPROTONOSUPPORT: CPP should prevent it
 
             n -> errUnexpectedErrno "zmq_connect" n
-
