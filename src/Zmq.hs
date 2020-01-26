@@ -24,6 +24,8 @@ module Zmq
   , unbind
   ) where
 
+import System.Mem (performGC)
+
 import Zmq.API.Bind
 import Zmq.API.Connect
 import Zmq.API.Disconnect
@@ -46,7 +48,9 @@ main :: IO a -> IO a
 main =
   bracket_
     ( evaluate context )
-    ( fix \again ->
+    ( fix \again -> do
+        performGC -- trigger socket finalizers
+
         zmq_ctx_term context >>= \case
           0 ->
             pure ()

@@ -119,7 +119,7 @@ foreign import ccall safe "zmq_connect"
 foreign import ccall unsafe "zmq_ctx_new"
   zmq_ctx_new :: IO ( Ptr () )
 
-foreign import ccall unsafe "zmq_ctx_term"
+foreign import ccall safe "zmq_ctx_term"
   zmq_ctx_term :: Ptr () -> IO CInt
 
 foreign import ccall safe "zmq_disconnect"
