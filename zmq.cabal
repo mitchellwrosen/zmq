@@ -11,6 +11,8 @@ common component
     AllowAmbiguousTypes
     BlockArguments
     DataKinds
+    DeriveDataTypeable
+    DerivingStrategies
     FlexibleInstances
     GADTs
     InstanceSigs

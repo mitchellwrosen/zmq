@@ -12,7 +12,6 @@ module Zmq.Socket
   ) where
 
 import Data.Bits (testBit)
-import Data.Typeable
 import GHC.Conc (threadWaitRead)
 import qualified GHC.TypeLits as TypeLits
 
@@ -26,10 +25,7 @@ import qualified Zmq.FFI as FFI
 newtype Socket ( a :: SocketType )
   = Socket
   { unSocket :: ForeignPtr () }
-
-instance Typeable a => Show ( Socket a ) where
-  -- TODO use showsPrec
-  show _ = "Socket " ++ showsTypeRep ( typeRep ( Proxy @a ) ) ""
+  deriving stock ( Eq, Data, Ord, Show )
 
 withSocket
   :: Socket typ

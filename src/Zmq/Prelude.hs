@@ -7,6 +7,7 @@ import Control.Monad as X
 import Control.Monad.IO.Class as X
 import Data.ByteString as X (ByteString)
 import Data.Coerce as X (coerce)
+import Data.Data as X (Data)
 import Data.Function as X (fix)
 import Data.Functor as X
 import Data.Kind as X (Constraint, Type)
