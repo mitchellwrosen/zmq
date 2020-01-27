@@ -1,5 +1,7 @@
 module Zmq.API.Bind
   ( bind
+  , bindIO
+  , bindIO'
   , BindError
   ) where
 
@@ -60,6 +62,31 @@ bindIO socket endpoint =
 
             -- ENOCOMPATPROTO: CompatibleTransport should prevent it
             -- EPROTONOSUPPORT: CPP should prevent it
+
+            errno ->
+              bugUnexpectedErrno "zmq_bind" errno
+
+bindIO'
+  :: ForeignPtr FFI.Socket
+  -> Endpoint transport
+  -> IO ( Either BindError () )
+bindIO' socket endpoint =
+  withForeignPtr socket \socket_ptr ->
+    withEndpoint endpoint \c_endpoint ->
+      FFI.zmq_bind socket_ptr c_endpoint >>= \case
+        0 ->
+          pure ( Right () )
+
+        _ ->
+          FFI.zmq_errno >>= \case
+            EADDRINUSE_    -> pure ( Left EADDRINUSE )
+            EADDRNOTAVAIL_ -> pure ( Left EADDRNOTAVAIL )
+            EINVAL_        -> pure ( Left EINVAL )
+            EMTHREAD_      -> pure ( Left EMTHREAD )
+            ENODEV_        -> pure ( Left ENODEV )
+
+            ETERM_ ->
+              errInvalidContext
 
             errno ->
               bugUnexpectedErrno "zmq_bind" errno

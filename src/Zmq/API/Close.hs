@@ -1,5 +1,6 @@
 module Zmq.API.Close
   ( close
+  , closeIO
   ) where
 
 import Foreign.ForeignPtr (finalizeForeignPtr)

@@ -1,5 +1,6 @@
 module Zmq.API.Disconnect
   ( disconnect
+  , disconnectIO'
   ) where
 
 import Zmq.Endpoint
@@ -38,6 +39,28 @@ disconnectIO socket endpoint =
             EINVAL_ -> pure () -- The endpoint supplied is invalid.
             ENOENT_ -> pure () -- The provided endpoint is not connected.
 
+
+            ETERM_ ->
+              errInvalidContext
+
+            errno ->
+              bugUnexpectedErrno "zmq_disconnect" errno
+
+disconnectIO'
+  :: ForeignPtr FFI.Socket
+  -> Endpoint transport
+  -> IO ()
+disconnectIO' socket endpoint =
+  withForeignPtr socket \socket_ptr ->
+    withEndpoint endpoint \c_endpoint ->
+      FFI.zmq_disconnect socket_ptr c_endpoint >>= \case
+        0 ->
+          pure ()
+
+        _ ->
+          FFI.zmq_errno >>= \case
+            EINVAL_ -> pure () -- The endpoint supplied is invalid.
+            ENOENT_ -> pure () -- The provided endpoint is not connected.
 
             ETERM_ ->
               errInvalidContext

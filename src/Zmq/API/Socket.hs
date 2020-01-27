@@ -1,5 +1,7 @@
 module Zmq.API.Socket
   ( socket
+  , socketIO
+  , socketIO'
   , pubSocket
   , subSocket
   ) where
@@ -52,6 +54,32 @@ socketIO =
           newForeignPtr FFI.zmq_close ptr
 
         unmask ( pure ( Just ( coerce foreignPtr ) ) )
+
+socketIO' :: CInt -> IO ( Maybe ( ForeignPtr FFI.Socket ) )
+socketIO' socketType =
+  mask \unmask -> do
+    ptr :: Ptr () <-
+      FFI.zmq_socket context socketType
+
+    if ptr == nullPtr
+      then
+        unmask do
+          FFI.zmq_errno >>= \case
+            EMFILE_ -> pure Nothing
+
+            EFAULT_ -> errInvalidContext
+            ETERM_  -> errInvalidContext
+
+            -- EINVAL: type system should prevent it
+
+            errno ->
+              bugUnexpectedErrno "zmq_socket" errno
+
+      else do
+        foreignPtr :: ForeignPtr () <-
+          newForeignPtr FFI.zmq_close ptr
+
+        unmask ( pure ( Just foreignPtr ) )
 
 pubSocket
   :: MonadIO m
