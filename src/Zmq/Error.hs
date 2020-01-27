@@ -100,10 +100,10 @@ bugIO :: MonadIO m => String -> m a
 bugIO =
   liftIO . evaluate . bug
 
-bugUnexpectedErrno :: String -> Errno -> a
+bugUnexpectedErrno :: MonadIO m => String -> Errno -> m a
 bugUnexpectedErrno func ( Errno n ) =
-  error ( func ++ ": unexpected errno " ++ show n )
+  liftIO ( fail ( func ++ ": unexpected errno " ++ show n ) )
 
-errInvalidContext :: a
+errInvalidContext :: MonadIO m => m a
 errInvalidContext =
-  error "Invalid ZeroMQ context. Did you forget to call `Zmq.main`?"
+  liftIO ( fail "Invalid ZeroMQ context. Did you forget to call `Zmq.main`?" )

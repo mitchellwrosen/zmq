@@ -39,13 +39,15 @@ connectIO socket endpoint =
           pure ( Right () )
 
         _ ->
-          FFI.zmq_errno <&> \case
-            EINVAL_   -> Left EINVAL
-            EMTHREAD_ -> Left EMTHREAD
+          FFI.zmq_errno >>= \case
+            EINVAL_   -> pure ( Left EINVAL )
+            EMTHREAD_ -> pure ( Left EMTHREAD )
 
-            ETERM_    -> Right ()
+            ETERM_ ->
+              errInvalidContext
 
             -- ENOCOMPATPROTO: CompatibleTransport should prevent it
             -- EPROTONOSUPPORT: CPP should prevent it
 
-            n -> bugUnexpectedErrno "zmq_connect" n
+            errno ->
+              bugUnexpectedErrno "zmq_connect" errno

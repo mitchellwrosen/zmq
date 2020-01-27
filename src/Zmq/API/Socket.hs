@@ -38,15 +38,16 @@ socketIO =
     if ptr == nullPtr
       then
         unmask do
-          FFI.zmq_errno <&> \case
-            EMFILE_ -> Left EMFILE
+          FFI.zmq_errno >>= \case
+            EMFILE_ -> pure ( Left EMFILE )
 
             EFAULT_ -> errInvalidContext
             ETERM_  -> errInvalidContext
 
             -- EINVAL: type system should prevent it
 
-            n -> bugUnexpectedErrno "zmq_socket" n
+            errno ->
+              bugUnexpectedErrno "zmq_socket" errno
 
       else do
         foreignPtr :: ForeignPtr () <-

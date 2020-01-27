@@ -15,10 +15,6 @@ setByteStringSockOpt
   -> ByteString
   -> IO CInt
 setByteStringSockOpt socket key value =
-  withSocket socket \ptr ->
+  withSocket socket \socket_ptr ->
     ByteString.unsafeUseAsCStringLen value \( c_value, len ) ->
-      FFI.zmq_setsockopt
-        ptr
-        key
-        c_value
-        ( fromIntegral len )
+      FFI.zmq_setsockopt socket_ptr key c_value ( fromIntegral len )

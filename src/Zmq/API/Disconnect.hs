@@ -32,18 +32,23 @@ disconnectIO
   -> Endpoint transport
   -> IO ( Either DisconnectError () )
 disconnectIO socket endpoint =
-  withSocket socket \ptr ->
-    withEndpoint endpoint \c_endpoint ->
-      FFI.zmq_disconnect ptr c_endpoint >>= \case
+  withSocket socket \socket_ptr ->
+    withEndpoint endpoint \endpoint_ptr ->
+      FFI.zmq_disconnect socket_ptr endpoint_ptr >>= \case
         0 ->
           pure ( Right () )
 
         _ ->
-          FFI.zmq_errno <&> \case
-            EINVAL_   -> Left EINVAL
+          FFI.zmq_errno >>= \case
+            EINVAL_ ->
+              pure ( Left EINVAL )
 
-            ENOENT_   -> Right ()
-            ETERM_    -> Right ()
+            -- Already disconnected
+            ENOENT_ ->
+              pure ( Right () )
 
-            n -> bugUnexpectedErrno "zmq_disconnect" n
+            ETERM_ ->
+              errInvalidContext
 
+            errno ->
+              bugUnexpectedErrno "zmq_disconnect" errno

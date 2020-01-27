@@ -43,6 +43,9 @@ recvIO socket =
                   EINTR_ ->
                     again
 
+                  ETERM_ ->
+                    errInvalidContext
+
                   -- EFAULT: "The message passed to the function was invalid."
                   --
                   -- EFSM: "The zmq_msg_recv() operation cannot be performed on

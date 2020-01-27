@@ -40,17 +40,18 @@ bindIO socket endpoint =
           pure ( Right () )
 
         _ ->
-          FFI.zmq_errno <&> \case
-            EADDRINUSE_    -> Left EADDRINUSE
-            EADDRNOTAVAIL_ -> Left EADDRNOTAVAIL
-            EINVAL_        -> Left EINVAL
-            EMTHREAD_      -> Left EMTHREAD
-            ENODEV_        -> Left ENODEV
+          FFI.zmq_errno >>= \case
+            EADDRINUSE_    -> pure ( Left EADDRINUSE )
+            EADDRNOTAVAIL_ -> pure ( Left EADDRNOTAVAIL )
+            EINVAL_        -> pure ( Left EINVAL )
+            EMTHREAD_      -> pure ( Left EMTHREAD )
+            ENODEV_        -> pure ( Left ENODEV )
 
-            ETERM_         -> Right ()
+            ETERM_ ->
+              errInvalidContext
 
             -- ENOCOMPATPROTO: CompatibleTransport should prevent it
             -- EPROTONOSUPPORT: CPP should prevent it
 
-            n -> bugUnexpectedErrno "zmq_bind" n
-
+            errno ->
+              bugUnexpectedErrno "zmq_bind" errno

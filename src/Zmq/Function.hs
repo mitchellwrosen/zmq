@@ -6,7 +6,6 @@ data Function
   | Function'Disconnect
   | Function'Send
   | Function'Socket
-  | Function'Unbind
 
 type family CanReturnEADDRINUSE ( function :: Function ) :: Bool where
   CanReturnEADDRINUSE 'Function'Bind = 'True
@@ -26,7 +25,6 @@ type family CanReturnEINVAL ( function :: Function ) :: Bool where
   CanReturnEINVAL 'Function'Bind = 'True
   CanReturnEINVAL 'Function'Connect = 'True
   CanReturnEINVAL 'Function'Disconnect = 'True
-  CanReturnEINVAL 'Function'Unbind = 'True
   CanReturnEINVAL _ = 'False
 
 type family CanReturnEMFILE ( function :: Function ) :: Bool where
