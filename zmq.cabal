@@ -48,6 +48,7 @@ library
     Zmq.API.GetSockOpt
     Zmq.API.PollerDestroy
     Zmq.API.PollerNew
+    Zmq.API.Recv
     Zmq.API.Send
     Zmq.API.SetSockOpt
     Zmq.API.Socket
@@ -63,7 +64,6 @@ library
     Zmq.Poller
     Zmq.Prelude
     Zmq.Socket
-    Zmq.Util.SBool
 
   pkgconfig-depends:
     libzmq == 4.3.2

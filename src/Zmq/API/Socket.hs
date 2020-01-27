@@ -1,6 +1,8 @@
 module Zmq.API.Socket
   ( socket
   , SocketError
+  , pubSocket
+  , subSocket
   ) where
 
 import Zmq.Context (context)
@@ -51,3 +53,15 @@ socketIO =
           newForeignPtr FFI.zmq_close ptr
 
         unmask ( pure ( Right ( coerce foreignPtr ) ) )
+
+pubSocket
+  :: MonadIO m
+  => m ( Either SocketError ( Socket 'Pub ) )
+pubSocket =
+  socket
+
+subSocket
+  :: MonadIO m
+  => m ( Either SocketError ( Socket 'Sub ) )
+subSocket =
+  socket

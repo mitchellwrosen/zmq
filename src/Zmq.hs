@@ -16,14 +16,22 @@ module Zmq
   , SocketError
   , SocketType(..)
   , Transport(..)
+
+  , main
+
+  , pubSocket
+  , subSocket
+
   , bind
+  , unbind
+
   , connect
   , disconnect
-  , main
+
+  , recv
   , send
-  , socket
+
   , subscribe
-  , unbind
   ) where
 
 import System.Mem (performGC)
@@ -31,8 +39,9 @@ import System.Mem (performGC)
 import Zmq.API.Bind (BindError, bind)
 import Zmq.API.Connect (ConnectError, connect)
 import Zmq.API.Disconnect (DisconnectError, disconnect)
+import Zmq.API.Recv (recv)
 import Zmq.API.Send (SendError, send)
-import Zmq.API.Socket (SocketError, socket)
+import Zmq.API.Socket (SocketError, pubSocket, subSocket)
 import Zmq.API.Subscribe (subscribe)
 import Zmq.API.Unbind (unbind)
 import Zmq.Context (context)

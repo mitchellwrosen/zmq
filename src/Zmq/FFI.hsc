@@ -4,12 +4,33 @@ module Zmq.FFI where
 
 #include <zmq.h>
 
+import Data.Coerce (coerce)
 import Foreign.C
 import Foreign.Ptr
+import Foreign.Storable
 
 type Context = Ptr ()
 type Poller  = Ptr ()
 type Socket  = Ptr ()
+
+newtype Message
+  = Message { unMessage :: Ptr () }
+
+instance Storable Message where
+  alignment _ = #{alignment zmq_msg_t}
+  sizeOf _ = #{size zmq_msg_t}
+
+  peek :: Ptr Message -> IO Message
+  peek =
+    coerce
+      @( Ptr ( Ptr CChar ) -> IO ( Ptr CChar ) )
+      #{ peek zmq_msg_t, _ }
+
+  poke :: Ptr Message -> Message -> IO ()
+  poke =
+    coerce
+      @( Ptr ( Ptr CChar ) -> Ptr CChar -> IO () )
+      #{ poke zmq_msg_t, _ }
 
 eADDRINUSE      :: Errno
 eADDRNOTAVAIL   :: Errno
@@ -60,6 +81,7 @@ eTIMEDOUT       = Errno ( #const ETIMEDOUT )
 zMQ_DONTWAIT  :: CInt
 zMQ_EVENTS    :: CInt
 zMQ_FD        :: CInt
+zMQ_MORE      :: CInt
 zMQ_POLLIN    :: CInt
 zMQ_POLLOUT   :: CInt
 zMQ_PUB       :: CInt
@@ -68,6 +90,7 @@ zMQ_SUBSCRIBE :: CInt
 zMQ_DONTWAIT  = #const ZMQ_DONTWAIT
 zMQ_EVENTS    = #const ZMQ_EVENTS
 zMQ_FD        = #const ZMQ_FD
+zMQ_MORE      = #const ZMQ_MORE
 zMQ_POLLIN    = #const ZMQ_POLLIN
 zMQ_POLLOUT   = #const ZMQ_POLLOUT
 zMQ_PUB       = #const ZMQ_PUB
@@ -98,6 +121,21 @@ foreign import ccall unsafe "zmq_errno"
 
 foreign import ccall unsafe "zmq_getsockopt"
   zmq_getsockopt :: Socket -> CInt -> Ptr a -> Ptr CSize -> IO CInt
+
+foreign import ccall unsafe "zmq_msg_data"
+  zmq_msg_data :: Ptr Message -> IO ( Ptr CChar )
+
+foreign import ccall unsafe "zmq_msg_close"
+  zmq_msg_close :: Ptr Message -> IO CInt
+
+foreign import ccall unsafe "zmq_msg_get"
+  zmq_msg_get :: Ptr Message -> CInt -> IO CInt
+
+foreign import ccall unsafe "zmq_msg_init"
+  zmq_msg_init :: Ptr Message -> IO CInt
+
+foreign import ccall unsafe "zmq_msg_recv"
+  zmq_msg_recv :: Ptr Message -> Socket -> CInt -> IO CInt
 
 -- foreign import ccall unsafe "zmq_poller_destroy"
 --   zmq_poller_destroy :: Ptr Poller -> IO CInt

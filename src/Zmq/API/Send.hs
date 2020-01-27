@@ -3,16 +3,12 @@ module Zmq.API.Send
   , SendError
   ) where
 
-import Data.Bits (testBit)
-import GHC.Conc (threadWaitRead)
 import qualified Data.ByteString.Unsafe as ByteString
 
-import Zmq.API.GetSockOpt (getSocketEventState, getSocketFd)
 import Zmq.Error
 import Zmq.Function
 import Zmq.Prelude
 import Zmq.Socket
-import Zmq.Util.SBool (SBool(..))
 import qualified Zmq.FFI as FFI
 
 
@@ -36,58 +32,25 @@ sendIO
   -> ByteString
   -> IO ( Either SendError () )
 sendIO socket message =
-  withSocket socket \c_socket ->
+  withSocket socket \socket_ptr ->
     ByteString.unsafeUseAsCStringLen message \( ptr, len ) ->
-      fix \sendAgain -> do
-        putStrLn "zmq_send"
-        FFI.zmq_send c_socket ptr ( fromIntegral len ) FFI.zMQ_DONTWAIT >>= \case
-          -1 -> do
-            putStrLn "done"
+      fix \again -> do
+        FFI.zmq_send socket_ptr ptr ( fromIntegral len ) FFI.zMQ_DONTWAIT >>= \case
+          -1 ->
             FFI.zmq_errno >>= \case
               EAGAIN_ -> do
-                putStrLn "EAGAIN"
-                case threadSafeEvidence @typ of
-                  SFalse -> do
-                    putStrLn "getSocketFd"
-                    fd <- getSocketFd socket
-                    fix \waitAgain -> do
-                      putStrLn "threadWaitRead"
-                      threadWaitRead fd -- "read" is not a typo
-                      putStrLn "getSocketEventState"
-                      state <- getSocketEventState socket
-                      if testBit state ( fromIntegral FFI.zMQ_POLLOUT )
-                        then
-                          sendAgain
-                        else
-                          -- http://api.zeromq.org/4-3:zmq-getsockopt
-                          --
-                          -- The combination of a file descriptor returned by
-                          -- the ZMQ_FD option being ready for reading but no
-                          -- actual events returned by a subsequent retrieval of
-                          -- the ZMQ_EVENTS option is valid; applications should
-                          -- simply ignore this case and restart their polling
-                          -- operation/event loop.
-                          waitAgain
-
-                  STrue ->
-                    bugIO "handling EAGAIN on thread-safe sockets is not implemented"
+                waitUntilCanSend socket_ptr ( isThreadSafe @typ )
+                again
 
               EHOSTUNREACH_ ->
                 pure ( Left EHOSTUNREACH )
 
-              EINTR_ -> do
-                putStrLn "EINTR"
-                sendAgain
+              EINTR_ ->
+                again
 
               ETERM_ ->
                 errInvalidContext
 
-              -- EINVAL: "The sender tried to send multipart data, which the
-              --          socket type does not allow."
-              --
-              --         This currently can't happen because send only sends
-              --         a single message part; will have to revisit this soon
-              --
               -- EFSM: "The zmq_send() operation cannot be performed on this
               --        socket at the moment due to the socket not being in the
               --        appropriate state. This error may occur with socket
