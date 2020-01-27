@@ -17,7 +17,6 @@ module Zmq.Subscriber
 
 import Zmq.Endpoint
 import Zmq.Prelude
-import Zmq.Socket
 import qualified Zmq.API.Bind as API
 import qualified Zmq.API.Close as API
 import qualified Zmq.API.Connect as API
@@ -37,14 +36,14 @@ open
   :: MonadIO m
   => m ( Maybe Subscriber )
 open =
-  liftIO ( coerce ( API.socketIO' FFI.zMQ_SUB ) )
+  liftIO ( coerce ( API.socket FFI.zMQ_SUB ) )
 
 close
   :: MonadIO m
   => Subscriber
   -> m ()
 close subscriber =
-  liftIO ( coerce API.closeIO subscriber )
+  liftIO ( coerce API.close subscriber )
 
 bind
   :: MonadIO m
@@ -52,7 +51,7 @@ bind
   -> Endpoint transport
   -> m ( Either API.BindError () )
 bind subscriber endpoint =
-  liftIO ( coerce API.bindIO' subscriber endpoint )
+  liftIO ( coerce API.bind subscriber endpoint )
 
 unbind
   :: MonadIO m
@@ -68,7 +67,7 @@ connect
   -> Endpoint transport
   -> m ( Either API.ConnectError () )
 connect subscriber endpoint =
-  liftIO ( coerce API.connectIO' subscriber endpoint )
+  liftIO ( coerce API.connect subscriber endpoint )
 
 disconnect
   :: MonadIO m
@@ -76,7 +75,7 @@ disconnect
   -> Endpoint transport
   -> m ()
 disconnect subscriber endpoint =
-  liftIO ( coerce API.disconnectIO' subscriber endpoint )
+  liftIO ( coerce API.disconnect subscriber endpoint )
 
 subscribe
   :: MonadIO m
@@ -84,7 +83,7 @@ subscribe
   -> ByteString
   -> m ()
 subscribe subscriber prefix =
-  liftIO ( coerce API.subscribeIO' subscriber prefix )
+  liftIO ( coerce API.subscribe subscriber prefix )
 
 recv
   :: MonadIO m

@@ -1,38 +1,18 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Zmq.Socket
-  ( Socket(..)
-  , withSocket
-  , waitUntilCanRecv
+  ( waitUntilCanRecv
   , waitUntilCanSend
-  , CanReceive
-  , CanSend
-  , SocketType(..)
-  , IsSocketType(..)
   ) where
 
 import Data.Bits (testBit)
 import GHC.Conc (threadWaitRead)
-import qualified GHC.TypeLits as TypeLits
 
 import Zmq.API.GetSockOpt (getSocketEventState, getSocketFd)
 import Zmq.Error
-import Zmq.Internal
 import Zmq.Prelude
 import qualified Zmq.FFI as FFI
 
-
-newtype Socket ( a :: SocketType )
-  = Socket
-  { unSocket :: ForeignPtr () }
-  deriving stock ( Eq, Data, Ord, Show )
-
-withSocket
-  :: Socket typ
-  -> ( Ptr () -> IO a )
-  -> IO a
-withSocket socket =
-  withForeignPtr ( unSocket socket )
 
 waitUntilCanRecv
   :: Ptr FFI.Socket
@@ -71,63 +51,3 @@ waitUntilCan events socket threadSafe =
       -- simply ignore this case and restart their polling
       -- operation/event loop.
       unless ( testBit state ( fromIntegral events ) ) again
-
-
-class IsSocketType typ => CanReceive ( typ :: SocketType )
-
-instance
-  {-# OVERLAPPABLE #-}
-  ( IsSocketType typ
-  , TypeLits.TypeError
-    ( 'TypeLits.Text "Cannot receive on a "
-      'TypeLits.:<>:
-      'TypeLits.ShowType typ
-      'TypeLits.:<>:
-      'TypeLits.Text " socket."
-    )
-  )
-  => CanReceive typ
-
-instance CanReceive 'Sub
--- instance CanReceive 'XPub
--- instance CanReceive 'XSub
-
-class IsSocketType typ => CanSend ( typ :: SocketType )
-
-instance
-  {-# OVERLAPPABLE #-}
-  ( IsSocketType typ
-  , TypeLits.TypeError
-    ( 'TypeLits.Text "Cannot send on a "
-      'TypeLits.:<>:
-      'TypeLits.ShowType typ
-      'TypeLits.:<>:
-      'TypeLits.Text " socket."
-    )
-  )
-  => CanSend typ
-
-instance CanSend 'Pub
-
-
-class IsSocketType ( typ :: SocketType ) where
-  socketType :: CInt
-  isThreadSafe :: Bool
-
-instance IsSocketType 'Pub where
-  socketType :: CInt
-  socketType =
-    FFI.zMQ_PUB
-
-  isThreadSafe :: Bool
-  isThreadSafe =
-    False
-
-instance IsSocketType 'Sub where
-  socketType :: CInt
-  socketType =
-    FFI.zMQ_SUB
-
-  isThreadSafe :: Bool
-  isThreadSafe =
-    False

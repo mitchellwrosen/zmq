@@ -1,12 +1,11 @@
 module Zmq.API.Close
   ( close
-  , closeIO
   ) where
 
 import Foreign.ForeignPtr (finalizeForeignPtr)
 
 import Zmq.Prelude
-import Zmq.Socket
+import qualified Zmq.FFI as FFI
 
 
 -- | <http://api.zeromq.org/4-3:zmq-close>
@@ -14,14 +13,7 @@ import Zmq.Socket
 -- Promptly close a socket. It is not strictly necessary to call this function;
 -- sockets are closed automatically when garbage collected.
 close
-  :: MonadIO m
-  => Socket typ
-  -> m ()
-close socket =
-  liftIO ( closeIO socket )
-
-closeIO
-  :: Socket typ
+  :: ForeignPtr FFI.Socket
   -> IO ()
-closeIO socket =
-  finalizeForeignPtr ( unSocket socket )
+close =
+  finalizeForeignPtr

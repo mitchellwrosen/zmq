@@ -9,29 +9,31 @@ import GHC.Stack (HasCallStack, withFrozenCallStack)
 import qualified EasyTest
 
 import qualified Zmq
+import qualified Zmq.Publisher
+import qualified Zmq.Subscriber
 
 main :: IO Summary
 main =
   ( Zmq.main options . run . tests )
     [ unitTest "socket.pub" do
-        void ( matches _Just =<< Zmq.pubSocket )
+        void ( matches _Just =<< Zmq.Publisher.open )
     , unitTest "socket.sub" do
-        void ( matches _Just =<< Zmq.pubSocket )
+        void ( matches _Just =<< Zmq.Subscriber.open )
     , unitTest "socket.maxSockets" do
-        s0 <- matches _Just =<< Zmq.pubSocket
-        s1 <- matches _Just =<< Zmq.pubSocket
-        () <- matches _Nothing =<< Zmq.pubSocket
-        for_ [ s0, s1 ] Zmq.close -- keep sockets alive
+        s0 <- matches _Just =<< Zmq.Publisher.open
+        s1 <- matches _Just =<< Zmq.Publisher.open
+        () <- matches _Nothing =<< Zmq.Publisher.open
+        for_ [ s0, s1 ] Zmq.Publisher.close -- keep sockets alive
 
     , unitTest "pubsub" do
         let endpoint = Zmq.Inproc "foo"
-        pub <- matches _Just =<< Zmq.pubSocket
-        sub <- matches _Just =<< Zmq.subSocket
-        matches _Right =<< Zmq.bind pub endpoint
-        matches _Right =<< Zmq.connect sub endpoint
-        Zmq.subscribe sub ""
-        matches _Right =<< Zmq.send pub "hi"
-        Zmq.recv sub >>= \case
+        pub <- matches _Just =<< Zmq.Publisher.open
+        sub <- matches _Just =<< Zmq.Subscriber.open
+        matches _Right =<< Zmq.Publisher.bind pub endpoint
+        matches _Right =<< Zmq.Subscriber.connect sub endpoint
+        Zmq.Subscriber.subscribe sub ""
+        matches _Right =<< Zmq.Publisher.send pub "hi"
+        Zmq.Subscriber.recv sub >>= \case
           "hi" :| [] -> pure ()
           message -> do
             annotate ( show message )

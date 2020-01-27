@@ -3,26 +3,10 @@ module Zmq
   , Options(..)
   , defaultOptions
 
-  , pubSocket
-  , subSocket
-  , close
-
-  , bind
   , BindError
-  , unbind
-
-  , connect
   , ConnectError
-  , disconnect
-
-  , recv
-  , send
   , SendError
 
-  , subscribe
-
-  , Socket
-  , SocketType(..)
   , Transport(..)
   , CompatibleTransport
   , Endpoint(..)
@@ -39,21 +23,14 @@ module Zmq
 
 import System.Mem (performGC)
 
-import Zmq.API.Bind (BindError, bind)
-import Zmq.API.Close (close)
-import Zmq.API.Connect (ConnectError, connect)
-import Zmq.API.Disconnect (disconnect)
-import Zmq.API.Recv (recv)
-import Zmq.API.Send (SendError, send)
-import Zmq.API.Socket (pubSocket, subSocket)
-import Zmq.API.Subscribe (subscribe)
-import Zmq.API.Unbind (unbind)
+import Zmq.API.Bind (BindError)
+import Zmq.API.Connect (ConnectError)
+import Zmq.API.Send (SendError)
 import Zmq.Context (context, setMaxSockets)
 import Zmq.Endpoint (Endpoint(..))
 import Zmq.Error
 import Zmq.Internal (CompatibleTransport, Transport(..))
 import Zmq.Prelude
-import Zmq.Socket (Socket, SocketType(..))
 import qualified Zmq.FFI as FFI
 
 

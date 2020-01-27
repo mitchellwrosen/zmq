@@ -15,7 +15,6 @@ module Zmq.Publisher
 
 import Zmq.Endpoint
 import Zmq.Prelude
-import Zmq.Socket
 import qualified Zmq.API.Bind as API
 import qualified Zmq.API.Close as API
 import qualified Zmq.API.Connect as API
@@ -34,14 +33,14 @@ open
   :: MonadIO m
   => m ( Maybe Publisher )
 open =
-  liftIO ( coerce ( API.socketIO' FFI.zMQ_PUB ) )
+  liftIO ( coerce ( API.socket FFI.zMQ_PUB ) )
 
 close
   :: MonadIO m
   => Publisher
   -> m ()
 close publisher =
-  liftIO ( coerce API.closeIO publisher )
+  liftIO ( coerce API.close publisher )
 
 bind
   :: MonadIO m
@@ -49,7 +48,7 @@ bind
   -> Endpoint transport
   -> m ( Either API.BindError () )
 bind publisher endpoint =
-  liftIO ( coerce API.bindIO' publisher endpoint )
+  liftIO ( coerce API.bind publisher endpoint )
 
 unbind
   :: MonadIO m
@@ -65,7 +64,7 @@ connect
   -> Endpoint transport
   -> m ( Either API.ConnectError () )
 connect publisher endpoint =
-  liftIO ( coerce API.connectIO' publisher endpoint )
+  liftIO ( coerce API.connect publisher endpoint )
 
 disconnect
   :: MonadIO m
@@ -73,7 +72,7 @@ disconnect
   -> Endpoint transport
   -> m ()
 disconnect publisher endpoint =
-  liftIO ( coerce API.disconnectIO' publisher endpoint )
+  liftIO ( coerce API.disconnect publisher endpoint )
 
 send
   :: MonadIO m
