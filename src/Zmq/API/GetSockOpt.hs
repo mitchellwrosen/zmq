@@ -14,7 +14,7 @@ import qualified Zmq.FFI as FFI
 
 
 getIntSockOpt
-  :: FFI.Socket
+  :: Ptr FFI.Socket
   -> CInt
   -> IO ( Either () CInt )
 getIntSockOpt socket key =
@@ -33,7 +33,7 @@ getIntSockOpt socket key =
               errno -> bugUnexpectedErrno "zmq_getsockopt" errno
 
 getSocketEventState
-  :: FFI.Socket
+  :: Ptr FFI.Socket
   -> IO CInt
 getSocketEventState socket =
   getIntSockOpt socket FFI.zMQ_EVENTS >>= \case
@@ -45,7 +45,7 @@ getSocketEventState socket =
       pure n
 
 getSocketFd
-  :: FFI.Socket
+  :: Ptr FFI.Socket
   -> IO Fd
 getSocketFd socket =
   getIntSockOpt socket FFI.zMQ_FD >>= \case

@@ -9,9 +9,9 @@ import Foreign.C
 import Foreign.Ptr
 import Foreign.Storable
 
-type Context = Ptr ()
-type Poller  = Ptr ()
-type Socket  = Ptr ()
+type Context = ()
+type Poller  = ()
+type Socket  = ()
 
 newtype Message
   = Message { unMessage :: Ptr () }
@@ -103,31 +103,31 @@ zMQ_SUBSCRIBE        = #const ZMQ_SUBSCRIBE
 
 
 foreign import ccall safe "zmq_bind"
-  zmq_bind :: Socket -> CString -> IO CInt
+  zmq_bind :: Ptr Socket -> CString -> IO CInt
 
 foreign import ccall unsafe "&zmq_close"
-  zmq_close :: FunPtr ( Socket -> IO () )
+  zmq_close :: FunPtr ( Ptr Socket -> IO () )
 
 foreign import ccall safe "zmq_connect"
-  zmq_connect :: Socket -> CString -> IO CInt
+  zmq_connect :: Ptr Socket -> CString -> IO CInt
 
 foreign import ccall unsafe "zmq_ctx_new"
-  zmq_ctx_new :: IO Context
+  zmq_ctx_new :: IO ( Ptr Context )
 
 foreign import ccall unsafe "zmq_ctx_set"
-  zmq_ctx_set :: Context -> CInt -> CInt -> IO CInt
+  zmq_ctx_set :: Ptr Context -> CInt -> CInt -> IO CInt
 
 foreign import ccall safe "zmq_ctx_term"
-  zmq_ctx_term :: Context -> IO CInt
+  zmq_ctx_term :: Ptr Context -> IO CInt
 
 foreign import ccall safe "zmq_disconnect"
-  zmq_disconnect :: Socket -> CString -> IO CInt
+  zmq_disconnect :: Ptr Socket -> CString -> IO CInt
 
 foreign import ccall unsafe "zmq_errno"
   zmq_errno :: IO Errno
 
 foreign import ccall unsafe "zmq_getsockopt"
-  zmq_getsockopt :: Socket -> CInt -> Ptr a -> Ptr CSize -> IO CInt
+  zmq_getsockopt :: Ptr Socket -> CInt -> Ptr a -> Ptr CSize -> IO CInt
 
 foreign import ccall unsafe "zmq_msg_data"
   zmq_msg_data :: Ptr Message -> IO ( Ptr CChar )
@@ -142,22 +142,22 @@ foreign import ccall unsafe "zmq_msg_init"
   zmq_msg_init :: Ptr Message -> IO CInt
 
 foreign import ccall unsafe "zmq_msg_recv"
-  zmq_msg_recv :: Ptr Message -> Socket -> CInt -> IO CInt
+  zmq_msg_recv :: Ptr Message -> Ptr Socket -> CInt -> IO CInt
 
 -- foreign import ccall unsafe "zmq_poller_destroy"
---   zmq_poller_destroy :: Ptr Poller -> IO CInt
+--   zmq_poller_destroy :: Ptr ( Ptr Poller ) -> IO CInt
 
 -- foreign import ccall unsafe "zmq_poller_new"
---   zmq_poller_new :: IO Poller
+--   zmq_poller_new :: IO ( Ptr Poller )
 
 foreign import ccall safe "zmq_send"
-  zmq_send :: Socket -> Ptr a -> CSize -> CInt -> IO CInt
+  zmq_send :: Ptr Socket -> Ptr a -> CSize -> CInt -> IO CInt
 
 foreign import ccall unsafe "zmq_setsockopt"
-  zmq_setsockopt :: Socket -> CInt -> Ptr a -> CSize -> IO CInt
+  zmq_setsockopt :: Ptr Socket -> CInt -> Ptr a -> CSize -> IO CInt
 
 foreign import ccall unsafe "zmq_socket"
-  zmq_socket :: Context -> CInt -> IO Socket
+  zmq_socket :: Ptr Context -> CInt -> IO ( Ptr Socket )
 
 foreign import ccall safe "zmq_unbind"
-  zmq_unbind :: Socket -> CString -> IO CInt
+  zmq_unbind :: Ptr Socket -> CString -> IO CInt

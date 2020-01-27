@@ -35,14 +35,14 @@ withSocket socket =
   withForeignPtr ( unSocket socket )
 
 waitUntilCanRecv
-  :: FFI.Socket
+  :: Ptr FFI.Socket
   -> Bool
   -> IO ()
 waitUntilCanRecv =
   waitUntilCan FFI.zMQ_POLLIN
 
 waitUntilCanSend
-  :: FFI.Socket
+  :: Ptr FFI.Socket
   -> Bool
   -> IO ()
 waitUntilCanSend =
@@ -50,7 +50,7 @@ waitUntilCanSend =
 
 waitUntilCan
   :: CInt
-  -> FFI.Socket
+  -> Ptr FFI.Socket
   -> Bool
   -> IO ()
 waitUntilCan events socket threadSafe =
