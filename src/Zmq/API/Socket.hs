@@ -1,35 +1,33 @@
 module Zmq.API.Socket
   ( socket
-  , SocketError
   , pubSocket
   , subSocket
   ) where
 
 import Zmq.Context (context)
 import Zmq.Error
-import Zmq.Function
 import Zmq.Prelude
 import Zmq.Socket
 import qualified Zmq.FFI as FFI
 
 
-type SocketError
-  = Error 'Function'Socket
-
 -- | <http://api.zeromq.org/4-3:zmq-socket>
+--
+-- Returns 'Nothing' if the maximum number of sockets have already been opened.
+-- By default, this is 1023, but can be changed with TODO.
 socket
   :: forall a m.
      ( IsSocketType a
      , MonadIO m
      )
-  => m ( Either SocketError ( Socket a ) )
+  => m ( Maybe ( Socket a ) )
 socket =
   liftIO socketIO
 
 socketIO
   :: forall a.
      IsSocketType a
-  => IO ( Either SocketError ( Socket a ) )
+  => IO ( Maybe ( Socket a ) )
 socketIO =
   mask \unmask -> do
     ptr :: Ptr () <-
@@ -39,7 +37,7 @@ socketIO =
       then
         unmask do
           FFI.zmq_errno >>= \case
-            EMFILE_ -> pure ( Left EMFILE )
+            EMFILE_ -> pure Nothing
 
             EFAULT_ -> errInvalidContext
             ETERM_  -> errInvalidContext
@@ -53,16 +51,16 @@ socketIO =
         foreignPtr :: ForeignPtr () <-
           newForeignPtr FFI.zmq_close ptr
 
-        unmask ( pure ( Right ( coerce foreignPtr ) ) )
+        unmask ( pure ( Just ( coerce foreignPtr ) ) )
 
 pubSocket
   :: MonadIO m
-  => m ( Either SocketError ( Socket 'Pub ) )
+  => m ( Maybe ( Socket 'Pub ) )
 pubSocket =
   socket
 
 subSocket
   :: MonadIO m
-  => m ( Either SocketError ( Socket 'Sub ) )
+  => m ( Maybe ( Socket 'Sub ) )
 subSocket =
   socket

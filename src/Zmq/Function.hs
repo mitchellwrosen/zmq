@@ -5,7 +5,6 @@ data Function
   | Function'Connect
   | Function'Disconnect
   | Function'Send
-  | Function'Socket
 
 type family CanReturnEADDRINUSE ( function :: Function ) :: Bool where
   CanReturnEADDRINUSE 'Function'Bind = 'True
@@ -27,9 +26,8 @@ type family CanReturnEINVAL ( function :: Function ) :: Bool where
   CanReturnEINVAL 'Function'Disconnect = 'True
   CanReturnEINVAL _ = 'False
 
-type family CanReturnEMFILE ( function :: Function ) :: Bool where
-  CanReturnEMFILE 'Function'Socket = 'True
-  CanReturnEMFILE _ = 'False
+-- type family CanReturnEMFILE ( function :: Function ) :: Bool where
+--   CanReturnEMFILE _ = 'False
 
 type family CanReturnEMTHREAD ( function :: Function ) :: Bool where
   CanReturnEMTHREAD 'Function'Bind = 'True

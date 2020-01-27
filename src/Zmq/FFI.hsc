@@ -78,24 +78,28 @@ eTERM           = Errno ( #const ETERM )
 eTIMEDOUT       = Errno ( #const ETIMEDOUT )
 
 
-zMQ_DONTWAIT  :: CInt
-zMQ_EVENTS    :: CInt
-zMQ_FD        :: CInt
-zMQ_MORE      :: CInt
-zMQ_POLLIN    :: CInt
-zMQ_POLLOUT   :: CInt
-zMQ_PUB       :: CInt
-zMQ_SUB       :: CInt
-zMQ_SUBSCRIBE :: CInt
-zMQ_DONTWAIT  = #const ZMQ_DONTWAIT
-zMQ_EVENTS    = #const ZMQ_EVENTS
-zMQ_FD        = #const ZMQ_FD
-zMQ_MORE      = #const ZMQ_MORE
-zMQ_POLLIN    = #const ZMQ_POLLIN
-zMQ_POLLOUT   = #const ZMQ_POLLOUT
-zMQ_PUB       = #const ZMQ_PUB
-zMQ_SUB       = #const ZMQ_SUB
-zMQ_SUBSCRIBE = #const ZMQ_SUBSCRIBE
+zMQ_DONTWAIT         :: CInt
+zMQ_EVENTS           :: CInt
+zMQ_FD               :: CInt
+zMQ_MAX_SOCKETS      :: CInt
+zMQ_MAX_SOCKETS_DFLT :: CInt
+zMQ_MORE             :: CInt
+zMQ_POLLIN           :: CInt
+zMQ_POLLOUT          :: CInt
+zMQ_PUB              :: CInt
+zMQ_SUB              :: CInt
+zMQ_SUBSCRIBE        :: CInt
+zMQ_DONTWAIT         = #const ZMQ_DONTWAIT
+zMQ_EVENTS           = #const ZMQ_EVENTS
+zMQ_FD               = #const ZMQ_FD
+zMQ_MAX_SOCKETS      = #const ZMQ_MAX_SOCKETS
+zMQ_MAX_SOCKETS_DFLT = #const ZMQ_MAX_SOCKETS_DFLT
+zMQ_MORE             = #const ZMQ_MORE
+zMQ_POLLIN           = #const ZMQ_POLLIN
+zMQ_POLLOUT          = #const ZMQ_POLLOUT
+zMQ_PUB              = #const ZMQ_PUB
+zMQ_SUB              = #const ZMQ_SUB
+zMQ_SUBSCRIBE        = #const ZMQ_SUBSCRIBE
 
 
 foreign import ccall safe "zmq_bind"
@@ -109,6 +113,9 @@ foreign import ccall safe "zmq_connect"
 
 foreign import ccall unsafe "zmq_ctx_new"
   zmq_ctx_new :: IO Context
+
+foreign import ccall unsafe "zmq_ctx_set"
+  zmq_ctx_set :: Context -> CInt -> CInt -> IO CInt
 
 foreign import ccall safe "zmq_ctx_term"
   zmq_ctx_term :: Context -> IO CInt

@@ -31,7 +31,7 @@ data Error ( function :: Function ) where
   EADDRNOTAVAIL   :: ( CanReturnEADDRNOTAVAIL   function ~ 'True ) => Error function
   EHOSTUNREACH    :: ( CanReturnEHOSTUNREACH    function ~ 'True ) => Error function
   EINVAL          :: ( CanReturnEINVAL          function ~ 'True ) => Error function
-  EMFILE          :: ( CanReturnEMFILE          function ~ 'True ) => Error function
+  -- EMFILE          :: ( CanReturnEMFILE          function ~ 'True ) => Error function
   EMTHREAD        :: ( CanReturnEMTHREAD        function ~ 'True ) => Error function
   ENODEV          :: ( CanReturnENODEV          function ~ 'True ) => Error function
   -- ENOENT          :: ( CanReturnENOENT          function ~ 'True ) => Error function
@@ -43,7 +43,7 @@ instance Show ( Error function ) where
     EADDRNOTAVAIL -> "EADDRNOTAVAIL"
     EHOSTUNREACH -> "EHOSTUNREACH"
     EINVAL -> "EINVAL"
-    EMFILE -> "EMFILE"
+    -- EMFILE -> "EMFILE"
     EMTHREAD -> "EMTHREAD"
     ENODEV -> "ENODEV"
     -- ENOENT          -> "ENOENT"

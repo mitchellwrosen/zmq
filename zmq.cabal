@@ -3,14 +3,9 @@ cabal-version: 2.4
 name: zmq
 version: 0
 
-library
+common component
   build-depends:
     base,
-    bytestring,
-    text,
-
-  build-tool-depends:
-    hsc2hs:hsc2hs ^>= 0.68,
 
   default-extensions:
     AllowAmbiguousTypes
@@ -32,17 +27,29 @@ library
   default-language:
     Haskell2010
 
-  exposed-modules:
-    Zmq
-
   ghc-options:
     -Wall
+
+library
+  import:
+    component
+
+  build-depends:
+    bytestring,
+    text,
+
+  build-tool-depends:
+    hsc2hs:hsc2hs ^>= 0.68,
+
+  exposed-modules:
+    Zmq
 
   hs-source-dirs:
     src
 
   other-modules:
     Zmq.API.Bind
+    Zmq.API.Close
     Zmq.API.Connect
     Zmq.API.Disconnect
     Zmq.API.GetSockOpt
@@ -60,10 +67,32 @@ library
     Zmq.FFI
     Zmq.Function
     Zmq.Internal
-    Zmq.Internal.Tests
     Zmq.Poller
     Zmq.Prelude
     Zmq.Socket
 
   pkgconfig-depends:
     libzmq == 4.3.2
+
+test-suite tests
+  import:
+    component
+
+  build-depends:
+    easytest ^>= 0.3,
+    hedgehog,
+    lens,
+    zmq,
+
+  ghc-options:
+    -O
+    -threaded
+
+  hs-source-dirs:
+    test
+
+  main-is:
+    Main.hs
+
+  type:
+    exitcode-stdio-1.0
