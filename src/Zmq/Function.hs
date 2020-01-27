@@ -1,41 +1,39 @@
 module Zmq.Function where
 
 data Function
-  = Function'Bind
-  | Function'Connect
-  | Function'Disconnect
-  | Function'Send
+  = Bind
+  | Connect
+  | Send
 
 type family CanReturnEADDRINUSE ( function :: Function ) :: Bool where
-  CanReturnEADDRINUSE 'Function'Bind = 'True
+  CanReturnEADDRINUSE 'Bind = 'True
   CanReturnEADDRINUSE _ = 'False
 
 type family CanReturnEADDRNOTAVAIL ( function :: Function ) :: Bool where
-  CanReturnEADDRNOTAVAIL 'Function'Bind = 'True
+  CanReturnEADDRNOTAVAIL 'Bind = 'True
   CanReturnEADDRNOTAVAIL _ = 'False
 
 type family CanReturnEHOSTUNREACH ( function :: Function ) :: Bool where
   -- TODO only a few socket types (stream, server, router if flag set) can
   -- return EHOSTUNREACH on send
-  CanReturnEHOSTUNREACH 'Function'Send = 'True
+  CanReturnEHOSTUNREACH 'Send = 'True
   CanReturnEHOSTUNREACH _ = 'False
 
 type family CanReturnEINVAL ( function :: Function ) :: Bool where
-  CanReturnEINVAL 'Function'Bind = 'True
-  CanReturnEINVAL 'Function'Connect = 'True
-  CanReturnEINVAL 'Function'Disconnect = 'True
+  CanReturnEINVAL 'Bind = 'True
+  CanReturnEINVAL 'Connect = 'True
   CanReturnEINVAL _ = 'False
 
 -- type family CanReturnEMFILE ( function :: Function ) :: Bool where
 --   CanReturnEMFILE _ = 'False
 
 type family CanReturnEMTHREAD ( function :: Function ) :: Bool where
-  CanReturnEMTHREAD 'Function'Bind = 'True
-  CanReturnEMTHREAD 'Function'Connect = 'True
+  CanReturnEMTHREAD 'Bind = 'True
+  CanReturnEMTHREAD 'Connect = 'True
   CanReturnEMTHREAD _ = 'False
 
 type family CanReturnENODEV ( function :: Function ) :: Bool where
-  CanReturnENODEV 'Function'Bind = 'True
+  CanReturnENODEV 'Bind = 'True
   CanReturnENODEV _ = 'False
 
 -- type family CanReturnENOENT ( function :: Function ) :: Bool where

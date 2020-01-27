@@ -12,8 +12,14 @@ import Zmq.Socket
 import qualified Zmq.FFI as FFI
 
 
+-- |
+-- @
+-- data ConnectError
+--   = 'EINVAL'
+--   | 'EMTHREAD'
+-- @
 type ConnectError
-  = Error 'Function'Connect
+  = Error 'Connect
 
 -- | <http://api.zeromq.org/4-3:zmq-connect>
 connect

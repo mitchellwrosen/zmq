@@ -119,5 +119,3 @@ data Transport where
 data SocketType
   = Pub
   | Sub
-  -- | XPub
-  -- | XSub

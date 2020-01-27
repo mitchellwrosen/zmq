@@ -13,8 +13,17 @@ import Zmq.Socket
 import qualified Zmq.FFI as FFI
 
 
+-- |
+-- @
+-- data BindError
+--   = 'EADDRINUSE'
+--   | 'EADDRNOTAVAIL'
+--   | 'EINVAL'
+--   | 'EMTHREAD'
+--   | 'ENODEV'
+-- @
 type BindError
-  = Error 'Function'Bind
+  = Error 'Bind
 
 -- | <http://api.zeromq.org/4-3:zmq-bind>
 bind

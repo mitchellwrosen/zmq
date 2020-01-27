@@ -12,9 +12,15 @@ import Zmq.Socket
 import qualified Zmq.FFI as FFI
 
 
+-- |
+-- @
+-- data SendError
+--   = 'EHOSTUNREACH'
+-- @
 type SendError
-  = Error 'Function'Send
+  = Error 'Send
 
+-- | <http://api.zeromq.org/4-3:zmq-send>
 send
   :: ( CanSend typ
      , MonadIO m

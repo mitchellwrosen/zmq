@@ -1,21 +1,5 @@
 module Zmq
-  ( BindError
-  , ConnectError
-  , DisconnectError
-  , SendError
-  , CanReturnEADDRINUSE
-  , CanReturnEADDRNOTAVAIL
-  , CanReturnEINVAL
-  , CanReturnEMTHREAD
-  , CanReturnENODEV
-  , Endpoint(..)
-  , Error(..)
-  , Function(..)
-  , Socket
-  , SocketType(..)
-  , Transport(..)
-
-  , main
+  ( main
   , Options(..)
   , defaultOptions
 
@@ -24,15 +8,33 @@ module Zmq
   , close
 
   , bind
+  , BindError
   , unbind
 
   , connect
+  , ConnectError
   , disconnect
 
   , recv
   , send
+  , SendError
 
   , subscribe
+
+  , Socket
+  , SocketType(..)
+  , Transport(..)
+  , CompatibleTransport
+  , Endpoint(..)
+
+  , Error(..)
+  , CanReturnEADDRINUSE
+  , CanReturnEADDRNOTAVAIL
+  , CanReturnEHOSTUNREACH
+  , CanReturnEINVAL
+  , CanReturnEMTHREAD
+  , CanReturnENODEV
+
   ) where
 
 import System.Mem (performGC)
@@ -40,7 +42,7 @@ import System.Mem (performGC)
 import Zmq.API.Bind (BindError, bind)
 import Zmq.API.Close (close)
 import Zmq.API.Connect (ConnectError, connect)
-import Zmq.API.Disconnect (DisconnectError, disconnect)
+import Zmq.API.Disconnect (disconnect)
 import Zmq.API.Recv (recv)
 import Zmq.API.Send (SendError, send)
 import Zmq.API.Socket (pubSocket, subSocket)
@@ -50,7 +52,7 @@ import Zmq.Context (context, setMaxSockets)
 import Zmq.Endpoint (Endpoint(..))
 import Zmq.Error (Error(..), pattern EINTR_, bugUnexpectedErrno)
 import Zmq.Function
-import Zmq.Internal (Transport(..))
+import Zmq.Internal (CompatibleTransport, Transport(..))
 import Zmq.Prelude
 import Zmq.Socket (Socket, SocketType(..))
 import qualified Zmq.FFI as FFI

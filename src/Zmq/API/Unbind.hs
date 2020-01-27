@@ -10,6 +10,7 @@ import Zmq.Socket
 import qualified Zmq.FFI as FFI
 
 
+-- | <http://api.zeromq.org/4-3:zmq-unbind>
 unbind
   :: ( CompatibleTransport typ transport
      , MonadIO m

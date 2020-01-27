@@ -12,6 +12,7 @@ import Zmq.Socket
 import qualified Zmq.FFI as FFI
 
 
+-- | <http://api.zeromq.org/4-3:zmq-msg-recv>
 recv
   :: ( CanReceive typ
      , MonadIO m

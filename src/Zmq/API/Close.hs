@@ -8,6 +8,10 @@ import Zmq.Prelude
 import Zmq.Socket
 
 
+-- | <http://api.zeromq.org/4-3:zmq-close>
+--
+-- Promptly close a socket. It is not strictly necessary to call this function;
+-- sockets are closed automatically when garbage collected.
 close
   :: MonadIO m
   => Socket typ
