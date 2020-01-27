@@ -46,6 +46,7 @@ library
   exposed-modules:
     Zmq
     Zmq.Publisher
+    Zmq.Subscriber
 
   hs-source-dirs:
     src
