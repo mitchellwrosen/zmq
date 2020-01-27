@@ -6,7 +6,6 @@ module Zmq.API.Send
 import qualified Data.ByteString.Unsafe as ByteString
 
 import Zmq.Error
-import Zmq.Function
 import Zmq.Prelude
 import Zmq.Socket
 import qualified Zmq.FFI as FFI
@@ -18,7 +17,7 @@ import qualified Zmq.FFI as FFI
 --   = 'EHOSTUNREACH'
 -- @
 type SendError
-  = Error 'Send
+  = Error "send"
 
 -- | <http://api.zeromq.org/4-3:zmq-send>
 send

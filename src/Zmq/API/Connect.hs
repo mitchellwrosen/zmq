@@ -5,7 +5,6 @@ module Zmq.API.Connect
 
 import Zmq.Endpoint
 import Zmq.Error
-import Zmq.Function
 import Zmq.Internal
 import Zmq.Prelude
 import Zmq.Socket
@@ -19,7 +18,7 @@ import qualified Zmq.FFI as FFI
 --   | 'EMTHREAD'
 -- @
 type ConnectError
-  = Error 'Connect
+  = Error "connect"
 
 -- | <http://api.zeromq.org/4-3:zmq-connect>
 connect

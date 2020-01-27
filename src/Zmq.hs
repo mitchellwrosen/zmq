@@ -50,8 +50,7 @@ import Zmq.API.Subscribe (subscribe)
 import Zmq.API.Unbind (unbind)
 import Zmq.Context (context, setMaxSockets)
 import Zmq.Endpoint (Endpoint(..))
-import Zmq.Error (Error(..), pattern EINTR_, bugUnexpectedErrno)
-import Zmq.Function
+import Zmq.Error
 import Zmq.Internal (CompatibleTransport, Transport(..))
 import Zmq.Prelude
 import Zmq.Socket (Socket, SocketType(..))

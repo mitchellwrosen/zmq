@@ -7,7 +7,6 @@ module Zmq.API.Bind
 import Zmq.Endpoint
 import Zmq.Error
 import Zmq.Internal
-import Zmq.Function
 import Zmq.Prelude
 import Zmq.Socket
 import qualified Zmq.FFI as FFI
@@ -23,7 +22,7 @@ import qualified Zmq.FFI as FFI
 --   | 'ENODEV'
 -- @
 type BindError
-  = Error 'Bind
+  = Error "bind"
 
 -- | <http://api.zeromq.org/4-3:zmq-bind>
 bind

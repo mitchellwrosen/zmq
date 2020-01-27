@@ -65,7 +65,6 @@ library
     Zmq.Endpoint
     Zmq.Error
     Zmq.FFI
-    Zmq.Function
     Zmq.Internal
     Zmq.Poller
     Zmq.Prelude

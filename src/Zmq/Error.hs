@@ -13,6 +13,12 @@ module Zmq.Error
   , pattern ENOENT_
   , pattern ENOTSOCK_
   , pattern ETERM_
+  , CanReturnEADDRINUSE
+  , CanReturnEADDRNOTAVAIL
+  , CanReturnEHOSTUNREACH
+  , CanReturnEINVAL
+  , CanReturnEMTHREAD
+  , CanReturnENODEV
   , bug
   , bugIO
   , bugUnexpectedErrno
@@ -20,13 +26,13 @@ module Zmq.Error
   ) where
 
 import Foreign.C
+import GHC.TypeLits (Symbol)
 
 import Zmq.FFI
-import Zmq.Function
 import Zmq.Prelude
 
 
-data Error ( function :: Function ) where
+data Error ( function :: Symbol ) where
   EADDRINUSE      :: ( CanReturnEADDRINUSE      function ~ 'True ) => Error function
   EADDRNOTAVAIL   :: ( CanReturnEADDRNOTAVAIL   function ~ 'True ) => Error function
   EHOSTUNREACH    :: ( CanReturnEHOSTUNREACH    function ~ 'True ) => Error function
@@ -90,6 +96,44 @@ pattern ENOTSOCK_ <- ((== Zmq.FFI.eNOTSOCK) -> True) where
 
 pattern ETERM_ :: Errno
 pattern ETERM_ <- ((== Zmq.FFI.eTERM) -> True)
+
+
+type family CanReturnEADDRINUSE ( function :: Symbol ) :: Bool where
+  CanReturnEADDRINUSE "bind" = 'True
+  CanReturnEADDRINUSE _ = 'False
+
+type family CanReturnEADDRNOTAVAIL ( function :: Symbol ) :: Bool where
+  CanReturnEADDRNOTAVAIL "bind" = 'True
+  CanReturnEADDRNOTAVAIL _ = 'False
+
+type family CanReturnEHOSTUNREACH ( function :: Symbol ) :: Bool where
+  -- TODO only a few socket types (stream, server, router if flag set) can
+  -- return EHOSTUNREACH on send
+  CanReturnEHOSTUNREACH "send" = 'True
+  CanReturnEHOSTUNREACH _ = 'False
+
+type family CanReturnEINVAL ( function :: Symbol ) :: Bool where
+  CanReturnEINVAL "bind" = 'True
+  CanReturnEINVAL "connect" = 'True
+  CanReturnEINVAL _ = 'False
+
+-- type family CanReturnEMFILE ( function :: Function ) :: Bool where
+--   CanReturnEMFILE _ = 'False
+
+type family CanReturnEMTHREAD ( function :: Symbol ) :: Bool where
+  CanReturnEMTHREAD "bind" = 'True
+  CanReturnEMTHREAD "connect" = 'True
+  CanReturnEMTHREAD _ = 'False
+
+type family CanReturnENODEV ( function :: Symbol ) :: Bool where
+  CanReturnENODEV "bind" = 'True
+  CanReturnENODEV _ = 'False
+
+-- type family CanReturnENOENT ( function :: Function ) :: Bool where
+--   CanReturnENOENT _ = 'False
+
+-- type family CanReturnEPROTONOSUPPORT ( function :: Function ) :: Bool where
+--   CanReturnEPROTONOSUPPORT _ = 'False
 
 
 bug :: String -> a
