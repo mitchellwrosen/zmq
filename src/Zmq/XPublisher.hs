@@ -15,6 +15,7 @@ module Zmq.XPublisher
   ) where
 
 import Zmq.Endpoint
+import Zmq.Error
 import Zmq.Prelude
 import Zmq.SubscriptionMessage
 import qualified Zmq.API.Bind as API
@@ -81,9 +82,14 @@ send
   :: MonadIO m
   => XPublisher
   -> ByteString
-  -> m ( Either API.SendError () )
-send publisher message =
-  liftIO ( coerce API.nonThreadsafeSend publisher message )
+  -> m ()
+send publisher message = liftIO do
+  coerce API.nonBlockingSend publisher message >>= \case
+    Left errno ->
+      bugUnexpectedErrno "zmq_send" errno
+
+    Right () ->
+      pure ()
 
 recv
   :: MonadIO m
