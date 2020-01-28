@@ -14,6 +14,7 @@ module Zmq.Publisher
   ) where
 
 import Zmq.Endpoint
+import Zmq.Error
 import Zmq.Prelude
 import qualified Zmq.API.Bind as API
 import qualified Zmq.API.Close as API
@@ -56,7 +57,7 @@ unbind
   -> Endpoint transport
   -> m ()
 unbind publisher endpoint =
-  liftIO ( coerce API.unbindIO' publisher endpoint )
+  liftIO ( coerce API.unbind publisher endpoint )
 
 connect
   :: MonadIO m
@@ -78,6 +79,11 @@ send
   :: MonadIO m
   => Publisher
   -> ByteString
-  -> m ( Either API.SendError () )
-send publisher message =
-  liftIO ( coerce API.nonThreadsafeSend publisher message )
+  -> m ()
+send publisher message = liftIO do
+  coerce API.nonBlockingSend publisher message >>= \case
+    Left errno ->
+      bugUnexpectedErrno "zmq_send" errno
+
+    Right () ->
+      pure ()

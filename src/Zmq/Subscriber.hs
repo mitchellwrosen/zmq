@@ -59,7 +59,7 @@ unbind
   -> Endpoint transport
   -> m ()
 unbind subscriber endpoint =
-  liftIO ( coerce API.unbindIO' subscriber endpoint )
+  liftIO ( coerce API.unbind subscriber endpoint )
 
 connect
   :: MonadIO m

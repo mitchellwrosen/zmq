@@ -59,7 +59,7 @@ unbind
   -> Endpoint transport
   -> m ()
 unbind publisher endpoint =
-  liftIO ( coerce API.unbindIO' publisher endpoint )
+  liftIO ( coerce API.unbind publisher endpoint )
 
 connect
   :: MonadIO m

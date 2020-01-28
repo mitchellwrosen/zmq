@@ -36,7 +36,7 @@ main =
         matches _Right =<< Zmq.Publisher.bind pub endpoint
         matches _Right =<< Zmq.Subscriber.connect sub endpoint
         Zmq.Subscriber.subscribe sub ""
-        matches _Right =<< Zmq.Publisher.send pub "hi"
+        Zmq.Publisher.send pub "hi"
         Zmq.Subscriber.recv sub >>= \case
           "hi" :| [] -> pure ()
           message -> do

@@ -1,5 +1,6 @@
 module Zmq.API.Send
-  ( nonThreadsafeSend
+  ( nonBlockingSend
+  , nonThreadsafeSend
   , SendError
   ) where
 
@@ -19,7 +20,33 @@ import qualified Zmq.FFI as FFI
 type SendError
   = Error "send"
 
--- | <http://api.zeromq.org/4-3:zmq-send>
+-- | Send on a socket that won't block (like PUB).
+nonBlockingSend
+  :: ForeignPtr FFI.Socket
+  -> ByteString
+  -> IO ( Either Errno () )
+nonBlockingSend socket message =
+  withForeignPtr socket \socket_ptr ->
+    ByteString.unsafeUseAsCStringLen message \( ptr, len ) ->
+      fix \again -> do
+        FFI.zmq_send socket_ptr ptr ( fromIntegral len ) FFI.zMQ_DONTWAIT >>= \case
+          -1 ->
+            FFI.zmq_errno >>= \case
+              EINTR_ ->
+                again
+
+              ETERM_ ->
+                errInvalidContext
+
+              errno ->
+                pure ( Left errno )
+
+          -- Ignore number of bytes sent; why is this interesting?
+          _ ->
+            pure ( Right () )
+
+-- | Send on a socket that won't block, but isn't threadsafe (i.e. getting its
+-- file descriptor works).
 nonThreadsafeSend
   :: ForeignPtr FFI.Socket
   -> ByteString

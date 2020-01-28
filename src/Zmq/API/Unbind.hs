@@ -1,5 +1,5 @@
 module Zmq.API.Unbind
-  ( unbindIO'
+  ( unbind
   ) where
 
 import Zmq.Endpoint
@@ -9,11 +9,11 @@ import qualified Zmq.FFI as FFI
 
 
 -- | <http://api.zeromq.org/4-3:zmq-unbind>
-unbindIO'
+unbind
   :: ForeignPtr FFI.Socket
   -> Endpoint transport
   -> IO ()
-unbindIO' socket endpoint =
+unbind socket endpoint =
   withForeignPtr socket \socket_ptr ->
     withEndpoint endpoint \c_endpoint ->
       FFI.zmq_unbind socket_ptr c_endpoint >>= \case
