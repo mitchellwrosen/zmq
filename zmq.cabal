@@ -48,6 +48,7 @@ library
     Zmq.Publisher
     Zmq.Subscriber
     Zmq.XPublisher
+    Zmq.XSubscriber
 
   hs-source-dirs:
     src
