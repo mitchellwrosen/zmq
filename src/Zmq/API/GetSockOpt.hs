@@ -5,7 +5,7 @@ module Zmq.API.GetSockOpt
   ) where
 
 import Foreign.Marshal.Alloc (alloca)
-import Foreign.Storable (peek)
+import Foreign.Storable (peek, poke, sizeOf)
 import System.Posix.Types (Fd(..))
 
 import Zmq.Error
@@ -19,7 +19,9 @@ getIntSockOpt
   -> IO ( Either () CInt )
 getIntSockOpt socket key =
   alloca \int_ptr ->
-    alloca \size_ptr ->
+    alloca \size_ptr -> do
+      poke size_ptr ( fromIntegral ( sizeOf ( undefined :: CInt ) ) )
+
       fix \again ->
         FFI.zmq_getsockopt socket key int_ptr size_ptr >>= \case
           0 ->
