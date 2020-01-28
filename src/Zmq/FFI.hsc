@@ -89,6 +89,7 @@ zMQ_POLLOUT          :: CInt
 zMQ_PUB              :: CInt
 zMQ_SUB              :: CInt
 zMQ_SUBSCRIBE        :: CInt
+zMQ_XPUB             :: CInt
 zMQ_DONTWAIT         = #const ZMQ_DONTWAIT
 zMQ_EVENTS           = #const ZMQ_EVENTS
 zMQ_FD               = #const ZMQ_FD
@@ -100,6 +101,7 @@ zMQ_POLLOUT          = #const ZMQ_POLLOUT
 zMQ_PUB              = #const ZMQ_PUB
 zMQ_SUB              = #const ZMQ_SUB
 zMQ_SUBSCRIBE        = #const ZMQ_SUBSCRIBE
+zMQ_XPUB             = #const ZMQ_XPUB
 
 
 foreign import ccall safe "zmq_bind"

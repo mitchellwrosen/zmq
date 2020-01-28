@@ -47,6 +47,7 @@ library
     Zmq
     Zmq.Publisher
     Zmq.Subscriber
+    Zmq.XPublisher
 
   hs-source-dirs:
     src
@@ -73,6 +74,7 @@ library
     Zmq.Poller
     Zmq.Prelude
     Zmq.Socket
+    Zmq.SubscriptionMessage
 
   pkgconfig-depends:
     libzmq == 4.3.2

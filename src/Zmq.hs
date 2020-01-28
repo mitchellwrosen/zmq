@@ -11,6 +11,8 @@ module Zmq
   , CompatibleTransport
   , Endpoint(..)
 
+  , SubscriptionMessage(..)
+
   , Error(..)
   , CanReturnEADDRINUSE
   , CanReturnEADDRNOTAVAIL
@@ -31,6 +33,7 @@ import Zmq.Endpoint (Endpoint(..))
 import Zmq.Error
 import Zmq.Internal (CompatibleTransport, Transport(..))
 import Zmq.Prelude
+import Zmq.SubscriptionMessage (SubscriptionMessage(..))
 import qualified Zmq.FFI as FFI
 
 

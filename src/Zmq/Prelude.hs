@@ -12,6 +12,7 @@ import Data.Function as X (fix)
 import Data.Functor as X
 import Data.Kind as X (Constraint, Type)
 import Data.List.NonEmpty as X (NonEmpty)
+import Data.Word as X (Word8)
 import Foreign.C as X (CChar, CInt, CSize, CString, Errno, withCString)
 import Foreign.ForeignPtr as X (ForeignPtr, newForeignPtr, withForeignPtr)
 import Foreign.Ptr as X (Ptr, nullPtr)

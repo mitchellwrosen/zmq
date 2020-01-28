@@ -2,7 +2,6 @@ module Main where
 
 import Control.Lens
 import Data.Foldable (for_)
-import Data.Functor (void)
 import Data.List.NonEmpty (NonEmpty((:|)))
 import EasyTest hiding (matches, unitTest)
 import GHC.Stack (HasCallStack, withFrozenCallStack)
@@ -11,19 +10,24 @@ import qualified EasyTest
 import qualified Zmq
 import qualified Zmq.Publisher
 import qualified Zmq.Subscriber
+import qualified Zmq.XPublisher
 
 main :: IO Summary
 main =
   ( Zmq.main options . run . tests )
     [ unitTest "socket.pub" do
-        void ( matches _Just =<< Zmq.Publisher.open )
+        s <- matches _Just =<< Zmq.Publisher.open
+        Zmq.Publisher.close s
+
     , unitTest "socket.sub" do
-        void ( matches _Just =<< Zmq.Subscriber.open )
+        s <- matches _Just =<< Zmq.Subscriber.open
+        Zmq.Subscriber.close s
+
     , unitTest "socket.maxSockets" do
         s0 <- matches _Just =<< Zmq.Publisher.open
         s1 <- matches _Just =<< Zmq.Publisher.open
         () <- matches _Nothing =<< Zmq.Publisher.open
-        for_ [ s0, s1 ] Zmq.Publisher.close -- keep sockets alive
+        for_ [ s0, s1 ] Zmq.Publisher.close
 
     , unitTest "pubsub" do
         let endpoint = Zmq.Inproc "foo"
@@ -38,6 +42,20 @@ main =
           message -> do
             annotate ( show message )
             failure
+        Zmq.Publisher.close pub
+        Zmq.Subscriber.close sub
+
+    , unitTest "xpub" do
+        let endpoint = Zmq.Inproc "foo"
+        xpub <- matches _Just =<< Zmq.XPublisher.open
+        sub <- matches _Just =<< Zmq.Subscriber.open
+        matches _Right =<< Zmq.XPublisher.bind xpub endpoint
+        matches _Right =<< Zmq.Subscriber.connect sub endpoint
+        Zmq.Subscriber.subscribe sub "hi"
+        message <- Zmq.XPublisher.recv xpub
+        message === Zmq.Subscribe "hi"
+        Zmq.XPublisher.close xpub
+        Zmq.Subscriber.close sub
     ]
 
   where
