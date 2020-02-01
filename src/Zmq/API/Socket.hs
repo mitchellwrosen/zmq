@@ -2,7 +2,7 @@ module Zmq.API.Socket
   ( socket
   ) where
 
-import Zmq.Context (context)
+import Zmq.Context (contextVar)
 import Zmq.Error
 import Zmq.Prelude
 import qualified Zmq.FFI as FFI
@@ -15,7 +15,10 @@ import qualified Zmq.FFI as FFI
 socket
   :: CInt
   -> IO ( Maybe ( ForeignPtr FFI.Socket ) )
-socket socketType =
+socket socketType = do
+  context <-
+    readMVar contextVar
+
   mask \unmask -> do
     ptr :: Ptr () <-
       FFI.zmq_socket context socketType

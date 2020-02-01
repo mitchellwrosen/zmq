@@ -3,6 +3,11 @@ module Zmq
   , Options(..)
   , defaultOptions
 
+  , Publisher
+  , Subscriber
+  , XPublisher
+  , XSubscriber
+
   , BindError
   , ConnectError
   , SendError
@@ -28,12 +33,16 @@ import System.Mem (performGC)
 import Zmq.API.Bind (BindError)
 import Zmq.API.Connect (ConnectError)
 import Zmq.API.Send (SendError)
-import Zmq.Context (context, setIoThreads, setMaxSockets)
+import Zmq.Context (contextVar, setIoThreads, setMaxSockets)
 import Zmq.Endpoint (Endpoint(..))
 import Zmq.Error
 import Zmq.Internal (CompatibleTransport, Transport(..))
 import Zmq.Prelude
+import Zmq.Publisher (Publisher)
+import Zmq.Subscriber (Subscriber)
 import Zmq.SubscriptionMessage (SubscriptionMessage(..))
+import Zmq.XPublisher (XPublisher)
+import Zmq.XSubscriber (XSubscriber)
 import qualified Zmq.FFI as FFI
 
 
@@ -56,15 +65,21 @@ defaultOptions =
 main :: Options -> IO a -> IO a
 main options action =
   bracket_ setup teardown do
-    setIoThreads ( ioThreads options )
-    setMaxSockets ( maxSockets options )
+    context <- readMVar contextVar
+    setIoThreads context ( ioThreads options )
+    setMaxSockets context ( maxSockets options )
     action
 
   where
+    setup :: IO ()
     setup =
-      evaluate context
+      FFI.zmq_ctx_new >>= putMVar contextVar
 
-    teardown =
+    teardown :: IO ()
+    teardown = do
+      context <-
+        takeMVar contextVar
+
       fix \again -> do
         performGC -- trigger socket finalizers
 

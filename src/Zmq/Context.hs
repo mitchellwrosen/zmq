@@ -1,5 +1,5 @@
 module Zmq.Context
-  ( context
+  ( contextVar
   , setIoThreads
   , setMaxSockets
   ) where
@@ -11,29 +11,32 @@ import qualified Zmq.FFI as FFI
 
 
 -- | Global context.
-context :: Ptr ()
-context =
-  unsafePerformIO FFI.zmq_ctx_new
-{-# NOINLINE context #-}
+contextVar :: MVar ( Ptr FFI.Context )
+contextVar =
+  unsafePerformIO newEmptyMVar
+{-# NOINLINE contextVar #-}
 
 setIoThreads
-  :: Natural
+  :: Ptr FFI.Context
+  -> Natural
   -> IO ()
 setIoThreads =
   setNatural FFI.zMQ_IO_THREADS
 
 setMaxSockets
-  :: Natural
+  :: Ptr FFI.Context
+  -> Natural
   -> IO ()
 setMaxSockets =
   setNatural FFI.zMQ_MAX_SOCKETS
 
 
---------------------------------------------------------------------------------
+----------------------------------------------------------------------------------
 
 setNatural
   :: CInt
+  -> Ptr FFI.Context
   -> Natural
   -> IO ()
-setNatural option =
+setNatural option context =
   void . FFI.zmq_ctx_set context option . fromIntegral

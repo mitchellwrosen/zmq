@@ -2,6 +2,7 @@ module Zmq.Prelude
   ( module X
   ) where
 
+import Control.Concurrent.MVar as X
 import Control.Exception as X (bracket, bracket_, evaluate, mask)
 import Control.Monad as X
 import Control.Monad.IO.Class as X

@@ -85,14 +85,16 @@ test-suite tests
     component
 
   build-depends:
-    easytest ^>= 0.3,
     hedgehog,
     lens,
+    tasty,
+    tasty-hedgehog,
     zmq,
 
   ghc-options:
     -O
     -threaded
+    -with-rtsopts=-N
 
   hs-source-dirs:
     test

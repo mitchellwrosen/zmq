@@ -1,95 +1,152 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Main where
 
+-- import Control.Concurrent
 import Control.Lens
+import Control.Monad.IO.Class
+import Data.Functor (void)
 import Data.List.NonEmpty (NonEmpty((:|)))
-import EasyTest hiding (matches, unitTest)
 import GHC.Stack (HasCallStack, withFrozenCallStack)
-import qualified EasyTest
+import Hedgehog hiding (failure, test)
+import Test.Tasty
+import Test.Tasty.Hedgehog (testProperty)
+import qualified Hedgehog
+import qualified Hedgehog.Gen as Gen
+import qualified Hedgehog.Range as Range
 
 import qualified Zmq
-import qualified Zmq.Publisher
-import qualified Zmq.Subscriber
-import qualified Zmq.XPublisher
-import qualified Zmq.XSubscriber
+import qualified Zmq.Publisher as Pub
+import qualified Zmq.Subscriber as Sub
+import qualified Zmq.XPublisher as Xpub
+import qualified Zmq.XSubscriber as Xsub
 
-main :: IO Summary
+main :: IO ()
 main =
-  ( Zmq.main options . run . tests )
-    [ unitTest "socket.pub" do
-        s <- matches _Just =<< Zmq.Publisher.open
-        Zmq.Publisher.close s
+  Zmq.main Zmq.defaultOptions ( defaultMain ( testGroup "tests" tests ) )
 
-    , unitTest "socket.sub" do
-        s <- matches _Just =<< Zmq.Subscriber.open
-        Zmq.Subscriber.close s
+tests :: [ TestTree ]
+tests =
+  [ test "Publisher open" do
+      void openPub
 
-    , unitTest "pubsub" do
-        let endpoint = Zmq.Inproc "foo"
-        pub <- matches _Just =<< Zmq.Publisher.open
-        sub <- matches _Just =<< Zmq.Subscriber.open
-        matches _Right =<< Zmq.Publisher.bind pub endpoint
-        matches _Right =<< Zmq.Subscriber.connect sub endpoint
-        Zmq.Subscriber.subscribe sub ""
-        Zmq.Publisher.send pub "hi"
-        Zmq.Subscriber.recv sub >>= \case
-          "hi" :| [] -> pure ()
-          message -> do
-            annotate ( show message )
-            failure
-        Zmq.Publisher.close pub
-        Zmq.Subscriber.close sub
+  , test "Subscriber open" do
+      void openSub
 
-    , unitTest "xpub.recv" do
-        let endpoint = Zmq.Inproc "foo"
-        xpub <- matches _Just =<< Zmq.XPublisher.open
-        sub <- matches _Just =<< Zmq.Subscriber.open
-        matches _Right =<< Zmq.XPublisher.bind xpub endpoint
-        matches _Right =<< Zmq.Subscriber.connect sub endpoint
-        Zmq.Subscriber.subscribe sub "hi"
-        message <- Zmq.XPublisher.recv xpub
-        message === Zmq.Subscribe "hi"
-        Zmq.XPublisher.close xpub
-        Zmq.Subscriber.close sub
+  , test "Pubsub" do
+      endpoint <- Gen.sample genInproc
+      pub <- openPub
+      sub <- openSub
+      bindPub pub endpoint
+      connectSub sub endpoint
+      Sub.subscribe sub ""
+      Pub.send pub "hi"
+      message <- Sub.recv sub
+      message === "hi" :| []
 
-    , unitTest "xsub.subscribe" do
-        let endpoint = Zmq.Inproc "foo"
-        pub <- matches _Just =<< Zmq.Publisher.open
-        xsub <- matches _Just =<< Zmq.XSubscriber.open
-        matches _Right =<< Zmq.Publisher.bind pub endpoint
-        matches _Right =<< Zmq.XSubscriber.connect xsub endpoint
-        Zmq.XSubscriber.subscribe xsub ""
-        Zmq.Publisher.send pub "hi"
-        message <- Zmq.XSubscriber.recv xsub
-        message === "hi" :| []
-        Zmq.Publisher.close pub
-        Zmq.XSubscriber.close xsub
-    ]
+  , test "XPublisher recv subscription" do
+      endpoint <- Gen.sample genInproc
+      xpub <- openXpub
+      sub <- openSub
+      bindXpub xpub endpoint
+      connectSub sub endpoint
+      Sub.subscribe sub "hi"
+      message <- Xpub.recv xpub
+      message === Zmq.Subscribe "hi"
 
-  where
-    options :: Zmq.Options
-    options =
-      Zmq.defaultOptions
+  , test "XSubscriber send subscription" do
+      endpoint <- Gen.sample genInproc
+      pub <- openPub
+      xsub <- openXsub
+      bindPub pub endpoint
+      connectXsub xsub endpoint
+      Xsub.subscribe xsub ""
+      Pub.send pub "hi"
+      message <- Xsub.recv xsub
+      message === "hi" :| []
+  ]
 
-unitTest
-  :: HasCallStack
-  => String
+openPub :: ( MonadIO m, MonadTest m ) => m Zmq.Publisher
+openPub =
+  matches _Just =<< Pub.open
+
+openSub :: ( MonadIO m, MonadTest m ) => m Zmq.Subscriber
+openSub =
+  matches _Just =<< Sub.open
+
+openXpub :: ( MonadIO m, MonadTest m ) => m Zmq.XPublisher
+openXpub =
+  matches _Just =<< Xpub.open
+
+openXsub :: ( MonadIO m, MonadTest m ) => m Zmq.XSubscriber
+openXsub =
+  matches _Just =<< Xsub.open
+
+bindPub
+  :: ( MonadIO m, MonadTest m )
+  => Zmq.Publisher
+  -> Zmq.Endpoint transport
+  -> m ()
+bindPub pub endpoint =
+  matches _Right =<< Pub.bind pub endpoint
+
+bindXpub
+  :: ( MonadIO m, MonadTest m )
+  => Zmq.XPublisher
+  -> Zmq.Endpoint transport
+  -> m ()
+bindXpub pub endpoint =
+  matches _Right =<< Xpub.bind pub endpoint
+
+connectSub
+  :: ( MonadIO m, MonadTest m )
+  => Zmq.Subscriber
+  -> Zmq.Endpoint transport
+  -> m ()
+connectSub sub endpoint =
+  matches _Right =<< Sub.connect sub endpoint
+
+connectXsub
+  :: ( MonadIO m, MonadTest m )
+  => Zmq.XSubscriber
+  -> Zmq.Endpoint transport
+  -> m ()
+connectXsub sub endpoint =
+  matches _Right =<< Xsub.connect sub endpoint
+
+genInproc :: Gen ( Zmq.Endpoint 'Zmq.TransportInproc )
+genInproc =
+  Zmq.Inproc <$> Gen.text (Range.linear 0 255) Gen.unicode
+
+test
+  :: TestName
+  -> TestT IO ()
+  -> TestTree
+test name =
+  testProperty name . withTests 1 . property . Hedgehog.test
+
+prop
+  :: TestName
   -> PropertyT IO ()
-  -> Test
-unitTest name test =
-  scope name ( EasyTest.unitTest test )
+  -> TestTree
+prop name =
+  testProperty name . property
 
--- Easytests's matches, but returns the a.
+failure
+  :: ( HasCallStack, MonadTest m, Show a )
+  => a
+  -> m b
+failure x = do
+  annotate ( show x )
+  Hedgehog.failure
+
 matches
-  :: ( HasCallStack, Show s )
+  :: ( HasCallStack, MonadTest m, Show s )
   => Prism' s a
   -> s
-  -> PropertyT IO a
+  -> m a
 matches p s =
-  withFrozenCallStack
-    ( case preview p s of
-        Just a -> pure a
-        Nothing -> do
-          annotate ( show s )
-          footnote "Prism failed to match"
-          failure
-    )
+  withFrozenCallStack do
+    case preview p s of
+      Just a -> pure a
+      Nothing -> failure s
