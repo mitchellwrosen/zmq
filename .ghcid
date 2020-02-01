@@ -1,1 +1,1 @@
--c "cabal repl -O0 zmq:lib:zmq" --restart zmq.cabal
+-c "cabal repl -O0 zmq:lib:zmq" --restart zmq.cabal --restart src/Zmq/FFI.hsc

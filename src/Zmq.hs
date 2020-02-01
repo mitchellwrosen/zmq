@@ -28,7 +28,7 @@ import System.Mem (performGC)
 import Zmq.API.Bind (BindError)
 import Zmq.API.Connect (ConnectError)
 import Zmq.API.Send (SendError)
-import Zmq.Context (context, setMaxSockets)
+import Zmq.Context (context, setIoThreads, setMaxSockets)
 import Zmq.Endpoint (Endpoint(..))
 import Zmq.Error
 import Zmq.Internal (CompatibleTransport, Transport(..))
@@ -39,13 +39,15 @@ import qualified Zmq.FFI as FFI
 
 data Options
   = Options
-  { maxSockets :: Natural
+  { ioThreads :: Natural
+  , maxSockets :: Natural
   }
 
 defaultOptions :: Options
 defaultOptions =
   Options
-    { maxSockets = fromIntegral FFI.zMQ_MAX_SOCKETS_DFLT
+    { ioThreads = fromIntegral FFI.zMQ_IO_THREADS_DFLT
+    , maxSockets = fromIntegral FFI.zMQ_MAX_SOCKETS_DFLT
     }
 
 -- | Run an action in the context of a global ZeroMQ context. This should wrap
@@ -54,6 +56,7 @@ defaultOptions =
 main :: Options -> IO a -> IO a
 main options action =
   bracket_ setup teardown do
+    setIoThreads ( ioThreads options )
     setMaxSockets ( maxSockets options )
     action
 

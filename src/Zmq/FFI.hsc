@@ -81,6 +81,8 @@ eTIMEDOUT       = Errno ( #const ETIMEDOUT )
 zMQ_DONTWAIT         :: CInt
 zMQ_EVENTS           :: CInt
 zMQ_FD               :: CInt
+zMQ_IO_THREADS       :: CInt
+zMQ_IO_THREADS_DFLT  :: CInt
 zMQ_MAX_SOCKETS      :: CInt
 zMQ_MAX_SOCKETS_DFLT :: CInt
 zMQ_MORE             :: CInt
@@ -94,6 +96,8 @@ zMQ_XSUB             :: CInt
 zMQ_DONTWAIT         = #const ZMQ_DONTWAIT
 zMQ_EVENTS           = #const ZMQ_EVENTS
 zMQ_FD               = #const ZMQ_FD
+zMQ_IO_THREADS       = #const ZMQ_IO_THREADS
+zMQ_IO_THREADS_DFLT  = #const ZMQ_IO_THREADS_DFLT
 zMQ_MAX_SOCKETS      = #const ZMQ_MAX_SOCKETS
 zMQ_MAX_SOCKETS_DFLT = #const ZMQ_MAX_SOCKETS_DFLT
 zMQ_MORE             = #const ZMQ_MORE
