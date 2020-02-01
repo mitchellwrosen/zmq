@@ -13,20 +13,20 @@ type Context = ()
 type Poller  = ()
 type Socket  = ()
 
-newtype Message
-  = Message { unMessage :: Ptr () }
+newtype Frame
+  = Frame { unFrame :: Ptr () }
 
-instance Storable Message where
+instance Storable Frame where
   alignment _ = #{alignment zmq_msg_t}
   sizeOf _ = #{size zmq_msg_t}
 
-  peek :: Ptr Message -> IO Message
+  peek :: Ptr Frame -> IO Frame
   peek =
     coerce
       @( Ptr ( Ptr CChar ) -> IO ( Ptr CChar ) )
       #{ peek zmq_msg_t, _ }
 
-  poke :: Ptr Message -> Message -> IO ()
+  poke :: Ptr Frame -> Frame -> IO ()
   poke =
     coerce
       @( Ptr ( Ptr CChar ) -> Ptr CChar -> IO () )
@@ -138,19 +138,19 @@ foreign import ccall unsafe "zmq_getsockopt"
   zmq_getsockopt :: Ptr Socket -> CInt -> Ptr a -> Ptr CSize -> IO CInt
 
 foreign import ccall unsafe "zmq_msg_data"
-  zmq_msg_data :: Ptr Message -> IO ( Ptr CChar )
+  zmq_msg_data :: Ptr Frame -> IO ( Ptr CChar )
 
 foreign import ccall unsafe "zmq_msg_close"
-  zmq_msg_close :: Ptr Message -> IO CInt
+  zmq_msg_close :: Ptr Frame -> IO CInt
 
 foreign import ccall unsafe "zmq_msg_get"
-  zmq_msg_get :: Ptr Message -> CInt -> IO CInt
+  zmq_msg_get :: Ptr Frame -> CInt -> IO CInt
 
 foreign import ccall unsafe "zmq_msg_init"
-  zmq_msg_init :: Ptr Message -> IO CInt
+  zmq_msg_init :: Ptr Frame -> IO CInt
 
 foreign import ccall unsafe "zmq_msg_recv"
-  zmq_msg_recv :: Ptr Message -> Ptr Socket -> CInt -> IO CInt
+  zmq_msg_recv :: Ptr Frame -> Ptr Socket -> CInt -> IO CInt
 
 -- foreign import ccall unsafe "zmq_poller_destroy"
 --   zmq_poller_destroy :: Ptr ( Ptr Poller ) -> IO CInt

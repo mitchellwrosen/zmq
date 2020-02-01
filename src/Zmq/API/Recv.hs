@@ -17,22 +17,22 @@ nonThreadsafeRecv
   :: ForeignPtr FFI.Socket
   -> IO ( NonEmpty ByteString )
 nonThreadsafeRecv socket =
-  withMessagePart \message_ptr ->
+  withFrame \frame_ptr ->
     withForeignPtr socket \socket_ptr ->
-      nonThreadsafeRecv_ message_ptr socket_ptr
+      nonThreadsafeRecv_ frame_ptr socket_ptr
 
 nonThreadsafeRecv_
-  :: Ptr FFI.Message
+  :: Ptr FFI.Frame
   -> Ptr FFI.Socket
   -> IO ( NonEmpty ByteString )
-nonThreadsafeRecv_ message socket =
+nonThreadsafeRecv_ frame socket =
   recv1 >>= loop []
 
   where
     recv1 :: IO ByteString
     recv1 =
       fix \again ->
-        FFI.zmq_msg_recv message socket FFI.zMQ_DONTWAIT >>= \case
+        FFI.zmq_msg_recv frame socket FFI.zMQ_DONTWAIT >>= \case
           -1 ->
             FFI.zmq_errno >>= \case
               EAGAIN_ -> do
@@ -60,7 +60,7 @@ nonThreadsafeRecv_ message socket =
                 bugUnexpectedErrno "zmq_msg_recv" errno
 
           len -> do
-            data_ptr <- FFI.zmq_msg_data message
+            data_ptr <- FFI.zmq_msg_data frame
             ByteString.packCStringLen ( data_ptr, fromIntegral len )
 
     loop
@@ -68,7 +68,7 @@ nonThreadsafeRecv_ message socket =
       -> ByteString
       -> IO ( NonEmpty ByteString )
     loop acc1 acc0 =
-      FFI.zmq_msg_get message FFI.zMQ_MORE >>= \case
+      FFI.zmq_msg_get frame FFI.zMQ_MORE >>= \case
         1 -> do
           part <- recv1
           loop ( part : acc1 ) acc0
@@ -76,12 +76,12 @@ nonThreadsafeRecv_ message socket =
         _ ->
           pure ( acc0 :| reverse acc1 )
 
-withMessagePart
-  :: ( Ptr FFI.Message -> IO a )
+withFrame
+  :: ( Ptr FFI.Frame -> IO a )
   -> IO a
-withMessagePart f =
-  alloca \msg_ptr ->
+withFrame f =
+  alloca \frame ->
     bracket_
-      ( FFI.zmq_msg_init msg_ptr )
-      ( FFI.zmq_msg_close msg_ptr )
-      ( f msg_ptr )
+      ( FFI.zmq_msg_init frame )
+      ( FFI.zmq_msg_close frame )
+      ( f frame )
