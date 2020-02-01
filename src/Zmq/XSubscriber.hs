@@ -16,6 +16,8 @@ module Zmq.XSubscriber
   , recv
   ) where
 
+import Data.List.NonEmpty (NonEmpty((:|)))
+
 import Zmq.Endpoint
 import Zmq.Error
 import Zmq.Prelude
@@ -103,7 +105,7 @@ send
   -> SubscriptionMessage
   -> m ()
 send subscriber ( SubscriptionMessage.serialize -> message ) = liftIO do
-  coerce API.nonBlockingSend subscriber message >>= \case
+  coerce API.nonBlockingSend subscriber ( message :| [] ) >>= \case
     Left errno ->
       bugUnexpectedErrno "zmq_send" errno
 

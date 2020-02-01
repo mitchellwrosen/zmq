@@ -3,13 +3,16 @@
 module Main where
 
 import Control.Lens
+import Control.Monad
 import Control.Monad.IO.Class
 import Data.Functor (void)
 import Data.List.NonEmpty (NonEmpty((:|)))
 import GHC.Stack (HasCallStack, withFrozenCallStack)
 import Hedgehog hiding (failure, test)
+import Say
 import Test.Tasty
 import Test.Tasty.Hedgehog (testProperty)
+import UnliftIO.Concurrent
 import qualified Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
@@ -35,8 +38,8 @@ tests =
   , test "Pubsub" do
       ( pub, sub ) <- openPubSub
       Sub.subscribe sub "a"
-      Pub.send pub "b"
-      Pub.send pub "a"
+      Pub.send pub ( "b" :| [] )
+      Pub.send pub ( "a" :| [] )
       message <- Sub.recv sub
       message === "a" :| []
 
@@ -57,7 +60,7 @@ tests =
       bindPub pub endpoint
       connectXsub xsub endpoint
       Xsub.subscribe xsub ""
-      Pub.send pub "hi"
+      Pub.send pub ( "hi" :| [] )
       message <- Xsub.recv xsub
       message === "hi" :| []
   ]

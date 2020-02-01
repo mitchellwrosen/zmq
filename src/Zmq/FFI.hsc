@@ -89,6 +89,7 @@ zMQ_MORE             :: CInt
 zMQ_POLLIN           :: CInt
 zMQ_POLLOUT          :: CInt
 zMQ_PUB              :: CInt
+zMQ_SNDMORE          :: CInt
 zMQ_SUB              :: CInt
 zMQ_SUBSCRIBE        :: CInt
 zMQ_XPUB             :: CInt
@@ -104,6 +105,7 @@ zMQ_MORE             = #const ZMQ_MORE
 zMQ_POLLIN           = #const ZMQ_POLLIN
 zMQ_POLLOUT          = #const ZMQ_POLLOUT
 zMQ_PUB              = #const ZMQ_PUB
+zMQ_SNDMORE          = #const ZMQ_SNDMORE
 zMQ_SUB              = #const ZMQ_SUB
 zMQ_SUBSCRIBE        = #const ZMQ_SUBSCRIBE
 zMQ_XPUB             = #const ZMQ_XPUB

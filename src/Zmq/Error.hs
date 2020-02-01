@@ -150,4 +150,4 @@ bugUnexpectedErrno func ( Errno n ) =
 
 errInvalidContext :: MonadIO m => m a
 errInvalidContext =
-  liftIO ( fail "Invalid ZeroMQ context. Did you forget to call `Zmq.main`?" )
+  liftIO ( fail "Invalid ZeroMQ context." )

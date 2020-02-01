@@ -88,8 +88,10 @@ test-suite tests
   build-depends:
     hedgehog,
     lens,
+    say,
     tasty,
     tasty-hedgehog,
+    unliftio,
     zmq,
 
   ghc-options:

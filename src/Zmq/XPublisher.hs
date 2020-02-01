@@ -81,7 +81,7 @@ disconnect publisher endpoint =
 send
   :: MonadIO m
   => XPublisher
-  -> ByteString
+  -> NonEmpty ByteString
   -> m ()
 send publisher message = liftIO do
   coerce API.nonBlockingSend publisher message >>= \case
