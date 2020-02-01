@@ -2,7 +2,6 @@
 
 module Main where
 
--- import Control.Concurrent
 import Control.Lens
 import Control.Monad.IO.Class
 import Data.Functor (void)
@@ -34,15 +33,12 @@ tests =
       void openSub
 
   , test "Pubsub" do
-      endpoint <- Gen.sample genInproc
-      pub <- openPub
-      sub <- openSub
-      bindPub pub endpoint
-      connectSub sub endpoint
-      Sub.subscribe sub ""
-      Pub.send pub "hi"
+      ( pub, sub ) <- openPubSub
+      Sub.subscribe sub "a"
+      Pub.send pub "b"
+      Pub.send pub "a"
       message <- Sub.recv sub
-      message === "hi" :| []
+      message === "a" :| []
 
   , test "XPublisher recv subscription" do
       endpoint <- Gen.sample genInproc
@@ -66,21 +62,33 @@ tests =
       message === "hi" :| []
   ]
 
+
+openPubSub :: ( MonadIO m, MonadTest m ) => m ( Zmq.Publisher, Zmq.Subscriber )
+openPubSub = do
+  endpoint <- Gen.sample genInproc
+  pub <- openPub
+  sub <- openSub
+  bindPub pub endpoint
+  connectSub sub endpoint
+  pure ( pub, sub )
+
+--------------------------------------------------------------------------------
+
 openPub :: ( MonadIO m, MonadTest m ) => m Zmq.Publisher
 openPub =
-  matches _Just =<< Pub.open
+  matches _Just () =<< Pub.open
 
 openSub :: ( MonadIO m, MonadTest m ) => m Zmq.Subscriber
 openSub =
-  matches _Just =<< Sub.open
+  matches _Just () =<< Sub.open
 
 openXpub :: ( MonadIO m, MonadTest m ) => m Zmq.XPublisher
 openXpub =
-  matches _Just =<< Xpub.open
+  matches _Just () =<< Xpub.open
 
 openXsub :: ( MonadIO m, MonadTest m ) => m Zmq.XSubscriber
 openXsub =
-  matches _Just =<< Xsub.open
+  matches _Just () =<< Xsub.open
 
 bindPub
   :: ( MonadIO m, MonadTest m )
@@ -88,7 +96,7 @@ bindPub
   -> Zmq.Endpoint transport
   -> m ()
 bindPub pub endpoint =
-  matches _Right =<< Pub.bind pub endpoint
+  matches _Right endpoint =<< Pub.bind pub endpoint
 
 bindXpub
   :: ( MonadIO m, MonadTest m )
@@ -96,7 +104,7 @@ bindXpub
   -> Zmq.Endpoint transport
   -> m ()
 bindXpub pub endpoint =
-  matches _Right =<< Xpub.bind pub endpoint
+  matches _Right endpoint =<< Xpub.bind pub endpoint
 
 connectSub
   :: ( MonadIO m, MonadTest m )
@@ -104,7 +112,7 @@ connectSub
   -> Zmq.Endpoint transport
   -> m ()
 connectSub sub endpoint =
-  matches _Right =<< Sub.connect sub endpoint
+  matches _Right endpoint =<< Sub.connect sub endpoint
 
 connectXsub
   :: ( MonadIO m, MonadTest m )
@@ -112,11 +120,19 @@ connectXsub
   -> Zmq.Endpoint transport
   -> m ()
 connectXsub sub endpoint =
-  matches _Right =<< Xsub.connect sub endpoint
+  matches _Right endpoint =<< Xsub.connect sub endpoint
+
+
+--------------------------------------------------------------------------------
 
 genInproc :: Gen ( Zmq.Endpoint 'Zmq.TransportInproc )
-genInproc =
-  Zmq.Inproc <$> Gen.text (Range.linear 0 255) Gen.unicode
+genInproc = do
+  name <- Gen.text (Range.linear 1 255) Gen.unicode
+  case Zmq.inproc name of
+    Nothing -> error ( "bad inproc generator: " ++ show name )
+    Just endpoint -> pure endpoint
+
+--------------------------------------------------------------------------------
 
 test
   :: TestName
@@ -141,12 +157,15 @@ failure x = do
   Hedgehog.failure
 
 matches
-  :: ( HasCallStack, MonadTest m, Show s )
+  :: ( HasCallStack, MonadTest m, Show context, Show s )
   => Prism' s a
+  -> context
   -> s
   -> m a
-matches p s =
+matches p context s =
   withFrozenCallStack do
     case preview p s of
       Just a -> pure a
-      Nothing -> failure s
+      Nothing -> do
+        footnote ( show context )
+        failure s

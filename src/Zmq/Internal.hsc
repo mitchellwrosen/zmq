@@ -70,6 +70,9 @@ data Endpoint ( transport :: Transport ) where
 #if defined ZMQ_HAVE_VMCI
   Vmci   :: Text -> Endpoint TransportVmci
 #endif
+deriving stock instance Eq ( Endpoint transport )
+deriving stock instance Ord ( Endpoint transport )
+deriving stock instance Show ( Endpoint transport )
 
 endpointToString
   :: Endpoint transport

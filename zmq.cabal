@@ -21,6 +21,7 @@ common component
     PatternSynonyms
     RankNTypes
     ScopedTypeVariables
+    StandaloneDeriving
     TypeApplications
     TypeFamilies
     TypeOperators

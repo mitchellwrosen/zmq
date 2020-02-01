@@ -14,7 +14,9 @@ module Zmq
 
   , Transport(..)
   , CompatibleTransport
-  , Endpoint(..)
+
+  , Endpoint
+  , inproc
 
   , SubscriptionMessage(..)
 
@@ -34,7 +36,7 @@ import Zmq.API.Bind (BindError)
 import Zmq.API.Connect (ConnectError)
 import Zmq.API.Send (SendError)
 import Zmq.Context (contextVar, setIoThreads, setMaxSockets)
-import Zmq.Endpoint (Endpoint(..))
+import Zmq.Endpoint (Endpoint(..), inproc)
 import Zmq.Error
 import Zmq.Internal (CompatibleTransport, Transport(..))
 import Zmq.Prelude
