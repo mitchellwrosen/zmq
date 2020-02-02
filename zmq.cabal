@@ -11,10 +11,10 @@ common component
     AllowAmbiguousTypes
     BlockArguments
     DataKinds
-    DeriveDataTypeable
     DerivingStrategies
     FlexibleInstances
     GADTs
+    GeneralizedNewtypeDeriving
     InstanceSigs
     LambdaCase
     NumericUnderscores
@@ -50,6 +50,7 @@ library
 
   build-depends:
     bytestring,
+    say,
     stm,
     text,
 
@@ -58,6 +59,7 @@ library
 
   exposed-modules:
     Zmq
+    Zmq.ConcurrentPublisher
     Zmq.Publisher
     Zmq.Subscriber
     Zmq.XPublisher
@@ -118,6 +120,7 @@ test-suite tests
     say,
     tasty,
     tasty-hedgehog,
+    text,
     unliftio,
     zmq,
 

@@ -6,21 +6,23 @@ import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Functor (void)
-import Data.List (sort)
+-- import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty((:|)))
 import GHC.Stack (HasCallStack, withFrozenCallStack)
 import Hedgehog hiding (failure, test)
-import Say
+-- import Say
 import Test.Tasty
 import Test.Tasty.Hedgehog (testProperty)
 import UnliftIO.Concurrent
-import UnliftIO.Async
+-- import UnliftIO.Async
 import UnliftIO.Timeout
+import qualified Data.Text as Text
 import qualified Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
 import qualified Zmq
+import qualified Zmq.ConcurrentPublisher as Cpub
 import qualified Zmq.Publisher as Pub
 import qualified Zmq.Subscriber as Sub
 import qualified Zmq.XPublisher as Xpub
@@ -28,7 +30,8 @@ import qualified Zmq.XSubscriber as Xsub
 
 main :: IO ()
 main =
-  Zmq.main Zmq.defaultOptions ( defaultMain ( testGroup "tests" tests ) )
+  Zmq.main Zmq.defaultOptions do
+    defaultMain ( testGroup "tests" tests )
 
 tests :: [ TestTree ]
 tests =
@@ -46,44 +49,33 @@ tests =
       Pub.send pub message
       Sub.recv sub >>= ( === message )
 
-  , test "Pubsub multi-threaded" do
-      pubVar <- newEmptyMVar
-      doneVar <- newEmptyMVar
+    -- Publish M messages to a socket from each of N threads. Ensure that the
+    -- subscriber receives N*M.
+  , test "Concurrent publisher" do
       subscribedVar <- newEmptyMVar
 
-      let message1 = "a" :| []
-      let message2 = "b" :| []
-      let message3 = "c" :| []
+      endpoint <- randomTcp
 
-      endpoint <- Gen.sample genInproc
+      pub <- openCpub
+      bindCpub pub endpoint
 
-      ( void . liftIO . forkOS ) do
-        Just pub <- Pub.open
-        Right () <- Pub.bind pub endpoint
-        putMVar pubVar pub
-        readMVar subscribedVar
-        Pub.send pub message1
-        takeMVar doneVar
-
-      ( void . liftIO . forkOS ) do
-        pub <- readMVar pubVar
-        readMVar subscribedVar
-        Pub.send pub message2
+      let n = 10
+      let m = 200
+      replicateM_ n do
+        ( liftIO . forkOS ) do
+          readMVar subscribedVar
+          replicateM_ m ( Cpub.send pub ( "" :| [] ) )
 
       sub <- openSub
       connectSub sub endpoint
       Sub.subscribe sub ""
+      threadDelay 1_000_000 -- annoying...
       putMVar subscribedVar ()
-
-      pub <- readMVar pubVar
-      Pub.send pub message3
-
-      messages <- liftIO ( timeout 1_000_000 ( replicateM 3 ( Sub.recv sub ) ) )
-      fmap sort messages === Just [ message1, message2, message3 ]
-      putMVar doneVar ()
+      matches _Just () =<<
+        liftIO ( timeout 1_000_000 ( replicateM_ ( n * m ) ( Sub.recv sub ) ) )
 
   , test "XPublisher recv subscription" do
-      endpoint <- Gen.sample genInproc
+      endpoint <- randomInproc
       xpub <- openXpub
       sub <- openSub
       bindXpub xpub endpoint
@@ -93,7 +85,7 @@ tests =
       message === Zmq.Subscribe "hi"
 
   , test "XSubscriber send subscription" do
-      endpoint <- Gen.sample genInproc
+      endpoint <- randomInproc
       pub <- openPub
       xsub <- openXsub
       bindPub pub endpoint
@@ -107,7 +99,7 @@ tests =
 
 openPubSub :: ( MonadIO m, MonadTest m ) => m ( Zmq.Publisher, Zmq.Subscriber )
 openPubSub = do
-  endpoint <- Gen.sample genInproc
+  endpoint <- randomInproc
   pub <- openPub
   sub <- openSub
   bindPub pub endpoint
@@ -115,6 +107,10 @@ openPubSub = do
   pure ( pub, sub )
 
 --------------------------------------------------------------------------------
+
+openCpub :: ( MonadIO m, MonadTest m ) => m Zmq.ConcurrentPublisher
+openCpub =
+  matches _Just () =<< Cpub.open
 
 openPub :: ( MonadIO m, MonadTest m ) => m Zmq.Publisher
 openPub =
@@ -131,6 +127,14 @@ openXpub =
 openXsub :: ( MonadIO m, MonadTest m ) => m Zmq.XSubscriber
 openXsub =
   matches _Just () =<< Xsub.open
+
+bindCpub
+  :: ( MonadIO m, MonadTest m )
+  => Zmq.ConcurrentPublisher
+  -> Zmq.Endpoint transport
+  -> m ()
+bindCpub pub endpoint =
+  matches _Right endpoint =<< Cpub.bind pub endpoint
 
 bindPub
   :: ( MonadIO m, MonadTest m )
@@ -167,12 +171,29 @@ connectXsub sub endpoint =
 
 --------------------------------------------------------------------------------
 
+randomInproc
+  :: MonadIO m
+  => m ( Zmq.Endpoint 'Zmq.TransportInproc )
+randomInproc =
+  Gen.sample genInproc
+
+randomTcp
+  :: MonadIO m
+  => m ( Zmq.Endpoint 'Zmq.TransportTcp )
+randomTcp =
+  Gen.sample genTcp
+
 genInproc :: Gen ( Zmq.Endpoint 'Zmq.TransportInproc )
 genInproc = do
-  name <- Gen.text (Range.linear 1 255) Gen.unicode
+  name <- Gen.text ( Range.linear 1 255 ) Gen.unicode
   case Zmq.inproc name of
     Nothing -> error ( "bad inproc generator: " ++ show name )
     Just endpoint -> pure endpoint
+
+genTcp :: Gen ( Zmq.Endpoint 'Zmq.TransportTcp )
+genTcp = do
+  port <- Gen.prune ( Gen.int ( Range.constant 49152 65535 ) )
+  pure ( Zmq.Tcp ( "127.0.0.1:" <> Text.pack ( show port ) ) )
 
 
 --------------------------------------------------------------------------------

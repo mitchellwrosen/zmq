@@ -29,8 +29,8 @@ import qualified Zmq.FFI as FFI
 
 
 newtype Subscriber
-  = Subscriber { unSubscriber :: ForeignPtr FFI.Socket }
-  deriving stock ( Eq, Data, Ord, Show )
+  = Subscriber ( ForeignPtr FFI.Socket )
+  deriving newtype ( Eq, Ord, Show )
 
 open
   :: MonadIO m
@@ -50,8 +50,9 @@ bind
   => Subscriber
   -> Endpoint transport
   -> m ( Either API.BindError () )
-bind subscriber endpoint =
-  liftIO ( coerce API.bind subscriber endpoint )
+bind subscriber endpoint = liftIO do
+  withForeignPtr ( coerce subscriber ) \socket ->
+    API.bind socket endpoint
 
 unbind
   :: MonadIO m

@@ -25,14 +25,14 @@ type SendError
 nonBlockingSend
   :: Ptr FFI.Socket
   -> NonEmpty ByteString
-  -> IO ( Either Errno () )
+  -> IO ( Either CInt () )
 nonBlockingSend socket =
   nonBlockingSend_ socket . toList
 
 nonBlockingSend_
   :: Ptr FFI.Socket
   -> [ ByteString ] -- Invariant: non-empty
-  -> IO ( Either Errno () )
+  -> IO ( Either CInt () )
 nonBlockingSend_ socket =
   fix \loop -> \case
     [ message ] ->
@@ -50,10 +50,10 @@ nonBlockingSend__
   :: Ptr FFI.Socket
   -> ByteString
   -> CInt
-  -> IO ( Either Errno () )
+  -> IO ( Either CInt () )
 nonBlockingSend__ socket message flags =
   ByteString.unsafeUseAsCStringLen message \( ptr, fromIntegral -> len ) ->
-    fix \again -> do
+    fix \again ->
       FFI.zmq_send socket ptr len ( FFI.zMQ_DONTWAIT .|. flags ) >>= \case
         -1 ->
           FFI.zmq_errno >>= \case

@@ -32,50 +32,50 @@ instance Storable Frame where
       @( Ptr ( Ptr CChar ) -> Ptr CChar -> IO () )
       #{ poke zmq_msg_t, _ }
 
-eADDRINUSE      :: Errno
-eADDRNOTAVAIL   :: Errno
-eAFNOSUPPORT    :: Errno
-eCONNABORTED    :: Errno
-eCONNREFUSED    :: Errno
-eCONNRESET      :: Errno
-eFSM            :: Errno
-eHOSTUNREACH    :: Errno
-eINPROGRESS     :: Errno
-eMSGSIZE        :: Errno
-eMTHREAD        :: Errno
-eNETDOWN        :: Errno
-eNETRESET       :: Errno
-eNETUNREACH     :: Errno
-eNOBUFS         :: Errno
-eNOCOMPATPROTO  :: Errno
-eNOTCONN        :: Errno
-eNOTSOCK        :: Errno
-eNOTSUP         :: Errno
-ePROTONOSUPPORT :: Errno
-eTERM           :: Errno
-eTIMEDOUT       :: Errno
-eADDRINUSE      = Errno ( #const EADDRINUSE )
-eADDRNOTAVAIL   = Errno ( #const EADDRNOTAVAIL )
-eAFNOSUPPORT    = Errno ( #const EAFNOSUPPORT )
-eCONNABORTED    = Errno ( #const ECONNABORTED )
-eCONNREFUSED    = Errno ( #const ECONNREFUSED )
-eCONNRESET      = Errno ( #const ECONNRESET )
-eFSM            = Errno ( #const EFSM )
-eHOSTUNREACH    = Errno ( #const EHOSTUNREACH )
-eINPROGRESS     = Errno ( #const EINPROGRESS )
-eMSGSIZE        = Errno ( #const EMSGSIZE )
-eMTHREAD        = Errno ( #const EMTHREAD )
-eNETDOWN        = Errno ( #const ENETDOWN )
-eNETRESET       = Errno ( #const ENETRESET )
-eNETUNREACH     = Errno ( #const ENETUNREACH )
-eNOBUFS         = Errno ( #const ENOBUFS )
-eNOCOMPATPROTO  = Errno ( #const ENOCOMPATPROTO )
-eNOTCONN        = Errno ( #const ENOTCONN )
-eNOTSOCK        = Errno ( #const ENOTSOCK )
-eNOTSUP         = Errno ( #const ENOTSUP )
-ePROTONOSUPPORT = Errno ( #const EPROTONOSUPPORT )
-eTERM           = Errno ( #const ETERM )
-eTIMEDOUT       = Errno ( #const ETIMEDOUT )
+eADDRINUSE      :: CInt
+eADDRNOTAVAIL   :: CInt
+eAFNOSUPPORT    :: CInt
+eCONNABORTED    :: CInt
+eCONNREFUSED    :: CInt
+eCONNRESET      :: CInt
+eFSM            :: CInt
+eHOSTUNREACH    :: CInt
+eINPROGRESS     :: CInt
+eMSGSIZE        :: CInt
+eMTHREAD        :: CInt
+eNETDOWN        :: CInt
+eNETRESET       :: CInt
+eNETUNREACH     :: CInt
+eNOBUFS         :: CInt
+eNOCOMPATPROTO  :: CInt
+eNOTCONN        :: CInt
+eNOTSOCK        :: CInt
+eNOTSUP         :: CInt
+ePROTONOSUPPORT :: CInt
+eTERM           :: CInt
+eTIMEDOUT       :: CInt
+eADDRINUSE      = #const EADDRINUSE
+eADDRNOTAVAIL   = #const EADDRNOTAVAIL
+eAFNOSUPPORT    = #const EAFNOSUPPORT
+eCONNABORTED    = #const ECONNABORTED
+eCONNREFUSED    = #const ECONNREFUSED
+eCONNRESET      = #const ECONNRESET
+eFSM            = #const EFSM
+eHOSTUNREACH    = #const EHOSTUNREACH
+eINPROGRESS     = #const EINPROGRESS
+eMSGSIZE        = #const EMSGSIZE
+eMTHREAD        = #const EMTHREAD
+eNETDOWN        = #const ENETDOWN
+eNETRESET       = #const ENETRESET
+eNETUNREACH     = #const ENETUNREACH
+eNOBUFS         = #const ENOBUFS
+eNOCOMPATPROTO  = #const ENOCOMPATPROTO
+eNOTCONN        = #const ENOTCONN
+eNOTSOCK        = #const ENOTSOCK
+eNOTSUP         = #const ENOTSUP
+ePROTONOSUPPORT = #const EPROTONOSUPPORT
+eTERM           = #const ETERM
+eTIMEDOUT       = #const ETIMEDOUT
 
 
 zMQ_DONTWAIT         :: CInt
@@ -137,7 +137,7 @@ foreign import ccall safe "zmq_disconnect"
   zmq_disconnect :: Ptr Socket -> CString -> IO CInt
 
 foreign import ccall unsafe "zmq_errno"
-  zmq_errno :: IO Errno
+  zmq_errno :: IO CInt
 
 foreign import ccall unsafe "zmq_getsockopt"
   zmq_getsockopt :: Ptr Socket -> CInt -> Ptr a -> Ptr CSize -> IO CInt

@@ -1,24 +1,59 @@
 module Zmq.ManagedSocket
   ( ManagedSocket
+  , bind
   , open
   , send
   ) where
 
+import Data.Function (on)
+import Data.Ord (comparing)
+
+import Zmq.Endpoint
 import Zmq.Prelude
+import qualified Zmq.API.Bind as API
 import qualified Zmq.API.Send as API
 import qualified Zmq.API.Socket as API
 import qualified Zmq.FFI as FFI
+
+-- TODO ManagedSocket close
+
+-- TODO ManagedSocket recv
 
 
 data ManagedSocket
   = ManagedSocket
   { canary :: IORef ()
   , socket :: Ptr FFI.Socket
-  , send :: NonEmpty ByteString -> IO ( STM ( IO ( Either Errno () ) ) )
+
+  , bind
+      :: forall transport.
+         Endpoint transport
+      -> IO ( Either API.BindError () )
+
+  , send
+      :: NonEmpty ByteString
+      -> IO ( STM ( IO ( Either CInt () ) ) )
   }
 
-data Request
-  = RequestSend ( NonEmpty ByteString ) ( MVar ( Either Errno () ) )
+instance Eq ManagedSocket where
+  (==) = (==) `on` socket
+
+instance Ord ManagedSocket where
+  compare = comparing socket
+
+instance Show ManagedSocket where
+  show = show . socket
+
+data Request where
+  RequestBind
+    :: Endpoint transport
+    -> MVar ( Either API.BindError () )
+    -> Request
+
+  RequestSend
+    :: NonEmpty ByteString
+    -> MVar ( Either CInt () )
+    -> Request
 
 open
   :: Ptr FFI.Context
@@ -26,50 +61,63 @@ open
   -> IO ( Maybe ManagedSocket )
 open context socketType =
   mask_ do
-    API.socket' context socketType >>= \case
+    openVar <- newEmptyMVar
+    threadId <- spawnManagerThread context socketType openVar
+
+    readMVar openVar >>= \case
       Nothing ->
         pure Nothing
 
-      Just socket -> do
-        Just <$> open_ socket
+      Just ( socket, requestQueue ) -> do
+        let
+          bind
+            :: Endpoint transport
+            -> IO ( Either API.BindError () )
+          bind endpoint = do
+            responseVar <- newEmptyMVar
+            atomically do
+              writeTBQueue requestQueue ( RequestBind endpoint responseVar )
+            readMVar responseVar
 
-open_
-  :: Ptr FFI.Socket
-  -> IO ManagedSocket
-open_ socket = do
-  requestQueue :: TBQueue Request <-
-    newTBQueueIO 1024 -- TODO better magic num based on HWM?
+        let
+          send
+            :: NonEmpty ByteString
+            -> IO ( STM ( IO ( Either CInt () ) ) )
+          send message = do
+            responseVar <- newEmptyMVar
+            pure do
+              writeTBQueue requestQueue ( RequestSend message responseVar )
+              pure ( takeMVar responseVar )
 
-  threadId :: ThreadId <-
-    spawnWorkerThread
-      requestQueue
-      ( API.nonBlockingSend socket )
+        canary <- newIORef ()
+        ( void . mkWeakIORef canary ) do
+          FFI.zmq_close socket
+          killThread threadId
 
-  let
-    send
-      :: NonEmpty ByteString
-      -> IO ( STM ( IO ( Either Errno () ) ) )
-    send message = do
-      responseVar <- newEmptyMVar
-      pure do
-        writeTBQueue requestQueue ( RequestSend message responseVar )
-        pure ( takeMVar responseVar )
+        pure ( Just ManagedSocket{..} )
 
-  canary <- newIORef ()
-  ( void . mkWeakIORef canary ) do
-    FFI.zmq_close socket
-    killThread threadId
-
-  pure ManagedSocket{..}
-
-spawnWorkerThread
-  :: TBQueue Request
-  -> ( NonEmpty ByteString -> IO ( Either Errno () ) )
+spawnManagerThread
+  :: Ptr FFI.Context
+  -> CInt
+  -> MVar ( Maybe ( Ptr FFI.Socket, TBQueue Request ) )
   -> IO ThreadId
-spawnWorkerThread requestQueue send_ =
+spawnManagerThread context socketType openVar =
   forkIOWithUnmask \unmask ->
     unmask do
-      forever do
-        atomically ( readTBQueue requestQueue ) >>= \case
-          RequestSend message responseVar ->
-            send_ message >>= putMVar responseVar
+      API.socket' context socketType >>= \case
+        Nothing ->
+          putMVar openVar Nothing
+
+        Just sock -> do
+          requestQueue :: TBQueue Request <-
+            newTBQueueIO 1024 -- TODO better magic num based on HWM?
+
+          putMVar openVar ( Just ( sock, requestQueue ) )
+
+          forever do
+            atomically ( readTBQueue requestQueue ) >>= \case
+              RequestBind endpoint responseVar ->
+                API.bind sock endpoint >>= putMVar responseVar
+
+              RequestSend message responseVar ->
+                API.nonBlockingSend sock message >>= putMVar responseVar

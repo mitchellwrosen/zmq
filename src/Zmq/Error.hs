@@ -56,45 +56,45 @@ instance Show ( Error function ) where
     -- EPROTONOSUPPORT -> "EPROTONOSUPPORT"
 
 
-pattern EADDRINUSE_ :: Errno
+pattern EADDRINUSE_ :: CInt
 pattern EADDRINUSE_ <- ((== Zmq.FFI.eADDRINUSE) -> True)
 
-pattern EADDRNOTAVAIL_ :: Errno
+pattern EADDRNOTAVAIL_ :: CInt
 pattern EADDRNOTAVAIL_ <- ((== Zmq.FFI.eADDRNOTAVAIL) -> True)
 
-pattern EAGAIN_ :: Errno
-pattern EAGAIN_ <- ((== eAGAIN) -> True)
+pattern EAGAIN_ :: CInt
+pattern EAGAIN_ <- ((== coerce eAGAIN) -> True)
 
-pattern EHOSTUNREACH_ :: Errno
+pattern EHOSTUNREACH_ :: CInt
 pattern EHOSTUNREACH_ <- ((== Zmq.FFI.eHOSTUNREACH) -> True)
 
-pattern EINTR_ :: Errno
-pattern EINTR_ <- ((== eINTR) -> True)
+pattern EINTR_ :: CInt
+pattern EINTR_ <- ((== coerce eINTR) -> True)
 
-pattern EINVAL_ :: Errno
-pattern EINVAL_ <- ((== eINVAL) -> True) where
-  EINVAL_ = eINVAL
+pattern EINVAL_ :: CInt
+pattern EINVAL_ <- ((== coerce eINVAL) -> True) where
+  EINVAL_ = coerce eINVAL
 
-pattern EFAULT_ :: Errno
-pattern EFAULT_ <- ((== eFAULT) -> True)
+pattern EFAULT_ :: CInt
+pattern EFAULT_ <- ((== coerce eFAULT) -> True)
 
-pattern EMFILE_ :: Errno
-pattern EMFILE_ <- ((== eMFILE) -> True)
+pattern EMFILE_ :: CInt
+pattern EMFILE_ <- ((== coerce eMFILE) -> True)
 
-pattern EMTHREAD_ :: Errno
+pattern EMTHREAD_ :: CInt
 pattern EMTHREAD_ <- ((== Zmq.FFI.eMTHREAD) -> True)
 
-pattern ENODEV_ :: Errno
-pattern ENODEV_ <- ((== eNODEV) -> True)
+pattern ENODEV_ :: CInt
+pattern ENODEV_ <- ((== coerce eNODEV) -> True)
 
-pattern ENOENT_ :: Errno
-pattern ENOENT_ <- ((== eNOENT) -> True)
+pattern ENOENT_ :: CInt
+pattern ENOENT_ <- ((== coerce eNOENT) -> True)
 
-pattern ENOTSOCK_ :: Errno
+pattern ENOTSOCK_ :: CInt
 pattern ENOTSOCK_ <- ((== Zmq.FFI.eNOTSOCK) -> True) where
   ENOTSOCK_ = Zmq.FFI.eNOTSOCK
 
-pattern ETERM_ :: Errno
+pattern ETERM_ :: CInt
 pattern ETERM_ <- ((== Zmq.FFI.eTERM) -> True)
 
 
@@ -144,8 +144,8 @@ bugIO :: MonadIO m => String -> m a
 bugIO =
   liftIO . evaluate . bug
 
-bugUnexpectedErrno :: MonadIO m => String -> Errno -> m a
-bugUnexpectedErrno func ( Errno n ) =
+bugUnexpectedErrno :: MonadIO m => String -> CInt -> m a
+bugUnexpectedErrno func n =
   liftIO ( fail ( func ++ ": unexpected errno " ++ show n ) )
 
 errInvalidContext :: MonadIO m => m a

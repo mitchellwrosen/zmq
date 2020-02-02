@@ -30,8 +30,8 @@ import qualified Zmq.FFI as FFI
 
 
 newtype XPublisher
-  = XPublisher { unXPublisher :: ForeignPtr FFI.Socket }
-  deriving stock ( Eq, Data, Ord, Show )
+  = XPublisher ( ForeignPtr FFI.Socket )
+  deriving newtype ( Eq, Ord, Show )
 
 open
   :: MonadIO m
@@ -51,8 +51,9 @@ bind
   => XPublisher
   -> Endpoint transport
   -> m ( Either API.BindError () )
-bind publisher endpoint =
-  liftIO ( coerce API.bind publisher endpoint )
+bind publisher endpoint = liftIO do
+  withForeignPtr ( coerce publisher ) \socket ->
+    API.bind socket endpoint
 
 unbind
   :: MonadIO m

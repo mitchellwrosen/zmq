@@ -24,26 +24,25 @@ type BindError
 
 -- | <http://api.zeromq.org/4-3:zmq-bind>
 bind
-  :: ForeignPtr FFI.Socket
+  :: Ptr FFI.Socket
   -> Endpoint transport
   -> IO ( Either BindError () )
 bind socket endpoint =
-  withForeignPtr socket \socket_ptr ->
-    withEndpoint endpoint \c_endpoint ->
-      FFI.zmq_bind socket_ptr c_endpoint >>= \case
-        0 ->
-          pure ( Right () )
+  withEndpoint endpoint \c_endpoint ->
+    FFI.zmq_bind socket c_endpoint >>= \case
+      0 ->
+        pure ( Right () )
 
-        _ ->
-          FFI.zmq_errno >>= \case
-            EADDRINUSE_    -> pure ( Left EADDRINUSE )
-            EADDRNOTAVAIL_ -> pure ( Left EADDRNOTAVAIL )
-            EINVAL_        -> pure ( Left EINVAL )
-            EMTHREAD_      -> pure ( Left EMTHREAD )
-            ENODEV_        -> pure ( Left ENODEV )
+      _ ->
+        FFI.zmq_errno >>= \case
+          EADDRINUSE_    -> pure ( Left EADDRINUSE )
+          EADDRNOTAVAIL_ -> pure ( Left EADDRNOTAVAIL )
+          EINVAL_        -> pure ( Left EINVAL )
+          EMTHREAD_      -> pure ( Left EMTHREAD )
+          ENODEV_        -> pure ( Left ENODEV )
 
-            ETERM_ ->
-              errInvalidContext
+          ETERM_ ->
+            errInvalidContext
 
-            errno ->
-              bugUnexpectedErrno "zmq_bind" errno
+          errno ->
+            bugUnexpectedErrno "zmq_bind" errno

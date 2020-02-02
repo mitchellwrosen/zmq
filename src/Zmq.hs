@@ -8,6 +8,8 @@ module Zmq
   , XPublisher
   , XSubscriber
 
+  , ConcurrentPublisher
+
   , BindError
   , ConnectError
   , SendError
@@ -39,6 +41,7 @@ import Zmq.Endpoint (Endpoint(..), inproc)
 import Zmq.Error
 import Zmq.Internal (CompatibleTransport, Transport(..))
 import Zmq.Prelude
+import Zmq.ConcurrentPublisher (ConcurrentPublisher)
 import Zmq.Publisher (Publisher)
 import Zmq.Subscriber (Subscriber)
 import Zmq.SubscriptionMessage (SubscriptionMessage(..))
