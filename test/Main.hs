@@ -35,8 +35,7 @@ main =
 
 tests :: [ TestTree ]
 tests =
-  [ test "Publisher open" do
-      void openPub
+  [ testGroup "Publisher tests" publisherTests
 
   , test "Subscriber open" do
       void openSub
@@ -54,7 +53,7 @@ tests =
   , test "Concurrent publisher" do
       subscribedVar <- newEmptyMVar
 
-      endpoint <- randomTcp
+      endpoint <- randomInproc
 
       pub <- openCpub
       bindCpub pub endpoint
@@ -72,7 +71,8 @@ tests =
       threadDelay 1_000_000 -- annoying...
       putMVar subscribedVar ()
       matches _Just () =<<
-        liftIO ( timeout 1_000_000 ( replicateM_ ( n * m ) ( Sub.recv sub ) ) )
+        liftIO ( timeout 5_000_000 ( replicateM_ ( n * m ) ( Sub.recv sub ) ) )
+      Cpub.close pub
 
   , test "XPublisher recv subscription" do
       endpoint <- randomInproc
@@ -96,8 +96,65 @@ tests =
       message === "hi" :| []
   ]
 
+publisherTests :: [ TestTree ]
+publisherTests =
+  [ test "Publisher open" do
+      void openPub
 
-openPubSub :: ( MonadIO m, MonadTest m ) => m ( Zmq.Publisher, Zmq.Subscriber )
+  , test "Publisher close" do
+      pub <- openPub
+      Pub.close pub
+
+  , test "Publisher bind" do
+      pub <- openPub
+      endpoint <- randomInproc
+      bindPub pub endpoint
+
+  , test "Publisher unbind" do
+      pub <- openPub
+      endpoint <- randomInproc
+      bindPub pub endpoint
+      Pub.unbind pub endpoint
+
+  , test "Publisher unbind when not bound" do
+      pub <- openPub
+      endpoint <- randomInproc
+      Pub.unbind pub endpoint
+
+  , test "Publisher unbind bogus" do
+      pub <- openPub
+      Pub.unbind pub ( Zmq.Tcp "" )
+
+  , test "Publisher connect" do
+      pub <- openPub
+      endpoint <- randomInproc
+      connectPub pub endpoint
+
+  , test "Publisher disconnect" do
+      pub <- openPub
+      endpoint <- randomInproc
+      connectPub pub endpoint
+      Pub.disconnect pub endpoint
+
+  , test "Publisher disconnect when not connected" do
+      pub <- openPub
+      endpoint <- randomInproc
+      Pub.disconnect pub endpoint
+
+  , test "Publisher disconnect bogus" do
+      pub <- openPub
+      Pub.disconnect pub ( Zmq.Tcp "" )
+
+  , test "Publisher send" do
+      pub <- openPub
+      Pub.send pub ( "" :| [] )
+  ]
+
+--------------------------------------------------------------------------------
+
+openPubSub
+  :: ( MonadIO m, MonadTest m )
+  => m ( Zmq.Publisher, Zmq.Subscriber )
 openPubSub = do
   endpoint <- randomInproc
   pub <- openPub
@@ -152,6 +209,14 @@ bindXpub
 bindXpub pub endpoint =
   matches _Right endpoint =<< Xpub.bind pub endpoint
 
+connectPub
+  :: ( MonadIO m, MonadTest m )
+  => Zmq.Publisher
+  -> Zmq.Endpoint transport
+  -> m ()
+connectPub pub endpoint =
+  matches _Right endpoint =<< Pub.connect pub endpoint
+
 connectSub
   :: ( MonadIO m, MonadTest m )
   => Zmq.Subscriber
@@ -175,7 +240,7 @@ randomInproc
   :: MonadIO m
   => m ( Zmq.Endpoint 'Zmq.TransportInproc )
 randomInproc =
-  Gen.sample genInproc
+  Gen.sample ( Gen.prune genInproc )
 
 randomTcp
   :: MonadIO m
@@ -185,7 +250,7 @@ randomTcp =
 
 genInproc :: Gen ( Zmq.Endpoint 'Zmq.TransportInproc )
 genInproc = do
-  name <- Gen.text ( Range.linear 1 255 ) Gen.unicode
+  name <- Gen.text ( Range.linear 100 200 ) Gen.unicode
   case Zmq.inproc name of
     Nothing -> error ( "bad inproc generator: " ++ show name )
     Just endpoint -> pure endpoint

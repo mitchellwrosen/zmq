@@ -1,7 +1,11 @@
+{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE UnboxedTuples #-}
+
 module Zmq.ConcurrentPublisher
   ( ConcurrentPublisher
 
   , open
+  , close
 
   , bind
 
@@ -10,16 +14,16 @@ module Zmq.ConcurrentPublisher
 
 import Zmq.Context (contextVar)
 import Zmq.Endpoint
-import Zmq.Exception
 import Zmq.ManagedSocket (ManagedSocket)
 import Zmq.Prelude
 import qualified Zmq.API.Bind as API
+import qualified Zmq.API.Send as API
 import qualified Zmq.FFI as FFI
 import qualified Zmq.ManagedSocket as ManagedSocket
 
 
 newtype ConcurrentPublisher
-  = ConcurrentPublisher ManagedSocket
+  = ConcurrentPublisher { unConcurrentPublisher :: ManagedSocket () }
   deriving newtype ( Eq, Ord, Show )
 
 open
@@ -27,7 +31,14 @@ open
   => m ( Maybe ConcurrentPublisher )
 open = liftIO do
   context <- readMVar contextVar
-  coerce ( ManagedSocket.open context FFI.zMQ_PUB )
+  coerce ( ManagedSocket.open context FFI.zMQ_PUB API.sendThatNeverBlocks )
+
+close
+  :: MonadIO m
+  => ConcurrentPublisher
+  -> m ()
+close publisher =
+  liftIO ( ManagedSocket.close ( unConcurrentPublisher publisher ) )
 
 bind
   :: MonadIO m
@@ -35,7 +46,7 @@ bind
   -> Endpoint transport
   -> m ( Either API.BindError () )
 bind publisher endpoint =
-  liftIO ( coerce ManagedSocket.bind publisher endpoint )
+  liftIO ( ManagedSocket.bind ( unConcurrentPublisher publisher ) endpoint )
 
 send
   :: MonadIO m
@@ -43,16 +54,11 @@ send
   -> NonEmpty ByteString
   -> m ()
 send publisher message = liftIO do
-  action :: STM ( IO ( Either CInt () ) ) <-
-    coerce ManagedSocket.send publisher message
+  action :: STM ( IO () ) <-
+    ManagedSocket.send ( unConcurrentPublisher publisher ) message
 
   -- TODO ConcurrentPublisher don't block on send
-  await :: IO ( Either CInt () ) <-
+  await :: IO () <-
     atomically action
 
-  await >>= \case
-    Left errno ->
-      unexpectedErrno "zmq_send" errno
-
-    Right () ->
-      pure ()
+  await

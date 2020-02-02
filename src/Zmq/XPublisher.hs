@@ -15,7 +15,6 @@ module Zmq.XPublisher
   ) where
 
 import Zmq.Endpoint
-import Zmq.Exception
 import Zmq.Prelude
 import Zmq.SubscriptionMessage
 import qualified Zmq.API.Bind as API
@@ -86,12 +85,7 @@ send
   -> m ()
 send publisher message = liftIO do
   withForeignPtr ( coerce publisher ) \socket ->
-    API.nonBlockingSend socket message >>= \case
-      Left errno ->
-        unexpectedErrno "zmq_send" errno
-
-      Right () ->
-        pure ()
+    API.sendThatNeverBlocks socket message
 
 recv
   :: MonadIO m

@@ -53,6 +53,7 @@ library
   build-depends:
     bytestring,
     say,
+    slave-thread,
     stm,
     text,
 

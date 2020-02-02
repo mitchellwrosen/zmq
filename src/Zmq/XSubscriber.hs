@@ -19,7 +19,6 @@ module Zmq.XSubscriber
 import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Zmq.Endpoint
-import Zmq.Exception
 import Zmq.Prelude
 import Zmq.SubscriptionMessage (SubscriptionMessage(..))
 import qualified Zmq.API.Bind as API
@@ -107,12 +106,8 @@ send
   -> m ()
 send subscriber ( SubscriptionMessage.serialize -> message ) = liftIO do
   withForeignPtr ( coerce subscriber ) \socket ->
-    API.nonBlockingSend socket ( message :| [] ) >>= \case
-      Left errno ->
-        unexpectedErrno "zmq_send" errno
-
-      Right () ->
-        pure ()
+    -- TODO test that Sub sends don't block
+    API.sendThatNeverBlocks socket ( message :| [] )
 
 recv
   :: MonadIO m
