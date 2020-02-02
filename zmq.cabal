@@ -35,6 +35,15 @@ common component
   ghc-options:
     -Wall
 
+common executable-component
+  import:
+    component
+
+  ghc-options:
+    -O
+    -threaded
+    -with-rtsopts=-N
+
 library
   import:
     component
@@ -85,9 +94,23 @@ library
   pkgconfig-depends:
     libzmq == 4.3.2
 
+executable zmq
+  import:
+    executable-component
+
+  build-depends:
+    text,
+    zmq,
+
+  hs-source-dirs:
+    app
+
+  main-is:
+    Main.hs
+
 test-suite tests
   import:
-    component
+    executable-component
 
   build-depends:
     hedgehog,
@@ -97,11 +120,6 @@ test-suite tests
     tasty-hedgehog,
     unliftio,
     zmq,
-
-  ghc-options:
-    -O
-    -threaded
-    -with-rtsopts=-N
 
   hs-source-dirs:
     test
