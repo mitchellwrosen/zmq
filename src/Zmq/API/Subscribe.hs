@@ -4,7 +4,7 @@ module Zmq.API.Subscribe
 
 import Zmq.API.SetSockOpt
 import Zmq.Error
-import Zmq.Exception (exception)
+import Zmq.Exception
 import Zmq.Prelude
 import qualified Zmq.FFI as FFI
 
@@ -29,4 +29,4 @@ subscribe socket prefix =
             if errno == ETERM_ then
               exception "zmq_setsockopt" errno
             else
-              bugUnexpectedErrno "zmq_setsockopt" errno
+              unexpectedErrno "zmq_setsockopt" errno

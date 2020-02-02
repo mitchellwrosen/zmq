@@ -9,7 +9,7 @@ import Foreign.Storable (peek, poke, sizeOf)
 import System.Posix.Types (Fd(..))
 
 import Zmq.Error
-import Zmq.Exception (exception)
+import Zmq.Exception
 import Zmq.Prelude
 import qualified Zmq.FFI as FFI
 
@@ -17,7 +17,7 @@ import qualified Zmq.FFI as FFI
 getIntSockOpt
   :: Ptr FFI.Socket
   -> FFI.Sockopt
-  -> IO ( Either () CInt )
+  -> IO CInt
 getIntSockOpt socket option =
   alloca \int_ptr ->
     alloca \size_ptr -> do
@@ -26,38 +26,27 @@ getIntSockOpt socket option =
       fix \again ->
         FFI.zmq_getsockopt socket option int_ptr size_ptr >>= \case
           0 ->
-            Right <$> peek int_ptr
+            peek int_ptr
 
           _ ->
             FFI.zmq_errno >>= \case
-              EINTR_ -> again
-              EINVAL_ -> pure ( Left () )
+              EINTR_ ->
+                again
+
               errno ->
-                if errno == ETERM_ then
+                if errno == EINVAL_ || errno == ETERM_ then
                   exception "zmq_getsockopt" errno
                 else
-                  bugUnexpectedErrno "zmq_getsockopt" errno
+                  unexpectedErrno "zmq_getsockopt" errno
 
 getSocketEventState
   :: Ptr FFI.Socket
   -> IO CInt
 getSocketEventState socket =
-  getIntSockOpt socket FFI.zMQ_EVENTS >>= \case
-    Left () ->
-      -- Don't see how ZMQ_FD could return EINVAL
-      bugUnexpectedErrno "zmq_getsockopt ZMQ_EVENTS" EINVAL_
-
-    Right n ->
-      pure n
+  getIntSockOpt socket FFI.zMQ_EVENTS
 
 getSocketFd
   :: Ptr FFI.Socket
   -> IO Fd
 getSocketFd socket =
-  getIntSockOpt socket FFI.zMQ_FD >>= \case
-    -- IsThreadSafe and using the right size buffers should prevent EINVAL
-    Left () ->
-      bugUnexpectedErrno "zmq_getsockopt ZMQ_FD" EINVAL_
-
-    Right fd ->
-      pure ( Fd fd )
+  Fd <$> getIntSockOpt socket FFI.zMQ_FD

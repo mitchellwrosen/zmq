@@ -7,7 +7,7 @@ import Foreign.Marshal.Alloc (alloca)
 import qualified Data.ByteString as ByteString
 
 import Zmq.Error
-import Zmq.Exception (exception)
+import Zmq.Exception
 import Zmq.Prelude
 import Zmq.Socket
 import qualified Zmq.FFI as FFI
@@ -37,7 +37,7 @@ nonThreadsafeRecv_ frame socket =
           -1 ->
             FFI.zmq_errno >>= \case
               EAGAIN_ -> do
-                waitUntilCanRecv socket False
+                nonThreadsafeWaitUntilCanRecv socket
                 again
 
               EINTR_ ->
@@ -58,7 +58,7 @@ nonThreadsafeRecv_ frame socket =
                 if errno == ETERM_ then
                   exception "zmq_msg_recv" errno
                 else
-                  bugUnexpectedErrno "zmq_msg_recv" errno
+                  unexpectedErrno "zmq_msg_recv" errno
 
           len -> do
             data_ptr <- FFI.zmq_msg_data frame

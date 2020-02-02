@@ -8,7 +8,7 @@ import Data.Bits ((.|.))
 import qualified Data.ByteString.Unsafe as ByteString
 
 import Zmq.Error
-import Zmq.Exception (exception)
+import Zmq.Exception
 import Zmq.Prelude
 import Zmq.Socket
 import qualified Zmq.FFI as FFI
@@ -85,7 +85,7 @@ nonThreadsafeSend socket message =
           -1 ->
             FFI.zmq_errno >>= \case
               EAGAIN_ -> do
-                waitUntilCanSend socket_ptr False
+                nonThreadsafeWaitUntilCanSend socket_ptr
                 again
 
               EHOSTUNREACH_ ->
@@ -113,7 +113,7 @@ nonThreadsafeSend socket message =
                 if errno == ETERM_ then
                   exception "zmq_send" errno
                 else
-                  bugUnexpectedErrno "zmq_send" errno
+                  unexpectedErrno "zmq_send" errno
 
 
           -- Ignore number of bytes sent; why is this interesting?

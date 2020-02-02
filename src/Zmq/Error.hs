@@ -19,9 +19,6 @@ module Zmq.Error
   , CanReturnEINVAL
   , CanReturnEMTHREAD
   , CanReturnENODEV
-  , bug
-  , bugIO
-  , bugUnexpectedErrno
   ) where
 
 import Foreign.C
@@ -135,16 +132,3 @@ type family CanReturnENODEV ( function :: Symbol ) :: Bool where
 
 -- type family CanReturnEPROTONOSUPPORT ( function :: Function ) :: Bool where
 --   CanReturnEPROTONOSUPPORT _ = 'False
-
-
-bug :: String -> a
-bug message =
-  error ( "bug: " ++ message )
-
-bugIO :: MonadIO m => String -> m a
-bugIO =
-  liftIO . evaluate . bug
-
-bugUnexpectedErrno :: MonadIO m => String -> CInt -> m a
-bugUnexpectedErrno func n =
-  liftIO ( fail ( func ++ ": unexpected errno " ++ show n ) )

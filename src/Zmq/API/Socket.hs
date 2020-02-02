@@ -5,7 +5,7 @@ module Zmq.API.Socket
 
 import Zmq.Context (contextVar)
 import Zmq.Error
-import Zmq.Exception (exception)
+import Zmq.Exception
 import Zmq.Prelude
 import qualified Zmq.FFI as FFI
 
@@ -32,7 +32,7 @@ socket socketType = do
               if errno == EFAULT_ || errno == ETERM_ then
                 exception "zmq_socket" errno
               else
-                bugUnexpectedErrno "zmq_socket" errno
+                unexpectedErrno "zmq_socket" errno
 
       else do
         foreignPtr :: ForeignPtr FFI.Socket <-
@@ -58,7 +58,7 @@ socket' context socketType = do
           if errno == EFAULT_ || errno == ETERM_ then
             exception "zmq_socket" errno
           else
-            bugUnexpectedErrno "zmq_socket" errno
+            unexpectedErrno "zmq_socket" errno
 
     else do
       pure ( Just ptr )

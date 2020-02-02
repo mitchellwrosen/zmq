@@ -19,7 +19,7 @@ module Zmq.XSubscriber
 import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Zmq.Endpoint
-import Zmq.Error
+import Zmq.Exception
 import Zmq.Prelude
 import Zmq.SubscriptionMessage (SubscriptionMessage(..))
 import qualified Zmq.API.Bind as API
@@ -109,7 +109,7 @@ send subscriber ( SubscriptionMessage.serialize -> message ) = liftIO do
   withForeignPtr ( coerce subscriber ) \socket ->
     API.nonBlockingSend socket ( message :| [] ) >>= \case
       Left errno ->
-        bugUnexpectedErrno "zmq_send" errno
+        unexpectedErrno "zmq_send" errno
 
       Right () ->
         pure ()

@@ -1,52 +1,45 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Zmq.Socket
-  ( waitUntilCanRecv
-  , waitUntilCanSend
+  ( nonThreadsafeWaitUntilCanRecv
+  , nonThreadsafeWaitUntilCanSend
   ) where
 
 import Data.Bits ((.&.))
 
 import Zmq.API.GetSockOpt (getSocketEventState, getSocketFd)
-import Zmq.Error
 import Zmq.Prelude
 import qualified Zmq.FFI as FFI
 
 
-waitUntilCanRecv
+nonThreadsafeWaitUntilCanRecv
   :: Ptr FFI.Socket
-  -> Bool
   -> IO ()
-waitUntilCanRecv =
-  waitUntilCan FFI.zMQ_POLLIN
+nonThreadsafeWaitUntilCanRecv =
+  nonThreadsafeWaitUntilCan FFI.zMQ_POLLIN
 
-waitUntilCanSend
+nonThreadsafeWaitUntilCanSend
   :: Ptr FFI.Socket
-  -> Bool
   -> IO ()
-waitUntilCanSend =
-  waitUntilCan FFI.zMQ_POLLOUT
+nonThreadsafeWaitUntilCanSend =
+  nonThreadsafeWaitUntilCan FFI.zMQ_POLLOUT
 
-waitUntilCan
+nonThreadsafeWaitUntilCan
   :: CInt
   -> Ptr FFI.Socket
-  -> Bool
   -> IO ()
-waitUntilCan events socket threadSafe =
-  if threadSafe then
-    bugIO "handling EAGAIN on thread-safe sockets is not implemented"
-  else do
-    fd <- getSocketFd socket
+nonThreadsafeWaitUntilCan events socket = do
+  fd <- getSocketFd socket
 
-    fix \again -> do
-      threadWaitRead fd -- "read" is not a typo
-      state <- getSocketEventState socket
-      -- http://api.zeromq.org/4-3:zmq-getsockopt
-      --
-      -- The combination of a file descriptor returned by
-      -- the ZMQ_FD option being ready for reading but no
-      -- actual events returned by a subsequent retrieval of
-      -- the ZMQ_EVENTS option is valid; applications should
-      -- simply ignore this case and restart their polling
-      -- operation/event loop.
-      unless ( state .&. events /= 0 ) again
+  fix \again -> do
+    threadWaitRead fd -- "read" is not a typo
+    state <- getSocketEventState socket
+    -- http://api.zeromq.org/4-3:zmq-getsockopt
+    --
+    -- The combination of a file descriptor returned by
+    -- the ZMQ_FD option being ready for reading but no
+    -- actual events returned by a subsequent retrieval of
+    -- the ZMQ_EVENTS option is valid; applications should
+    -- simply ignore this case and restart their polling
+    -- operation/event loop.
+    unless ( state .&. events /= 0 ) again

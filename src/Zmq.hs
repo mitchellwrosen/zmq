@@ -41,7 +41,7 @@ import Zmq.API.Send (SendError)
 import Zmq.Context (contextVar, setIoThreads, setMaxSockets)
 import Zmq.Endpoint (Endpoint(..), inproc)
 import Zmq.Error
-import Zmq.Exception (Exception(..))
+import Zmq.Exception (Exception(..), unexpectedErrno)
 import Zmq.Internal (CompatibleTransport, Transport(..))
 import Zmq.Prelude
 import Zmq.ConcurrentPublisher (ConcurrentPublisher)
@@ -100,4 +100,4 @@ main options action =
                 again
 
               errno ->
-                bugUnexpectedErrno "zmq_ctx_term" errno
+                unexpectedErrno "zmq_ctx_term" errno

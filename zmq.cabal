@@ -13,6 +13,7 @@ common component
     DataKinds
     DeriveAnyClass
     DerivingStrategies
+    DuplicateRecordFields
     FlexibleInstances
     GADTs
     GeneralizedNewtypeDeriving

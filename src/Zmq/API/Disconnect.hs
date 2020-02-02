@@ -4,7 +4,7 @@ module Zmq.API.Disconnect
 
 import Zmq.Endpoint
 import Zmq.Error
-import Zmq.Exception (exception)
+import Zmq.Exception
 import Zmq.Prelude
 import qualified Zmq.FFI as FFI
 
@@ -30,4 +30,4 @@ disconnect socket endpoint =
               if errno == ETERM_ then
                 exception "zmq_disconnect" errno
               else
-                bugUnexpectedErrno "zmq_disconnect" errno
+                unexpectedErrno "zmq_disconnect" errno

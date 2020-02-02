@@ -15,7 +15,7 @@ module Zmq.XPublisher
   ) where
 
 import Zmq.Endpoint
-import Zmq.Error
+import Zmq.Exception
 import Zmq.Prelude
 import Zmq.SubscriptionMessage
 import qualified Zmq.API.Bind as API
@@ -88,7 +88,7 @@ send publisher message = liftIO do
   withForeignPtr ( coerce publisher ) \socket ->
     API.nonBlockingSend socket message >>= \case
       Left errno ->
-        bugUnexpectedErrno "zmq_send" errno
+        unexpectedErrno "zmq_send" errno
 
       Right () ->
         pure ()

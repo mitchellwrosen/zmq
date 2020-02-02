@@ -4,7 +4,7 @@ module Zmq.API.Connect
   ) where
 
 import Zmq.Endpoint
-import Zmq.Exception (exception)
+import Zmq.Exception
 import Zmq.Error
 import Zmq.Prelude
 import qualified Zmq.FFI as FFI
@@ -40,4 +40,4 @@ connect socket endpoint =
               if errno == ETERM_ then
                 exception "zmq_connect" errno
               else
-                bugUnexpectedErrno "zmq_connect" errno
+                unexpectedErrno "zmq_connect" errno

@@ -10,7 +10,7 @@ module Zmq.ConcurrentPublisher
 
 import Zmq.Context (contextVar)
 import Zmq.Endpoint
-import Zmq.Error
+import Zmq.Exception
 import Zmq.ManagedSocket (ManagedSocket)
 import Zmq.Prelude
 import qualified Zmq.API.Bind as API
@@ -52,7 +52,7 @@ send publisher message = liftIO do
 
   await >>= \case
     Left errno ->
-      bugUnexpectedErrno "zmq_send" errno
+      unexpectedErrno "zmq_send" errno
 
     Right () ->
       pure ()

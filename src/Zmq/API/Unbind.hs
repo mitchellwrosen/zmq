@@ -4,7 +4,7 @@ module Zmq.API.Unbind
 
 import Zmq.Endpoint
 import Zmq.Error
-import Zmq.Exception (exception)
+import Zmq.Exception
 import Zmq.Prelude
 import qualified Zmq.FFI as FFI
 
@@ -30,4 +30,4 @@ unbind socket endpoint =
               if errno == ETERM_ then
                 exception "zmq_unbind" errno
               else
-                bugUnexpectedErrno "zmq_unbind" errno
+                unexpectedErrno "zmq_unbind" errno
