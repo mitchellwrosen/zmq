@@ -57,7 +57,7 @@ data Request where
 
 open
   :: Ptr FFI.Context
-  -> CInt
+  -> FFI.Socktype
   -> IO ( Maybe ManagedSocket )
 open context socketType =
   mask_ do
@@ -98,7 +98,7 @@ open context socketType =
 
 spawnManagerThread
   :: Ptr FFI.Context
-  -> CInt
+  -> FFI.Socktype
   -> MVar ( Maybe ( Ptr FFI.Socket, TBQueue Request ) )
   -> IO ThreadId
 spawnManagerThread context socketType openVar =

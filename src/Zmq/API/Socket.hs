@@ -11,7 +11,7 @@ import qualified Zmq.FFI as FFI
 
 -- | <http://api.zeromq.org/4-3:zmq-socket>
 socket
-  :: CInt
+  :: FFI.Socktype
   -> IO ( Maybe ( ForeignPtr FFI.Socket ) )
 socket socketType = do
   context <-
@@ -44,7 +44,7 @@ socket socketType = do
 -- | <http://api.zeromq.org/4-3:zmq-socket>
 socket'
   :: Ptr FFI.Context
-  -> CInt
+  -> FFI.Socktype
   -> IO ( Maybe ( Ptr FFI.Socket ) )
 socket' context socketType = do
   ptr :: Ptr FFI.Socket <-

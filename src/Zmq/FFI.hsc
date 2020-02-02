@@ -85,6 +85,15 @@ zMQ_EVENTS    = Sockopt ( #const ZMQ_EVENTS )
 zMQ_FD        = Sockopt ( #const ZMQ_FD )
 zMQ_SUBSCRIBE = Sockopt ( #const ZMQ_SUBSCRIBE )
 
+newtype Socktype
+  = Socktype CInt
+
+zMQ_PUB, zMQ_SUB, zMQ_XPUB, zMQ_XSUB :: Socktype
+zMQ_PUB  = Socktype ( #const ZMQ_PUB )
+zMQ_SUB  = Socktype ( #const ZMQ_SUB )
+zMQ_XPUB = Socktype ( #const ZMQ_XPUB )
+zMQ_XSUB = Socktype ( #const ZMQ_XSUB )
+
 zMQ_DONTWAIT         :: CInt
 zMQ_IO_THREADS       :: CInt
 zMQ_IO_THREADS_DFLT  :: CInt
@@ -93,11 +102,7 @@ zMQ_MAX_SOCKETS_DFLT :: CInt
 zMQ_MORE             :: CInt
 zMQ_POLLIN           :: CInt
 zMQ_POLLOUT          :: CInt
-zMQ_PUB              :: CInt
 zMQ_SNDMORE          :: CInt
-zMQ_SUB              :: CInt
-zMQ_XPUB             :: CInt
-zMQ_XSUB             :: CInt
 zMQ_DONTWAIT         = #const ZMQ_DONTWAIT
 zMQ_IO_THREADS       = #const ZMQ_IO_THREADS
 zMQ_IO_THREADS_DFLT  = #const ZMQ_IO_THREADS_DFLT
@@ -106,11 +111,7 @@ zMQ_MAX_SOCKETS_DFLT = #const ZMQ_MAX_SOCKETS_DFLT
 zMQ_MORE             = #const ZMQ_MORE
 zMQ_POLLIN           = #const ZMQ_POLLIN
 zMQ_POLLOUT          = #const ZMQ_POLLOUT
-zMQ_PUB              = #const ZMQ_PUB
 zMQ_SNDMORE          = #const ZMQ_SNDMORE
-zMQ_SUB              = #const ZMQ_SUB
-zMQ_XPUB             = #const ZMQ_XPUB
-zMQ_XSUB             = #const ZMQ_XSUB
 
 
 foreign import ccall safe "zmq_bind"
@@ -171,7 +172,7 @@ foreign import ccall unsafe "zmq_setsockopt"
   zmq_setsockopt :: Ptr Socket -> Sockopt -> Ptr a -> CSize -> IO CInt
 
 foreign import ccall unsafe "zmq_socket"
-  zmq_socket :: Ptr Context -> CInt -> IO ( Ptr Socket )
+  zmq_socket :: Ptr Context -> Socktype -> IO ( Ptr Socket )
 
 foreign import ccall safe "zmq_unbind"
   zmq_unbind :: Ptr Socket -> CString -> IO CInt
