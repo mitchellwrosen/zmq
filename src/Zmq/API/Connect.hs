@@ -4,6 +4,7 @@ module Zmq.API.Connect
   ) where
 
 import Zmq.Endpoint
+import Zmq.Exception (exception)
 import Zmq.Error
 import Zmq.Prelude
 import qualified Zmq.FFI as FFI
@@ -35,11 +36,8 @@ connect socket endpoint =
             EINVAL_   -> pure ( Left EINVAL )
             EMTHREAD_ -> pure ( Left EMTHREAD )
 
-            ETERM_ ->
-              errInvalidContext
-
-            -- ENOCOMPATPROTO: CompatibleTransport should prevent it
-            -- EPROTONOSUPPORT: CPP should prevent it
-
             errno ->
-              bugUnexpectedErrno "zmq_connect" errno
+              if errno == ETERM_ then
+                exception "zmq_connect" errno
+              else
+                bugUnexpectedErrno "zmq_connect" errno

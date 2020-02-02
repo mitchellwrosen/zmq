@@ -8,6 +8,7 @@ import Data.Bits ((.|.))
 import qualified Data.ByteString.Unsafe as ByteString
 
 import Zmq.Error
+import Zmq.Exception (exception)
 import Zmq.Prelude
 import Zmq.Socket
 import qualified Zmq.FFI as FFI
@@ -60,11 +61,11 @@ nonBlockingSend__ socket message flags =
             EINTR_ ->
               again
 
-            ETERM_ ->
-              errInvalidContext
-
             errno ->
-              pure ( Left errno )
+              if errno == ETERM_ then
+                exception "zmq_send" errno
+              else
+                pure ( Left errno )
 
         -- Ignore number of bytes sent; why is this interesting?
         _ ->
@@ -93,9 +94,6 @@ nonThreadsafeSend socket message =
               EINTR_ ->
                 again
 
-              ETERM_ ->
-                errInvalidContext
-
               -- EFSM: "The zmq_send() operation cannot be performed on this
               --        socket at the moment due to the socket not being in the
               --        appropriate state. This error may occur with socket
@@ -112,7 +110,10 @@ nonThreadsafeSend socket message =
               -- ENOTSUP: CanSend should prevent it
 
               errno ->
-                bugUnexpectedErrno "zmq_send" errno
+                if errno == ETERM_ then
+                  exception "zmq_send" errno
+                else
+                  bugUnexpectedErrno "zmq_send" errno
 
 
           -- Ignore number of bytes sent; why is this interesting?

@@ -7,6 +7,7 @@ import Foreign.Marshal.Alloc (alloca)
 import qualified Data.ByteString as ByteString
 
 import Zmq.Error
+import Zmq.Exception (exception)
 import Zmq.Prelude
 import Zmq.Socket
 import qualified Zmq.FFI as FFI
@@ -42,9 +43,6 @@ nonThreadsafeRecv_ frame socket =
               EINTR_ ->
                 again
 
-              ETERM_ ->
-                errInvalidContext
-
               -- EFSM: "The zmq_msg_recv() operation cannot be performed on
               --        this socket at the moment due to the socket not
               --        being in the appropriate state. This error may occur
@@ -57,7 +55,10 @@ nonThreadsafeRecv_ frame socket =
               --        investigate what other sockets can return EFSM.
 
               errno ->
-                bugUnexpectedErrno "zmq_msg_recv" errno
+                if errno == ETERM_ then
+                  exception "zmq_msg_recv" errno
+                else
+                  bugUnexpectedErrno "zmq_msg_recv" errno
 
           len -> do
             data_ptr <- FFI.zmq_msg_data frame

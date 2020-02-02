@@ -4,7 +4,7 @@ module Zmq.Prelude
 
 import Control.Concurrent as X
 import Control.Concurrent.STM as X
-import Control.Exception as X (bracket, bracket_, evaluate, mask, mask_)
+import Control.Exception as X (bracket, bracket_, evaluate, mask, mask_, throwIO)
 import Control.Monad as X
 import Control.Monad.IO.Class as X
 import Data.ByteString as X (ByteString)

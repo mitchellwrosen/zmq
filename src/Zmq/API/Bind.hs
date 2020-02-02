@@ -5,6 +5,7 @@ module Zmq.API.Bind
 
 
 import Zmq.Endpoint
+import Zmq.Exception (exception)
 import Zmq.Error
 import Zmq.Prelude
 import qualified Zmq.FFI as FFI
@@ -41,8 +42,8 @@ bind socket endpoint =
           EMTHREAD_      -> pure ( Left EMTHREAD )
           ENODEV_        -> pure ( Left ENODEV )
 
-          ETERM_ ->
-            errInvalidContext
-
           errno ->
-            bugUnexpectedErrno "zmq_bind" errno
+            if errno == ETERM_ then
+              exception "zmq_bind" errno
+            else
+              bugUnexpectedErrno "zmq_bind" errno

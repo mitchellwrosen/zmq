@@ -11,6 +11,7 @@ common component
     AllowAmbiguousTypes
     BlockArguments
     DataKinds
+    DeriveAnyClass
     DerivingStrategies
     FlexibleInstances
     GADTs
@@ -85,6 +86,7 @@ library
     Zmq.Context
     Zmq.Endpoint
     Zmq.Error
+    Zmq.Exception
     Zmq.FFI
     Zmq.Internal
     Zmq.ManagedSocket

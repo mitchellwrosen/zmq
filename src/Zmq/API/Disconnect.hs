@@ -4,6 +4,7 @@ module Zmq.API.Disconnect
 
 import Zmq.Endpoint
 import Zmq.Error
+import Zmq.Exception (exception)
 import Zmq.Prelude
 import qualified Zmq.FFI as FFI
 
@@ -25,8 +26,8 @@ disconnect socket endpoint =
             EINVAL_ -> pure () -- The endpoint supplied is invalid.
             ENOENT_ -> pure () -- The provided endpoint is not connected.
 
-            ETERM_ ->
-              errInvalidContext
-
             errno ->
-              bugUnexpectedErrno "zmq_disconnect" errno
+              if errno == ETERM_ then
+                exception "zmq_disconnect" errno
+              else
+                bugUnexpectedErrno "zmq_disconnect" errno

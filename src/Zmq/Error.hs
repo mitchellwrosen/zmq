@@ -22,7 +22,6 @@ module Zmq.Error
   , bug
   , bugIO
   , bugUnexpectedErrno
-  , errInvalidContext
   ) where
 
 import Foreign.C
@@ -76,7 +75,8 @@ pattern EINVAL_ <- ((== coerce eINVAL) -> True) where
   EINVAL_ = coerce eINVAL
 
 pattern EFAULT_ :: CInt
-pattern EFAULT_ <- ((== coerce eFAULT) -> True)
+pattern EFAULT_ <- ((== coerce eFAULT) -> True) where
+  EFAULT_ = coerce eFAULT
 
 pattern EMFILE_ :: CInt
 pattern EMFILE_ <- ((== coerce eMFILE) -> True)
@@ -95,7 +95,8 @@ pattern ENOTSOCK_ <- ((== Zmq.FFI.eNOTSOCK) -> True) where
   ENOTSOCK_ = Zmq.FFI.eNOTSOCK
 
 pattern ETERM_ :: CInt
-pattern ETERM_ <- ((== Zmq.FFI.eTERM) -> True)
+pattern ETERM_ <- ((== Zmq.FFI.eTERM) -> True) where
+  ETERM_ = Zmq.FFI.eTERM
 
 
 type family CanReturnEADDRINUSE ( function :: Symbol ) :: Bool where
@@ -147,7 +148,3 @@ bugIO =
 bugUnexpectedErrno :: MonadIO m => String -> CInt -> m a
 bugUnexpectedErrno func n =
   liftIO ( fail ( func ++ ": unexpected errno " ++ show n ) )
-
-errInvalidContext :: MonadIO m => m a
-errInvalidContext =
-  liftIO ( fail "Invalid ZeroMQ context." )

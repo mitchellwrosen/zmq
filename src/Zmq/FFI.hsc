@@ -178,5 +178,8 @@ foreign import ccall unsafe "zmq_setsockopt"
 foreign import ccall unsafe "zmq_socket"
   zmq_socket :: Ptr Context -> Socktype -> IO ( Ptr Socket )
 
+foreign import ccall unsafe "zmq_strerror"
+  zmq_strerror :: CInt -> CString
+
 foreign import ccall safe "zmq_unbind"
   zmq_unbind :: Ptr Socket -> CString -> IO CInt

@@ -29,6 +29,8 @@ module Zmq
   , CanReturnEINVAL
   , CanReturnEMTHREAD
   , CanReturnENODEV
+
+  , Exception(..)
   ) where
 
 import System.Mem (performGC)
@@ -39,6 +41,7 @@ import Zmq.API.Send (SendError)
 import Zmq.Context (contextVar, setIoThreads, setMaxSockets)
 import Zmq.Endpoint (Endpoint(..), inproc)
 import Zmq.Error
+import Zmq.Exception (Exception(..))
 import Zmq.Internal (CompatibleTransport, Transport(..))
 import Zmq.Prelude
 import Zmq.ConcurrentPublisher (ConcurrentPublisher)

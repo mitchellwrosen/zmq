@@ -9,6 +9,7 @@ import Foreign.Storable (peek, poke, sizeOf)
 import System.Posix.Types (Fd(..))
 
 import Zmq.Error
+import Zmq.Exception (exception)
 import Zmq.Prelude
 import qualified Zmq.FFI as FFI
 
@@ -31,8 +32,11 @@ getIntSockOpt socket option =
             FFI.zmq_errno >>= \case
               EINTR_ -> again
               EINVAL_ -> pure ( Left () )
-              ETERM_ -> errInvalidContext
-              errno -> bugUnexpectedErrno "zmq_getsockopt" errno
+              errno ->
+                if errno == ETERM_ then
+                  exception "zmq_getsockopt" errno
+                else
+                  bugUnexpectedErrno "zmq_getsockopt" errno
 
 getSocketEventState
   :: Ptr FFI.Socket

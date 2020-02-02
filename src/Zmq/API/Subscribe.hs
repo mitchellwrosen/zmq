@@ -4,6 +4,7 @@ module Zmq.API.Subscribe
 
 import Zmq.API.SetSockOpt
 import Zmq.Error
+import Zmq.Exception (exception)
 import Zmq.Prelude
 import qualified Zmq.FFI as FFI
 
@@ -24,8 +25,8 @@ subscribe socket prefix =
           EINTR_ ->
             again
 
-          ETERM_ ->
-            errInvalidContext
-
           errno ->
-            bugUnexpectedErrno "zmq_setsockopt" errno
+            if errno == ETERM_ then
+              exception "zmq_setsockopt" errno
+            else
+              bugUnexpectedErrno "zmq_setsockopt" errno
