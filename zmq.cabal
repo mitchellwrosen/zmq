@@ -21,6 +21,7 @@ common component
     OverloadedStrings
     PatternSynonyms
     RankNTypes
+    RecordWildCards
     ScopedTypeVariables
     StandaloneDeriving
     TypeApplications
@@ -40,6 +41,7 @@ library
 
   build-depends:
     bytestring,
+    stm,
     text,
 
   build-tool-depends:
@@ -74,6 +76,7 @@ library
     Zmq.Error
     Zmq.FFI
     Zmq.Internal
+    Zmq.ManagedSocket
     Zmq.Poller
     Zmq.Prelude
     Zmq.Socket

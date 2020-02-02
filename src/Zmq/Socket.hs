@@ -6,7 +6,6 @@ module Zmq.Socket
   ) where
 
 import Data.Bits (testBit)
-import GHC.Conc (threadWaitRead)
 
 import Zmq.API.GetSockOpt (getSocketEventState, getSocketFd)
 import Zmq.Error

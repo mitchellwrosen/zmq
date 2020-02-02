@@ -84,12 +84,13 @@ send
   -> NonEmpty ByteString
   -> m ()
 send publisher message = liftIO do
-  coerce API.nonBlockingSend publisher message >>= \case
-    Left errno ->
-      bugUnexpectedErrno "zmq_send" errno
+  withForeignPtr ( coerce publisher ) \socket ->
+    API.nonBlockingSend socket message >>= \case
+      Left errno ->
+        bugUnexpectedErrno "zmq_send" errno
 
-    Right () ->
-      pure ()
+      Right () ->
+        pure ()
 
 recv
   :: MonadIO m

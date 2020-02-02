@@ -115,8 +115,11 @@ zMQ_XSUB             = #const ZMQ_XSUB
 foreign import ccall safe "zmq_bind"
   zmq_bind :: Ptr Socket -> CString -> IO CInt
 
+foreign import ccall unsafe "zmq_close"
+  zmq_close :: Ptr Socket -> IO ()
+
 foreign import ccall unsafe "&zmq_close"
-  zmq_close :: FunPtr ( Ptr Socket -> IO () )
+  zmq_close_ptr :: FunPtr ( Ptr Socket -> IO () )
 
 foreign import ccall safe "zmq_connect"
   zmq_connect :: Ptr Socket -> CString -> IO CInt

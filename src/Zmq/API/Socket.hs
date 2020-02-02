@@ -1,5 +1,6 @@
 module Zmq.API.Socket
   ( socket
+  , socket'
   ) where
 
 import Zmq.Context (contextVar)
@@ -36,6 +37,31 @@ socket socketType = do
 
       else do
         foreignPtr :: ForeignPtr () <-
-          newForeignPtr FFI.zmq_close ptr
+          newForeignPtr FFI.zmq_close_ptr ptr
 
         unmask ( pure ( Just foreignPtr ) )
+
+-- | <http://api.zeromq.org/4-3:zmq-socket>
+socket'
+  :: Ptr FFI.Context
+  -> CInt
+  -> IO ( Maybe ( Ptr FFI.Socket ) )
+socket' context socketType = do
+  ptr :: Ptr () <-
+    FFI.zmq_socket context socketType
+
+  if ptr == nullPtr
+    then do
+      FFI.zmq_errno >>= \case
+        EMFILE_ -> pure Nothing
+
+        EFAULT_ -> errInvalidContext
+        ETERM_  -> errInvalidContext
+
+        -- EINVAL: type system should prevent it
+
+        errno ->
+          bugUnexpectedErrno "zmq_socket" errno
+
+    else do
+      pure ( Just ptr )

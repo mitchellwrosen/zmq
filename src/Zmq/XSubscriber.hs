@@ -105,12 +105,13 @@ send
   -> SubscriptionMessage
   -> m ()
 send subscriber ( SubscriptionMessage.serialize -> message ) = liftIO do
-  coerce API.nonBlockingSend subscriber ( message :| [] ) >>= \case
-    Left errno ->
-      bugUnexpectedErrno "zmq_send" errno
+  withForeignPtr ( coerce subscriber ) \socket ->
+    API.nonBlockingSend socket ( message :| [] ) >>= \case
+      Left errno ->
+        bugUnexpectedErrno "zmq_send" errno
 
-    Right () ->
-      pure ()
+      Right () ->
+        pure ()
 
 recv
   :: MonadIO m

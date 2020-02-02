@@ -23,12 +23,11 @@ type SendError
 
 -- | Send on a socket that won't block (like PUB).
 nonBlockingSend
-  :: ForeignPtr FFI.Socket
+  :: Ptr FFI.Socket
   -> NonEmpty ByteString
   -> IO ( Either Errno () )
-nonBlockingSend socket messages =
-  withForeignPtr socket \socket_ptr ->
-    nonBlockingSend_ socket_ptr ( toList messages )
+nonBlockingSend socket =
+  nonBlockingSend_ socket . toList
 
 nonBlockingSend_
   :: Ptr FFI.Socket

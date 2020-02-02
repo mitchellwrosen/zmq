@@ -2,8 +2,9 @@ module Zmq.Prelude
   ( module X
   ) where
 
-import Control.Concurrent.MVar as X
-import Control.Exception as X (bracket, bracket_, evaluate, mask)
+import Control.Concurrent as X
+import Control.Concurrent.STM as X
+import Control.Exception as X (bracket, bracket_, evaluate, mask, mask_)
 import Control.Monad as X
 import Control.Monad.IO.Class as X
 import Data.ByteString as X (ByteString)
@@ -12,6 +13,7 @@ import Data.Data as X (Data)
 import Data.Foldable as X (toList)
 import Data.Function as X (fix)
 import Data.Functor as X
+import Data.IORef as X
 import Data.Kind as X (Constraint, Type)
 import Data.List.NonEmpty as X (NonEmpty)
 import Data.Text as X (Text)
