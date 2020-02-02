@@ -5,7 +5,7 @@ module Zmq.Socket
   , waitUntilCanSend
   ) where
 
-import Data.Bits (testBit)
+import Data.Bits ((.&.))
 
 import Zmq.API.GetSockOpt (getSocketEventState, getSocketFd)
 import Zmq.Error
@@ -49,4 +49,4 @@ waitUntilCan events socket threadSafe =
       -- the ZMQ_EVENTS option is valid; applications should
       -- simply ignore this case and restart their polling
       -- operation/event loop.
-      unless ( testBit state ( fromIntegral events ) ) again
+      unless ( state .&. events /= 0 ) again
