@@ -34,7 +34,7 @@ setMaxSockets =
 ----------------------------------------------------------------------------------
 
 setNatural
-  :: CInt
+  :: FFI.Contextopt
   -> Ptr FFI.Context
   -> Natural
   -> IO ()

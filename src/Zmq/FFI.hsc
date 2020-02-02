@@ -77,6 +77,14 @@ ePROTONOSUPPORT = #const EPROTONOSUPPORT
 eTERM           = #const ETERM
 eTIMEDOUT       = #const ETIMEDOUT
 
+newtype Contextopt
+  = Contextopt CInt
+
+zMQ_IO_THREADS, zMQ_MAX_SOCKETS :: Contextopt
+zMQ_IO_THREADS  = Contextopt ( #const ZMQ_IO_THREADS )
+zMQ_MAX_SOCKETS = Contextopt ( #const ZMQ_MAX_SOCKETS )
+
+
 newtype Sockopt
   = Sockopt CInt
 
@@ -95,18 +103,14 @@ zMQ_XPUB = Socktype ( #const ZMQ_XPUB )
 zMQ_XSUB = Socktype ( #const ZMQ_XSUB )
 
 zMQ_DONTWAIT         :: CInt
-zMQ_IO_THREADS       :: CInt
 zMQ_IO_THREADS_DFLT  :: CInt
-zMQ_MAX_SOCKETS      :: CInt
 zMQ_MAX_SOCKETS_DFLT :: CInt
 zMQ_MORE             :: CInt
 zMQ_POLLIN           :: CInt
 zMQ_POLLOUT          :: CInt
 zMQ_SNDMORE          :: CInt
 zMQ_DONTWAIT         = #const ZMQ_DONTWAIT
-zMQ_IO_THREADS       = #const ZMQ_IO_THREADS
 zMQ_IO_THREADS_DFLT  = #const ZMQ_IO_THREADS_DFLT
-zMQ_MAX_SOCKETS      = #const ZMQ_MAX_SOCKETS
 zMQ_MAX_SOCKETS_DFLT = #const ZMQ_MAX_SOCKETS_DFLT
 zMQ_MORE             = #const ZMQ_MORE
 zMQ_POLLIN           = #const ZMQ_POLLIN
@@ -130,7 +134,7 @@ foreign import ccall unsafe "zmq_ctx_new"
   zmq_ctx_new :: IO ( Ptr Context )
 
 foreign import ccall unsafe "zmq_ctx_set"
-  zmq_ctx_set :: Ptr Context -> CInt -> CInt -> IO CInt
+  zmq_ctx_set :: Ptr Context -> Contextopt -> CInt -> IO CInt
 
 foreign import ccall safe "zmq_ctx_term"
   zmq_ctx_term :: Ptr Context -> IO CInt
