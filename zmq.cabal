@@ -17,6 +17,7 @@ common component
     GADTs
     InstanceSigs
     LambdaCase
+    NumericUnderscores
     OverloadedStrings
     PatternSynonyms
     RankNTypes

@@ -9,9 +9,6 @@ import qualified Zmq.FFI as FFI
 
 
 -- | <http://api.zeromq.org/4-3:zmq-socket>
---
--- Returns 'Nothing' if the maximum number of sockets have already been opened.
--- By default, this is 1023, but can be changed with TODO.
 socket
   :: CInt
   -> IO ( Maybe ( ForeignPtr FFI.Socket ) )

@@ -6,6 +6,7 @@ import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Functor (void)
+import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty((:|)))
 import GHC.Stack (HasCallStack, withFrozenCallStack)
 import Hedgehog hiding (failure, test)
@@ -13,6 +14,8 @@ import Say
 import Test.Tasty
 import Test.Tasty.Hedgehog (testProperty)
 import UnliftIO.Concurrent
+import UnliftIO.Async
+import UnliftIO.Timeout
 import qualified Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
@@ -39,9 +42,45 @@ tests =
       ( pub, sub ) <- openPubSub
       Sub.subscribe sub "a"
       Pub.send pub ( "b" :| [] )
-      Pub.send pub ( "a" :| [] )
-      message <- Sub.recv sub
-      message === "a" :| []
+      let message = "a" :| []
+      Pub.send pub message
+      Sub.recv sub >>= ( === message )
+
+  , test "Pubsub multi-threaded" do
+      pubVar <- newEmptyMVar
+      doneVar <- newEmptyMVar
+      subscribedVar <- newEmptyMVar
+
+      let message1 = "a" :| []
+      let message2 = "b" :| []
+      let message3 = "c" :| []
+
+      endpoint <- Gen.sample genInproc
+
+      ( void . liftIO . forkOS ) do
+        Just pub <- Pub.open
+        Right () <- Pub.bind pub endpoint
+        putMVar pubVar pub
+        readMVar subscribedVar
+        Pub.send pub message1
+        takeMVar doneVar
+
+      ( void . liftIO . forkOS ) do
+        pub <- readMVar pubVar
+        readMVar subscribedVar
+        Pub.send pub message2
+
+      sub <- openSub
+      connectSub sub endpoint
+      Sub.subscribe sub ""
+      putMVar subscribedVar ()
+
+      pub <- readMVar pubVar
+      Pub.send pub message3
+
+      messages <- liftIO ( timeout 1_000_000 ( replicateM 3 ( Sub.recv sub ) ) )
+      fmap sort messages === Just [ message1, message2, message3 ]
+      putMVar doneVar ()
 
   , test "XPublisher recv subscription" do
       endpoint <- Gen.sample genInproc
@@ -134,6 +173,7 @@ genInproc = do
   case Zmq.inproc name of
     Nothing -> error ( "bad inproc generator: " ++ show name )
     Just endpoint -> pure endpoint
+
 
 --------------------------------------------------------------------------------
 

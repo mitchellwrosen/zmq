@@ -15,7 +15,7 @@ module Zmq
   , Transport(..)
   , CompatibleTransport
 
-  , Endpoint
+  , Endpoint(..)
   , inproc
 
   , SubscriptionMessage(..)
@@ -27,7 +27,6 @@ module Zmq
   , CanReturnEINVAL
   , CanReturnEMTHREAD
   , CanReturnENODEV
-
   ) where
 
 import System.Mem (performGC)
