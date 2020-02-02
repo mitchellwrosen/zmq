@@ -9,9 +9,9 @@ import Foreign.C
 import Foreign.Ptr
 import Foreign.Storable
 
-type Context = ()
-type Poller  = ()
-type Socket  = ()
+newtype Context = Context ()
+newtype Poller  = Poller ()
+newtype Socket  = Socket ()
 
 newtype Frame
   = Frame { unFrame :: Ptr () }
@@ -77,10 +77,15 @@ ePROTONOSUPPORT = #const EPROTONOSUPPORT
 eTERM           = #const ETERM
 eTIMEDOUT       = #const ETIMEDOUT
 
+newtype Sockopt
+  = Sockopt CInt
+
+zMQ_EVENTS, zMQ_FD, zMQ_SUBSCRIBE :: Sockopt
+zMQ_EVENTS    = Sockopt ( #const ZMQ_EVENTS )
+zMQ_FD        = Sockopt ( #const ZMQ_FD )
+zMQ_SUBSCRIBE = Sockopt ( #const ZMQ_SUBSCRIBE )
 
 zMQ_DONTWAIT         :: CInt
-zMQ_EVENTS           :: CInt
-zMQ_FD               :: CInt
 zMQ_IO_THREADS       :: CInt
 zMQ_IO_THREADS_DFLT  :: CInt
 zMQ_MAX_SOCKETS      :: CInt
@@ -91,12 +96,9 @@ zMQ_POLLOUT          :: CInt
 zMQ_PUB              :: CInt
 zMQ_SNDMORE          :: CInt
 zMQ_SUB              :: CInt
-zMQ_SUBSCRIBE        :: CInt
 zMQ_XPUB             :: CInt
 zMQ_XSUB             :: CInt
 zMQ_DONTWAIT         = #const ZMQ_DONTWAIT
-zMQ_EVENTS           = #const ZMQ_EVENTS
-zMQ_FD               = #const ZMQ_FD
 zMQ_IO_THREADS       = #const ZMQ_IO_THREADS
 zMQ_IO_THREADS_DFLT  = #const ZMQ_IO_THREADS_DFLT
 zMQ_MAX_SOCKETS      = #const ZMQ_MAX_SOCKETS
@@ -107,7 +109,6 @@ zMQ_POLLOUT          = #const ZMQ_POLLOUT
 zMQ_PUB              = #const ZMQ_PUB
 zMQ_SNDMORE          = #const ZMQ_SNDMORE
 zMQ_SUB              = #const ZMQ_SUB
-zMQ_SUBSCRIBE        = #const ZMQ_SUBSCRIBE
 zMQ_XPUB             = #const ZMQ_XPUB
 zMQ_XSUB             = #const ZMQ_XSUB
 
@@ -140,7 +141,7 @@ foreign import ccall unsafe "zmq_errno"
   zmq_errno :: IO CInt
 
 foreign import ccall unsafe "zmq_getsockopt"
-  zmq_getsockopt :: Ptr Socket -> CInt -> Ptr a -> Ptr CSize -> IO CInt
+  zmq_getsockopt :: Ptr Socket -> Sockopt -> Ptr a -> Ptr CSize -> IO CInt
 
 foreign import ccall unsafe "zmq_msg_data"
   zmq_msg_data :: Ptr Frame -> IO ( Ptr CChar )
@@ -167,7 +168,7 @@ foreign import ccall safe "zmq_send"
   zmq_send :: Ptr Socket -> Ptr a -> CSize -> CInt -> IO CInt
 
 foreign import ccall unsafe "zmq_setsockopt"
-  zmq_setsockopt :: Ptr Socket -> CInt -> Ptr a -> CSize -> IO CInt
+  zmq_setsockopt :: Ptr Socket -> Sockopt -> Ptr a -> CSize -> IO CInt
 
 foreign import ccall unsafe "zmq_socket"
   zmq_socket :: Ptr Context -> CInt -> IO ( Ptr Socket )

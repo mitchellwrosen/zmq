@@ -15,15 +15,15 @@ import qualified Zmq.FFI as FFI
 
 getIntSockOpt
   :: Ptr FFI.Socket
-  -> CInt
+  -> FFI.Sockopt
   -> IO ( Either () CInt )
-getIntSockOpt socket key =
+getIntSockOpt socket option =
   alloca \int_ptr ->
     alloca \size_ptr -> do
       poke size_ptr ( fromIntegral ( sizeOf ( undefined :: CInt ) ) )
 
       fix \again ->
-        FFI.zmq_getsockopt socket key int_ptr size_ptr >>= \case
+        FFI.zmq_getsockopt socket option int_ptr size_ptr >>= \case
           0 ->
             Right <$> peek int_ptr
 

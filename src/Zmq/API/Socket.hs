@@ -18,7 +18,7 @@ socket socketType = do
     readMVar contextVar
 
   mask \unmask -> do
-    ptr :: Ptr () <-
+    ptr :: Ptr FFI.Socket <-
       FFI.zmq_socket context socketType
 
     if ptr == nullPtr
@@ -36,7 +36,7 @@ socket socketType = do
               bugUnexpectedErrno "zmq_socket" errno
 
       else do
-        foreignPtr :: ForeignPtr () <-
+        foreignPtr :: ForeignPtr FFI.Socket <-
           newForeignPtr FFI.zmq_close_ptr ptr
 
         unmask ( pure ( Just foreignPtr ) )
@@ -47,7 +47,7 @@ socket'
   -> CInt
   -> IO ( Maybe ( Ptr FFI.Socket ) )
 socket' context socketType = do
-  ptr :: Ptr () <-
+  ptr :: Ptr FFI.Socket <-
     FFI.zmq_socket context socketType
 
   if ptr == nullPtr

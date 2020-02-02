@@ -10,10 +10,10 @@ import qualified Zmq.FFI as FFI
 
 setByteStringSockOpt
   :: ForeignPtr FFI.Socket
-  -> CInt
+  -> FFI.Sockopt
   -> ByteString
   -> IO CInt
-setByteStringSockOpt socket key value =
+setByteStringSockOpt socket option value =
   withForeignPtr socket \socket_ptr ->
     ByteString.unsafeUseAsCStringLen value \( c_value, len ) ->
-      FFI.zmq_setsockopt socket_ptr key c_value ( fromIntegral len )
+      FFI.zmq_setsockopt socket_ptr option c_value ( fromIntegral len )
