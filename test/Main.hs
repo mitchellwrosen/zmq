@@ -54,27 +54,23 @@ tests ctx =
     -- Publish M messages to a socket from each of N threads. Ensure that the
     -- subscriber receives N*M.
   , test "Concurrent publisher" do
-      subscribedVar <- newEmptyMVar
-
       endpoint <- randomInproc
 
       pub <- Cpub.open ctx
       Cpub.bind pub endpoint
 
-      let n = 10
-      let m = 200
-      replicateM_ n do
+      replicateM_ 10 do
         ( liftIO . forkOS ) do
-          readMVar subscribedVar
-          replicateM_ m ( Cpub.send pub ( "" :| [] ) )
+          forever do
+            Cpub.send pub ( "" :| [] )
 
       sub <- Sub.open ctx
       Sub.connect sub endpoint
       Sub.subscribe sub ""
-      threadDelay 1_000_000 -- annoying...
-      putMVar subscribedVar ()
       matches _Just () =<<
-        liftIO ( timeout 5_000_000 ( replicateM_ ( n * m ) ( Sub.recv sub ) ) )
+        liftIO do
+          timeout 5_000_000 do
+            replicateM_ 2000 ( Sub.recv sub )
       Cpub.close pub
       Sub.close sub
 
