@@ -12,7 +12,7 @@ module Zmq.ConcurrentPublisher
   , send
   ) where
 
-import Zmq.Context (contextVar)
+import Zmq.Context
 import Zmq.Endpoint
 import Zmq.ManagedSocket (ManagedSocket)
 import Zmq.Prelude
@@ -27,10 +27,14 @@ newtype ConcurrentPublisher
 
 open
   :: MonadIO m
-  => m ConcurrentPublisher
-open = liftIO do
-  context <- readMVar contextVar
-  coerce ( ManagedSocket.open context FFI.zMQ_PUB API.sendThatNeverBlocks )
+  => Context
+  -> m ConcurrentPublisher
+open context = liftIO do
+  coerce do
+    ManagedSocket.open
+      ( unContext context )
+      FFI.zMQ_PUB
+      API.sendThatNeverBlocks
 
 close
   :: MonadIO m

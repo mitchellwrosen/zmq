@@ -75,6 +75,7 @@ library
     Zmq.API.Bind
     Zmq.API.Close
     Zmq.API.Connect
+    Zmq.API.CtxTerm
     Zmq.API.Disconnect
     Zmq.API.GetSockOpt
     Zmq.API.PollerDestroy

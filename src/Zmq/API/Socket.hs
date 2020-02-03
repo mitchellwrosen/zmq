@@ -3,7 +3,6 @@ module Zmq.API.Socket
   , socket'
   ) where
 
-import Zmq.Context (contextVar)
 import Zmq.Exception
 import Zmq.Prelude
 import qualified Zmq.FFI as FFI
@@ -11,12 +10,10 @@ import qualified Zmq.FFI as FFI
 
 -- | <http://api.zeromq.org/4-3:zmq-socket>
 socket
-  :: FFI.Socktype
+  :: Ptr FFI.Context
+  -> FFI.Socktype
   -> IO ( ForeignPtr FFI.Socket )
-socket socketType = do
-  context <-
-    readMVar contextVar
-
+socket context socketType =
   mask_ do
     ptr :: Ptr FFI.Socket <-
       FFI.zmq_socket context socketType

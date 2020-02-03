@@ -18,6 +18,7 @@ module Zmq.XSubscriber
 
 import Data.List.NonEmpty (NonEmpty((:|)))
 
+import Zmq.Context
 import Zmq.Endpoint
 import Zmq.Prelude
 import Zmq.SubscriptionMessage (SubscriptionMessage(..))
@@ -39,9 +40,10 @@ newtype XSubscriber
 
 open
   :: MonadIO m
-  => m XSubscriber
-open =
-  liftIO ( coerce ( API.socket FFI.zMQ_XSUB ) )
+  => Context
+  -> m XSubscriber
+open context =
+  liftIO ( coerce ( API.socket ( unContext context ) FFI.zMQ_XSUB ) )
 
 close
   :: MonadIO m

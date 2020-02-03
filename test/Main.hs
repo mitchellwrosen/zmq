@@ -27,20 +27,22 @@ import qualified Zmq.XPublisher as Xpub
 import qualified Zmq.XSubscriber as Xsub
 
 main :: IO ()
-main =
-  Zmq.main Zmq.defaultOptions do
-    defaultMain ( testGroup "tests" tests )
+main = do
+  bracket
+    ( Zmq.newContext Zmq.defaultOptions )
+    Zmq.terminateContext
+    ( \ctx -> defaultMain ( testGroup "tests" ( tests ctx ) ) )
 
-tests :: [ TestTree ]
-tests =
-  [ testGroup "Publisher tests" publisherTests
+tests :: Zmq.Context -> [ TestTree ]
+tests ctx =
+  [ testGroup "Publisher tests" ( publisherTests ctx )
 
   , test "Subscriber open" do
-      sub <- Sub.open
+      sub <- Sub.open ctx
       Sub.close sub
 
   , test "Pubsub" do
-      ( pub, sub ) <- openPubSub
+      ( pub, sub ) <- openPubSub ctx
       Sub.subscribe sub "a"
       Pub.send pub ( "b" :| [] )
       let message = "a" :| []
@@ -56,7 +58,7 @@ tests =
 
       endpoint <- randomInproc
 
-      pub <- Cpub.open
+      pub <- Cpub.open ctx
       Cpub.bind pub endpoint
 
       let n = 10
@@ -66,7 +68,7 @@ tests =
           readMVar subscribedVar
           replicateM_ m ( Cpub.send pub ( "" :| [] ) )
 
-      sub <- Sub.open
+      sub <- Sub.open ctx
       Sub.connect sub endpoint
       Sub.subscribe sub ""
       threadDelay 1_000_000 -- annoying...
@@ -78,8 +80,8 @@ tests =
 
   , test "XPublisher recv subscription" do
       endpoint <- randomInproc
-      xpub <- Xpub.open
-      sub <- Sub.open
+      xpub <- Xpub.open ctx
+      sub <- Sub.open ctx
       Xpub.bind xpub endpoint
       Sub.connect sub endpoint
       Sub.subscribe sub "hi"
@@ -90,8 +92,8 @@ tests =
 
   , test "XSubscriber send subscription" do
       endpoint <- randomInproc
-      pub <- Pub.open
-      xsub <- Xsub.open
+      pub <- Pub.open ctx
+      xsub <- Xsub.open ctx
       Pub.bind pub endpoint
       Xsub.connect xsub endpoint
       Xsub.subscribe xsub ""
@@ -102,64 +104,64 @@ tests =
       Xsub.close xsub
   ]
 
-publisherTests :: [ TestTree ]
-publisherTests =
+publisherTests :: Zmq.Context -> [ TestTree ]
+publisherTests ctx =
   [ test "Publisher open close" do
-      pub <- Pub.open
+      pub <- Pub.open ctx
       Pub.close pub
 
   , test "Publisher bind" do
-      pub <- Pub.open
+      pub <- Pub.open ctx
       endpoint <- randomInproc
       Pub.bind pub endpoint
       Pub.close pub
 
   , test "Publisher unbind" do
-      pub <- Pub.open
+      pub <- Pub.open ctx
       endpoint <- randomInproc
       Pub.bind pub endpoint
       Pub.unbind pub endpoint
       Pub.close pub
 
   , test "Publisher unbind when not bound" do
-      pub <- Pub.open
+      pub <- Pub.open ctx
       endpoint <- randomInproc
       Pub.unbind pub endpoint
       Pub.close pub
 
   , test "Publisher unbind bogus" do
-      pub <- Pub.open
+      pub <- Pub.open ctx
       Pub.unbind pub ( Zmq.Tcp "" ) `throws`
         Zmq.Exception "zmq_unbind" 22 "Invalid argument"
       Pub.close pub
 
   , test "Publisher connect" do
-      pub <- Pub.open
+      pub <- Pub.open ctx
       endpoint <- randomInproc
       Pub.connect pub endpoint
       Pub.close pub
 
   , test "Publisher disconnect" do
-      pub <- Pub.open
+      pub <- Pub.open ctx
       endpoint <- randomInproc
       Pub.connect pub endpoint
       Pub.disconnect pub endpoint
       Pub.close pub
 
   , test "Publisher disconnect when not connected" do
-      pub <- Pub.open
+      pub <- Pub.open ctx
       endpoint <- randomInproc
       Pub.disconnect pub endpoint
       Pub.close pub
 
   , test "Publisher disconnect bogus" do
-      pub <- Pub.open
+      pub <- Pub.open ctx
       Pub.disconnect pub ( Zmq.Tcp "" ) `throws`
         Zmq.Exception "zmq_disconnect" 22 "Invalid argument"
       Pub.close pub
 
   , test "Publisher send" do
-      pub <- Pub.open
+      pub <- Pub.open ctx
       Pub.send pub ( "" :| [] )
       Pub.close pub
   ]
@@ -168,11 +170,12 @@ publisherTests =
 
 openPubSub
   :: ( MonadIO m, MonadTest m )
-  => m ( Zmq.Publisher, Zmq.Subscriber )
-openPubSub = do
+  => Zmq.Context
+  -> m ( Zmq.Publisher, Zmq.Subscriber )
+openPubSub ctx = do
   endpoint <- randomInproc
-  pub <- Pub.open
-  sub <- Sub.open
+  pub <- Pub.open ctx
+  sub <- Sub.open ctx
   Pub.bind pub endpoint
   Sub.connect sub endpoint
   pure ( pub, sub )

@@ -13,6 +13,7 @@ module Zmq.Publisher
   , send
   ) where
 
+import Zmq.Context
 import Zmq.Endpoint
 import Zmq.Prelude
 import qualified Zmq.API.Bind as API
@@ -31,9 +32,10 @@ newtype Publisher
 
 open
   :: MonadIO m
-  => m Publisher
-open =
-  liftIO ( coerce ( API.socket FFI.zMQ_PUB ) )
+  => Context
+  -> m Publisher
+open context =
+  liftIO ( coerce ( API.socket ( unContext context ) FFI.zMQ_PUB ) )
 
 close
   :: MonadIO m

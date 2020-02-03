@@ -15,6 +15,7 @@ module Zmq.Subscriber
   , recv
   ) where
 
+import Zmq.Context
 import Zmq.Endpoint
 import Zmq.Prelude
 import qualified Zmq.API.Bind as API
@@ -34,9 +35,10 @@ newtype Subscriber
 
 open
   :: MonadIO m
-  => m Subscriber
-open =
-  liftIO ( coerce ( API.socket FFI.zMQ_SUB ) )
+  => Context
+  -> m Subscriber
+open context =
+  liftIO ( coerce ( API.socket ( unContext context ) FFI.zMQ_SUB ) )
 
 close
   :: MonadIO m

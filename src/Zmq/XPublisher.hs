@@ -14,6 +14,7 @@ module Zmq.XPublisher
   , recv
   ) where
 
+import Zmq.Context
 import Zmq.Endpoint
 import Zmq.Prelude
 import Zmq.SubscriptionMessage
@@ -34,9 +35,10 @@ newtype XPublisher
 
 open
   :: MonadIO m
-  => m XPublisher
-open =
-  liftIO ( coerce ( API.socket FFI.zMQ_XPUB ) )
+  => Context
+  -> m XPublisher
+open context =
+  liftIO ( coerce ( API.socket ( unContext context ) FFI.zMQ_XPUB ) )
 
 close
   :: MonadIO m
