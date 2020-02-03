@@ -10,8 +10,6 @@ module Zmq
 
   , ConcurrentPublisher
 
-  , BindError
-  , ConnectError
   , SendError
 
   , Transport(..)
@@ -23,25 +21,18 @@ module Zmq
   , SubscriptionMessage(..)
 
   , Error(..)
-  , CanReturnEADDRINUSE
-  , CanReturnEADDRNOTAVAIL
   , CanReturnEHOSTUNREACH
-  , CanReturnEINVAL
-  , CanReturnEMTHREAD
-  , CanReturnENODEV
 
-  , Exception(..)
+  , Zmq.Exception.Exception(..)
   ) where
 
 import System.Mem (performGC)
 
-import Zmq.API.Bind (BindError)
-import Zmq.API.Connect (ConnectError)
 import Zmq.API.Send (SendError)
 import Zmq.Context (contextVar, setIoThreads, setMaxSockets)
 import Zmq.Endpoint (Endpoint(..), inproc)
 import Zmq.Error
-import Zmq.Exception (Exception(..), unexpectedErrno)
+import Zmq.Exception (Exception(..), exception)
 import Zmq.Internal (CompatibleTransport, Transport(..))
 import Zmq.Prelude
 import Zmq.ConcurrentPublisher (ConcurrentPublisher)
@@ -100,4 +91,4 @@ main options action =
                 again
 
               errno ->
-                unexpectedErrno "zmq_ctx_term" errno
+                exception "zmq_ctx_term" errno

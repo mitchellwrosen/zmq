@@ -16,7 +16,6 @@ import Zmq.Context (contextVar)
 import Zmq.Endpoint
 import Zmq.ManagedSocket (ManagedSocket)
 import Zmq.Prelude
-import qualified Zmq.API.Bind as API
 import qualified Zmq.API.Send as API
 import qualified Zmq.FFI as FFI
 import qualified Zmq.ManagedSocket as ManagedSocket
@@ -28,7 +27,7 @@ newtype ConcurrentPublisher
 
 open
   :: MonadIO m
-  => m ( Maybe ConcurrentPublisher )
+  => m ConcurrentPublisher
 open = liftIO do
   context <- readMVar contextVar
   coerce ( ManagedSocket.open context FFI.zMQ_PUB API.sendThatNeverBlocks )
@@ -44,7 +43,7 @@ bind
   :: MonadIO m
   => ConcurrentPublisher
   -> Endpoint transport
-  -> m ( Either API.BindError () )
+  -> m ()
 bind publisher endpoint =
   liftIO ( ManagedSocket.bind ( unConcurrentPublisher publisher ) endpoint )
 

@@ -5,8 +5,6 @@ module Main where
 import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
-import Data.Functor (void)
--- import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty((:|)))
 import GHC.Stack (HasCallStack, withFrozenCallStack)
 import Hedgehog hiding (failure, test)
@@ -14,7 +12,7 @@ import Hedgehog hiding (failure, test)
 import Test.Tasty
 import Test.Tasty.Hedgehog (testProperty)
 import UnliftIO.Concurrent
--- import UnliftIO.Async
+import UnliftIO.Exception
 import UnliftIO.Timeout
 import qualified Data.Text as Text
 import qualified Hedgehog
@@ -38,7 +36,8 @@ tests =
   [ testGroup "Publisher tests" publisherTests
 
   , test "Subscriber open" do
-      void openSub
+      sub <- Sub.open
+      Sub.close sub
 
   , test "Pubsub" do
       ( pub, sub ) <- openPubSub
@@ -47,6 +46,8 @@ tests =
       let message = "a" :| []
       Pub.send pub message
       Sub.recv sub >>= ( === message )
+      Pub.close pub
+      Sub.close sub
 
     -- Publish M messages to a socket from each of N threads. Ensure that the
     -- subscriber receives N*M.
@@ -55,8 +56,8 @@ tests =
 
       endpoint <- randomInproc
 
-      pub <- openCpub
-      bindCpub pub endpoint
+      pub <- Cpub.open
+      Cpub.bind pub endpoint
 
       let n = 10
       let m = 200
@@ -65,89 +66,102 @@ tests =
           readMVar subscribedVar
           replicateM_ m ( Cpub.send pub ( "" :| [] ) )
 
-      sub <- openSub
-      connectSub sub endpoint
+      sub <- Sub.open
+      Sub.connect sub endpoint
       Sub.subscribe sub ""
       threadDelay 1_000_000 -- annoying...
       putMVar subscribedVar ()
       matches _Just () =<<
         liftIO ( timeout 5_000_000 ( replicateM_ ( n * m ) ( Sub.recv sub ) ) )
       Cpub.close pub
+      Sub.close sub
 
   , test "XPublisher recv subscription" do
       endpoint <- randomInproc
-      xpub <- openXpub
-      sub <- openSub
-      bindXpub xpub endpoint
-      connectSub sub endpoint
+      xpub <- Xpub.open
+      sub <- Sub.open
+      Xpub.bind xpub endpoint
+      Sub.connect sub endpoint
       Sub.subscribe sub "hi"
       message <- Xpub.recv xpub
       message === Zmq.Subscribe "hi"
+      Xpub.close xpub
+      Sub.close sub
 
   , test "XSubscriber send subscription" do
       endpoint <- randomInproc
-      pub <- openPub
-      xsub <- openXsub
-      bindPub pub endpoint
-      connectXsub xsub endpoint
+      pub <- Pub.open
+      xsub <- Xsub.open
+      Pub.bind pub endpoint
+      Xsub.connect xsub endpoint
       Xsub.subscribe xsub ""
       Pub.send pub ( "hi" :| [] )
       message <- Xsub.recv xsub
       message === "hi" :| []
+      Pub.close pub
+      Xsub.close xsub
   ]
 
 publisherTests :: [ TestTree ]
 publisherTests =
-  [ test "Publisher open" do
-      void openPub
-
-  , test "Publisher close" do
-      pub <- openPub
+  [ test "Publisher open close" do
+      pub <- Pub.open
       Pub.close pub
 
   , test "Publisher bind" do
-      pub <- openPub
+      pub <- Pub.open
       endpoint <- randomInproc
-      bindPub pub endpoint
+      Pub.bind pub endpoint
+      Pub.close pub
 
   , test "Publisher unbind" do
-      pub <- openPub
+      pub <- Pub.open
       endpoint <- randomInproc
-      bindPub pub endpoint
+      Pub.bind pub endpoint
       Pub.unbind pub endpoint
+      Pub.close pub
 
   , test "Publisher unbind when not bound" do
-      pub <- openPub
+      pub <- Pub.open
       endpoint <- randomInproc
       Pub.unbind pub endpoint
+      Pub.close pub
 
   , test "Publisher unbind bogus" do
-      pub <- openPub
-      Pub.unbind pub ( Zmq.Tcp "" )
+      pub <- Pub.open
+      Pub.unbind pub ( Zmq.Tcp "" ) `throws`
+        Zmq.Exception "zmq_unbind" 22 "Invalid argument"
+      Pub.close pub
 
   , test "Publisher connect" do
-      pub <- openPub
+      pub <- Pub.open
       endpoint <- randomInproc
-      connectPub pub endpoint
+      Pub.connect pub endpoint
+      Pub.close pub
 
   , test "Publisher disconnect" do
-      pub <- openPub
+      pub <- Pub.open
       endpoint <- randomInproc
-      connectPub pub endpoint
+      Pub.connect pub endpoint
       Pub.disconnect pub endpoint
+      Pub.close pub
 
   , test "Publisher disconnect when not connected" do
-      pub <- openPub
+      pub <- Pub.open
       endpoint <- randomInproc
       Pub.disconnect pub endpoint
+      Pub.close pub
 
   , test "Publisher disconnect bogus" do
-      pub <- openPub
-      Pub.disconnect pub ( Zmq.Tcp "" )
+      pub <- Pub.open
+      Pub.disconnect pub ( Zmq.Tcp "" ) `throws`
+        Zmq.Exception "zmq_disconnect" 22 "Invalid argument"
+      Pub.close pub
 
   , test "Publisher send" do
-      pub <- openPub
+      pub <- Pub.open
       Pub.send pub ( "" :| [] )
+      Pub.close pub
   ]
 
 --------------------------------------------------------------------------------
@@ -157,81 +171,11 @@ openPubSub
   => m ( Zmq.Publisher, Zmq.Subscriber )
 openPubSub = do
   endpoint <- randomInproc
-  pub <- openPub
-  sub <- openSub
-  bindPub pub endpoint
-  connectSub sub endpoint
+  pub <- Pub.open
+  sub <- Sub.open
+  Pub.bind pub endpoint
+  Sub.connect sub endpoint
   pure ( pub, sub )
-
---------------------------------------------------------------------------------
-
-openCpub :: ( MonadIO m, MonadTest m ) => m Zmq.ConcurrentPublisher
-openCpub =
-  matches _Just () =<< Cpub.open
-
-openPub :: ( MonadIO m, MonadTest m ) => m Zmq.Publisher
-openPub =
-  matches _Just () =<< Pub.open
-
-openSub :: ( MonadIO m, MonadTest m ) => m Zmq.Subscriber
-openSub =
-  matches _Just () =<< Sub.open
-
-openXpub :: ( MonadIO m, MonadTest m ) => m Zmq.XPublisher
-openXpub =
-  matches _Just () =<< Xpub.open
-
-openXsub :: ( MonadIO m, MonadTest m ) => m Zmq.XSubscriber
-openXsub =
-  matches _Just () =<< Xsub.open
-
-bindCpub
-  :: ( MonadIO m, MonadTest m )
-  => Zmq.ConcurrentPublisher
-  -> Zmq.Endpoint transport
-  -> m ()
-bindCpub pub endpoint =
-  matches _Right endpoint =<< Cpub.bind pub endpoint
-
-bindPub
-  :: ( MonadIO m, MonadTest m )
-  => Zmq.Publisher
-  -> Zmq.Endpoint transport
-  -> m ()
-bindPub pub endpoint =
-  matches _Right endpoint =<< Pub.bind pub endpoint
-
-bindXpub
-  :: ( MonadIO m, MonadTest m )
-  => Zmq.XPublisher
-  -> Zmq.Endpoint transport
-  -> m ()
-bindXpub pub endpoint =
-  matches _Right endpoint =<< Xpub.bind pub endpoint
-
-connectPub
-  :: ( MonadIO m, MonadTest m )
-  => Zmq.Publisher
-  -> Zmq.Endpoint transport
-  -> m ()
-connectPub pub endpoint =
-  matches _Right endpoint =<< Pub.connect pub endpoint
-
-connectSub
-  :: ( MonadIO m, MonadTest m )
-  => Zmq.Subscriber
-  -> Zmq.Endpoint transport
-  -> m ()
-connectSub sub endpoint =
-  matches _Right endpoint =<< Sub.connect sub endpoint
-
-connectXsub
-  :: ( MonadIO m, MonadTest m )
-  => Zmq.XSubscriber
-  -> Zmq.Endpoint transport
-  -> m ()
-connectXsub sub endpoint =
-  matches _Right endpoint =<< Xsub.connect sub endpoint
 
 
 --------------------------------------------------------------------------------
@@ -298,3 +242,20 @@ matches p context s =
       Nothing -> do
         footnote ( show context )
         failure s
+
+throws
+  :: ( Eq e, Exception e, HasCallStack, MonadIO m, MonadTest m, Show a )
+  => IO a
+  -> e
+  -> m ()
+throws action expected =
+  withFrozenCallStack do
+    liftIO ( tryAny action ) >>= \case
+      Left actual ->
+        case fromException actual of
+          Nothing ->
+            failure actual
+          Just actual' ->
+            actual' === expected
+      Right result ->
+        failure result

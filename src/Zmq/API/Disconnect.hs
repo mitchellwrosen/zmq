@@ -23,11 +23,9 @@ disconnect socket endpoint =
 
         _ ->
           FFI.zmq_errno >>= \case
-            EINVAL_ -> pure () -- The endpoint supplied is invalid.
-            ENOENT_ -> pure () -- The provided endpoint is not connected.
+            -- The provided endpoint is not connected.
+            ENOENT_ ->
+              pure ()
 
             errno ->
-              if errno == ETERM_ then
-                exception "zmq_disconnect" errno
-              else
-                unexpectedErrno "zmq_disconnect" errno
+              exception "zmq_disconnect" errno

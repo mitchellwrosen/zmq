@@ -26,7 +26,4 @@ subscribe socket prefix =
             again
 
           errno ->
-            if errno == ETERM_ then
-              exception "zmq_setsockopt" errno
-            else
-              unexpectedErrno "zmq_setsockopt" errno
+            exception "zmq_setsockopt" errno

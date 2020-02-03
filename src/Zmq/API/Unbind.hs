@@ -23,11 +23,9 @@ unbind socket endpoint =
 
         _ ->
           FFI.zmq_errno >>= \case
-            EINVAL_ -> pure ()
-            ENOENT_ -> pure ()
+            -- The endpoint supplied was not previously bound.
+            ENOENT_ ->
+              pure ()
 
             errno ->
-              if errno == ETERM_ then
-                exception "zmq_unbind" errno
-              else
-                unexpectedErrno "zmq_unbind" errno
+              exception "zmq_unbind" errno

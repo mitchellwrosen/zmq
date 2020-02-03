@@ -43,22 +43,8 @@ nonThreadsafeRecv_ frame socket =
               EINTR_ ->
                 again
 
-              -- EFSM: "The zmq_msg_recv() operation cannot be performed on
-              --        this socket at the moment due to the socket not
-              --        being in the appropriate state. This error may occur
-              --        with socket types that switch between several
-              --        states, such as ZMQ_REP. See the messaging patterns
-              --        section of zmq_socket(3) for more information.
-              --
-              --        This currently can't happen because I haven't added
-              --        ZMQ_REP, it seems bonkers broken/useless. Need to
-              --        investigate what other sockets can return EFSM.
-
               errno ->
-                if errno == ETERM_ then
-                  exception "zmq_msg_recv" errno
-                else
-                  unexpectedErrno "zmq_msg_recv" errno
+                exception "zmq_msg_recv" errno
 
           len -> do
             data_ptr <- FFI.zmq_msg_data frame

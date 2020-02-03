@@ -34,10 +34,7 @@ getIntSockOpt socket option =
                 again
 
               errno ->
-                if errno == EINVAL_ || errno == ETERM_ then
-                  exception "zmq_getsockopt" errno
-                else
-                  unexpectedErrno "zmq_getsockopt" errno
+                exception "zmq_getsockopt" errno
 
 getSocketEventState
   :: Ptr FFI.Socket

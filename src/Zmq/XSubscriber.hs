@@ -39,7 +39,7 @@ newtype XSubscriber
 
 open
   :: MonadIO m
-  => m ( Maybe XSubscriber )
+  => m XSubscriber
 open =
   liftIO ( coerce ( API.socket FFI.zMQ_XSUB ) )
 
@@ -54,7 +54,7 @@ bind
   :: MonadIO m
   => XSubscriber
   -> Endpoint transport
-  -> m ( Either API.BindError () )
+  -> m ()
 bind subscriber endpoint = liftIO do
   withForeignPtr ( coerce subscriber ) \socket ->
     API.bind socket endpoint
@@ -71,7 +71,7 @@ connect
   :: MonadIO m
   => XSubscriber
   -> Endpoint transport
-  -> m ( Either API.ConnectError () )
+  -> m ()
 connect subscriber endpoint =
   liftIO ( coerce API.connect subscriber endpoint )
 

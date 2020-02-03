@@ -35,7 +35,7 @@ data ManagedSocket a
   , bind
       :: forall transport.
          Endpoint transport
-      -> IO ( Either API.BindError () )
+      -> IO ()
 
   , send
       :: NonEmpty ByteString
@@ -54,7 +54,7 @@ instance Show ( ManagedSocket a ) where
 data Request a where
   RequestBind
     :: Endpoint transport
-    -> MVar ( Either API.BindError () )
+    -> MVar ( Maybe SomeException )
     -> Request a
 
   RequestClose
@@ -62,7 +62,7 @@ data Request a where
 
   RequestSend
     :: NonEmpty ByteString
-    -> MVar a
+    -> MVar ( Either SomeException a )
     -> Request a
 
 open
@@ -70,17 +70,17 @@ open
      Ptr FFI.Context
   -> FFI.Socktype
   -> ( Ptr FFI.Socket -> NonEmpty ByteString -> IO a )
-  -> IO ( Maybe ( ManagedSocket a ) )
+  -> IO ( ManagedSocket a )
 open context socketType sendImpl =
   mask_ do
     openVar <- newEmptyMVar
     void ( spawnManagerThread context socketType sendImpl openVar )
 
     readMVar openVar >>= \case
-      Nothing ->
-        pure Nothing
+      Left ex ->
+        throwIO ex
 
-      Just ( socket, requestQueue ) -> do
+      Right ( socket, requestQueue ) -> do
         let
           close :: IO ()
           close =
@@ -89,12 +89,12 @@ open context socketType sendImpl =
         let
           bind
             :: Endpoint transport
-            -> IO ( Either API.BindError () )
+            -> IO ()
           bind endpoint = do
             responseVar <- newEmptyMVar
             atomically do
               writeTBQueue requestQueue ( RequestBind endpoint responseVar )
-            readMVar responseVar
+            readMVar responseVar >>= maybe ( pure () ) throwIO
 
         let
           send
@@ -104,43 +104,62 @@ open context socketType sendImpl =
             responseVar <- newEmptyMVar
             pure do
               writeTBQueue requestQueue ( RequestSend message responseVar )
-              pure do
-                response <- takeMVar responseVar
-                pure response
+              pure ( takeMVar responseVar >>= either throwIO pure )
 
-        pure ( Just ManagedSocket{..} )
+        pure ManagedSocket{..}
 
 spawnManagerThread
   :: forall a.
      Ptr FFI.Context
   -> FFI.Socktype
   -> ( Ptr FFI.Socket -> NonEmpty ByteString -> IO a )
-  -> MVar ( Maybe ( Ptr FFI.Socket, TBQueue ( Request a ) ) )
+  -> MVar ( Either SomeException ( Ptr FFI.Socket, TBQueue ( Request a ) ) )
   -> IO ThreadId
 spawnManagerThread context socketType sendImpl openVar =
   SlaveThread.fork do
     unsafeUnmask do
-      API.socket' context socketType >>= \case
-        Nothing ->
-          putMVar openVar Nothing
+      try ( API.socket' context socketType ) >>= \case
+        Left ex ->
+          case fromException @SomeAsyncException ex of
+            Nothing -> putMVar openVar ( Left ex )
+            Just _ -> throwIO ex
 
-        Just sock -> do
+        Right sock -> do
           requestQueue :: TBQueue ( Request a ) <-
             newTBQueueIO 1024 -- TODO better magic num based on HWM?
 
-          putMVar openVar ( Just ( sock, requestQueue ) )
+          putMVar openVar ( Right ( sock, requestQueue ) )
 
           fix \loop -> do
             atomically ( readTBQueue requestQueue ) >>= \case
               RequestBind endpoint responseVar -> do
-                result <- API.bind sock endpoint
-                putMVar responseVar result
-                loop
+                try ( API.bind sock endpoint ) >>= \case
+                  Left ex ->
+                    case fromException @SomeAsyncException ex of
+                      Nothing -> do
+                        putMVar responseVar ( Just ex )
+                        loop
+                      Just _ ->
+                        throwIO ex
+
+                  Right () -> do
+                    putMVar responseVar Nothing
+                    loop
 
               RequestClose ->
                 FFI.zmq_close sock
 
               RequestSend message responseVar -> do
-                response <- sendImpl sock message
-                putMVar responseVar response
-                loop
+                try ( sendImpl sock message ) >>= \case
+                  Left ex ->
+                    case fromException @SomeAsyncException ex of
+                      Nothing -> do
+                        putMVar responseVar ( Left ex )
+                        loop
+
+                      Just _ ->
+                        throwIO ex
+
+                  Right result -> do
+                    putMVar responseVar ( Right result )
+                    loop

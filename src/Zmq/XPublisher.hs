@@ -34,7 +34,7 @@ newtype XPublisher
 
 open
   :: MonadIO m
-  => m ( Maybe XPublisher )
+  => m XPublisher
 open =
   liftIO ( coerce ( API.socket FFI.zMQ_XPUB ) )
 
@@ -49,7 +49,7 @@ bind
   :: MonadIO m
   => XPublisher
   -> Endpoint transport
-  -> m ( Either API.BindError () )
+  -> m ()
 bind publisher endpoint = liftIO do
   withForeignPtr ( coerce publisher ) \socket ->
     API.bind socket endpoint
@@ -66,7 +66,7 @@ connect
   :: MonadIO m
   => XPublisher
   -> Endpoint transport
-  -> m ( Either API.ConnectError () )
+  -> m ()
 connect publisher endpoint =
   liftIO ( coerce API.connect publisher endpoint )
 
