@@ -18,7 +18,6 @@ import Data.List.NonEmpty as X (NonEmpty)
 import Data.Text as X (Text, pack)
 import Data.Word as X (Word8)
 import Foreign.C as X (CChar, CInt, CSize, CString, Errno, withCString)
-import Foreign.ForeignPtr as X (ForeignPtr, newForeignPtr, withForeignPtr)
 import Foreign.Ptr as X (Ptr, nullPtr)
 import Numeric.Natural as X (Natural)
 import Say as X

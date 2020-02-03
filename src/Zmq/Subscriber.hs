@@ -19,7 +19,6 @@ import Zmq.Context
 import Zmq.Endpoint
 import Zmq.Prelude
 import qualified Zmq.API.Bind as API
-import qualified Zmq.API.Close as API
 import qualified Zmq.API.Connect as API
 import qualified Zmq.API.Disconnect as API
 import qualified Zmq.API.Recv as API
@@ -30,22 +29,22 @@ import qualified Zmq.FFI as FFI
 
 
 newtype Subscriber
-  = Subscriber ( ForeignPtr FFI.Socket )
+  = Subscriber { unSubscriber :: Ptr FFI.Socket }
   deriving newtype ( Eq, Ord, Show )
 
 open
   :: MonadIO m
   => Context
   -> m Subscriber
-open context =
-  liftIO ( coerce ( API.socket ( unContext context ) FFI.zMQ_SUB ) )
+open context = liftIO do
+  coerce ( API.socket ( unContext context ) FFI.zMQ_SUB )
 
 close
   :: MonadIO m
   => Subscriber
   -> m ()
-close subscriber =
-  liftIO ( coerce API.close subscriber )
+close =
+  liftIO . coerce FFI.zmq_close
 
 bind
   :: MonadIO m
@@ -53,8 +52,7 @@ bind
   -> Endpoint transport
   -> m ()
 bind subscriber endpoint = liftIO do
-  withForeignPtr ( coerce subscriber ) \socket ->
-    API.bind socket endpoint
+  API.bind ( unSubscriber subscriber ) endpoint
 
 unbind
   :: MonadIO m
@@ -85,12 +83,12 @@ subscribe
   => Subscriber
   -> ByteString
   -> m ()
-subscribe subscriber prefix =
-  liftIO ( coerce API.subscribe subscriber prefix )
+subscribe subscriber prefix = liftIO do
+  API.subscribe ( unSubscriber subscriber ) prefix
 
 recv
   :: MonadIO m
   => Subscriber
   -> m ( NonEmpty ByteString )
-recv subscriber =
-  liftIO ( coerce API.nonThreadsafeRecv subscriber )
+recv =
+  liftIO . coerce API.nonThreadsafeRecv

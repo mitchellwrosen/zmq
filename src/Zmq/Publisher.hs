@@ -17,7 +17,6 @@ import Zmq.Context
 import Zmq.Endpoint
 import Zmq.Prelude
 import qualified Zmq.API.Bind as API
-import qualified Zmq.API.Close as API
 import qualified Zmq.API.Connect as API
 import qualified Zmq.API.Disconnect as API
 import qualified Zmq.API.Send as API
@@ -27,22 +26,22 @@ import qualified Zmq.FFI as FFI
 
 
 newtype Publisher
-  = Publisher ( ForeignPtr FFI.Socket )
+  = Publisher { unPublisher :: Ptr FFI.Socket }
   deriving newtype ( Eq, Ord, Show )
 
 open
   :: MonadIO m
   => Context
   -> m Publisher
-open context =
-  liftIO ( coerce ( API.socket ( unContext context ) FFI.zMQ_PUB ) )
+open context = liftIO do
+  coerce ( API.socket ( unContext context ) FFI.zMQ_PUB )
 
 close
   :: MonadIO m
   => Publisher
   -> m ()
-close publisher =
-  liftIO ( coerce API.close publisher )
+close =
+  liftIO . coerce FFI.zmq_close
 
 bind
   :: MonadIO m
@@ -50,32 +49,31 @@ bind
   -> Endpoint transport
   -> m ()
 bind publisher endpoint = liftIO do
-  withForeignPtr ( coerce publisher ) \socket ->
-    API.bind socket endpoint
+  API.bind ( unPublisher publisher ) endpoint
 
 unbind
   :: MonadIO m
   => Publisher
   -> Endpoint transport
   -> m ()
-unbind publisher endpoint =
-  liftIO ( coerce API.unbind publisher endpoint )
+unbind publisher endpoint = liftIO do
+  API.unbind ( unPublisher publisher ) endpoint
 
 connect
   :: MonadIO m
   => Publisher
   -> Endpoint transport
   -> m ()
-connect publisher endpoint =
-  liftIO ( coerce API.connect publisher endpoint )
+connect publisher endpoint = liftIO do
+  API.connect ( unPublisher publisher ) endpoint
 
 disconnect
   :: MonadIO m
   => Publisher
   -> Endpoint transport
   -> m ()
-disconnect publisher endpoint =
-  liftIO ( coerce API.disconnect publisher endpoint )
+disconnect publisher endpoint = liftIO do
+  API.disconnect ( unPublisher publisher ) endpoint
 
 send
   :: MonadIO m
@@ -83,5 +81,4 @@ send
   -> NonEmpty ByteString
   -> m ()
 send publisher message = liftIO do
-  withForeignPtr ( coerce publisher ) \socket ->
-    API.sendThatNeverBlocks socket message
+  API.sendThatNeverBlocks ( unPublisher publisher ) message

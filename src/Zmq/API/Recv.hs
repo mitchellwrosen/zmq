@@ -15,12 +15,11 @@ import qualified Zmq.FFI as FFI
 
 -- | <http://api.zeromq.org/4-3:zmq-msg-recv>
 nonThreadsafeRecv
-  :: ForeignPtr FFI.Socket
+  :: Ptr FFI.Socket
   -> IO ( NonEmpty ByteString )
 nonThreadsafeRecv socket =
   withFrame \frame_ptr ->
-    withForeignPtr socket \socket_ptr ->
-      nonThreadsafeRecv_ frame_ptr socket_ptr
+    nonThreadsafeRecv_ frame_ptr socket
 
 nonThreadsafeRecv_
   :: Ptr FFI.Frame

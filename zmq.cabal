@@ -14,6 +14,7 @@ common component
     DeriveAnyClass
     DerivingStrategies
     DuplicateRecordFields
+    FlexibleContexts
     FlexibleInstances
     GADTs
     GeneralizedNewtypeDeriving
@@ -73,7 +74,6 @@ library
 
   other-modules:
     Zmq.API.Bind
-    Zmq.API.Close
     Zmq.API.Connect
     Zmq.API.CtxTerm
     Zmq.API.Disconnect

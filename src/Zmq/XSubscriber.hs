@@ -23,7 +23,6 @@ import Zmq.Endpoint
 import Zmq.Prelude
 import Zmq.SubscriptionMessage (SubscriptionMessage(..))
 import qualified Zmq.API.Bind as API
-import qualified Zmq.API.Close as API
 import qualified Zmq.API.Connect as API
 import qualified Zmq.API.Disconnect as API
 import qualified Zmq.API.Recv as API
@@ -35,22 +34,22 @@ import qualified Zmq.SubscriptionMessage as SubscriptionMessage
 
 
 newtype XSubscriber
-  = XSubscriber ( ForeignPtr FFI.Socket )
+  = XSubscriber { unXSubscriber :: Ptr FFI.Socket }
   deriving newtype ( Eq, Ord, Show )
 
 open
   :: MonadIO m
   => Context
   -> m XSubscriber
-open context =
-  liftIO ( coerce ( API.socket ( unContext context ) FFI.zMQ_XSUB ) )
+open context = liftIO do
+  coerce ( API.socket ( unContext context ) FFI.zMQ_XSUB )
 
 close
   :: MonadIO m
   => XSubscriber
   -> m ()
-close subscriber =
-  liftIO ( coerce API.close subscriber )
+close =
+  liftIO . coerce FFI.zmq_close
 
 bind
   :: MonadIO m
@@ -58,32 +57,31 @@ bind
   -> Endpoint transport
   -> m ()
 bind subscriber endpoint = liftIO do
-  withForeignPtr ( coerce subscriber ) \socket ->
-    API.bind socket endpoint
+  API.bind ( unXSubscriber subscriber ) endpoint
 
 unbind
   :: MonadIO m
   => XSubscriber
   -> Endpoint transport
   -> m ()
-unbind subscriber endpoint =
-  liftIO ( coerce API.unbind subscriber endpoint )
+unbind subscriber endpoint = liftIO do
+  API.unbind ( unXSubscriber subscriber ) endpoint
 
 connect
   :: MonadIO m
   => XSubscriber
   -> Endpoint transport
   -> m ()
-connect subscriber endpoint =
-  liftIO ( coerce API.connect subscriber endpoint )
+connect subscriber endpoint = liftIO do
+  API.connect ( unXSubscriber subscriber ) endpoint
 
 disconnect
   :: MonadIO m
   => XSubscriber
   -> Endpoint transport
   -> m ()
-disconnect subscriber endpoint =
-  liftIO ( coerce API.disconnect subscriber endpoint )
+disconnect subscriber endpoint = liftIO do
+  API.disconnect ( unXSubscriber subscriber ) endpoint
 
 subscribe
   :: MonadIO m
@@ -106,14 +104,14 @@ send
   => XSubscriber
   -> SubscriptionMessage
   -> m ()
-send subscriber ( SubscriptionMessage.serialize -> message ) = liftIO do
-  withForeignPtr ( coerce subscriber ) \socket ->
-    -- TODO test that Sub sends don't block
-    API.sendThatNeverBlocks socket ( message :| [] )
+send subscriber message = liftIO do
+  API.sendThatNeverBlocks
+    ( unXSubscriber subscriber )
+    ( SubscriptionMessage.serialize message :| [] )
 
 recv
   :: MonadIO m
   => XSubscriber
   -> m ( NonEmpty ByteString )
-recv subscriber =
-  liftIO ( coerce API.nonThreadsafeRecv subscriber )
+recv =
+  liftIO . coerce API.nonThreadsafeRecv

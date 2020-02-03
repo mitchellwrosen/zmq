@@ -40,8 +40,8 @@ close
   :: MonadIO m
   => ConcurrentPublisher
   -> m ()
-close publisher =
-  liftIO ( ManagedSocket.close ( unConcurrentPublisher publisher ) )
+close =
+  liftIO . coerce @( ManagedSocket () -> IO () ) ManagedSocket.close
 
 bind
   :: MonadIO m

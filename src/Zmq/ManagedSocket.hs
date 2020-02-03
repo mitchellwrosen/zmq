@@ -118,7 +118,7 @@ spawnManagerThread
 spawnManagerThread context socketType sendImpl openVar =
   SlaveThread.fork do
     unsafeUnmask do
-      try ( API.socket' context socketType ) >>= \case
+      try ( API.socket context socketType ) >>= \case
         Left ex ->
           case fromException @SomeAsyncException ex of
             Nothing -> putMVar openVar ( Left ex )

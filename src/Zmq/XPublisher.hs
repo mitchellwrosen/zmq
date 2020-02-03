@@ -19,7 +19,6 @@ import Zmq.Endpoint
 import Zmq.Prelude
 import Zmq.SubscriptionMessage
 import qualified Zmq.API.Bind as API
-import qualified Zmq.API.Close as API
 import qualified Zmq.API.Connect as API
 import qualified Zmq.API.Disconnect as API
 import qualified Zmq.API.Recv as API
@@ -30,22 +29,22 @@ import qualified Zmq.FFI as FFI
 
 
 newtype XPublisher
-  = XPublisher ( ForeignPtr FFI.Socket )
+  = XPublisher { unXPublisher :: Ptr FFI.Socket }
   deriving newtype ( Eq, Ord, Show )
 
 open
   :: MonadIO m
   => Context
   -> m XPublisher
-open context =
-  liftIO ( coerce ( API.socket ( unContext context ) FFI.zMQ_XPUB ) )
+open context = liftIO do
+  coerce ( API.socket ( unContext context ) FFI.zMQ_XPUB )
 
 close
   :: MonadIO m
   => XPublisher
   -> m ()
-close publisher =
-  liftIO ( coerce API.close publisher )
+close =
+  liftIO . coerce FFI.zmq_close
 
 bind
   :: MonadIO m
@@ -53,32 +52,31 @@ bind
   -> Endpoint transport
   -> m ()
 bind publisher endpoint = liftIO do
-  withForeignPtr ( coerce publisher ) \socket ->
-    API.bind socket endpoint
+  API.bind ( unXPublisher publisher ) endpoint
 
 unbind
   :: MonadIO m
   => XPublisher
   -> Endpoint transport
   -> m ()
-unbind publisher endpoint =
-  liftIO ( coerce API.unbind publisher endpoint )
+unbind publisher endpoint = liftIO do
+  API.unbind ( unXPublisher publisher ) endpoint
 
 connect
   :: MonadIO m
   => XPublisher
   -> Endpoint transport
   -> m ()
-connect publisher endpoint =
-  liftIO ( coerce API.connect publisher endpoint )
+connect publisher endpoint = liftIO do
+  API.connect ( unXPublisher publisher ) endpoint
 
 disconnect
   :: MonadIO m
   => XPublisher
   -> Endpoint transport
   -> m ()
-disconnect publisher endpoint =
-  liftIO ( coerce API.disconnect publisher endpoint )
+disconnect publisher endpoint = liftIO do
+  API.disconnect ( unXPublisher publisher ) endpoint
 
 send
   :: MonadIO m
@@ -86,8 +84,7 @@ send
   -> NonEmpty ByteString
   -> m ()
 send publisher message = liftIO do
-  withForeignPtr ( coerce publisher ) \socket ->
-    API.sendThatNeverBlocks socket message
+  API.sendThatNeverBlocks ( unXPublisher publisher ) message
 
 recv
   :: MonadIO m
@@ -95,7 +92,7 @@ recv
   -> m SubscriptionMessage
 recv publisher = liftIO do
   fix \again ->
-    coerce API.nonThreadsafeRecv publisher >>= \case
+    API.nonThreadsafeRecv ( unXPublisher publisher ) >>= \case
       UnsubscribeMessage prefix ->
         pure ( Unsubscribe prefix )
       SubscribeMessage prefix ->

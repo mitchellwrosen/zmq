@@ -11,7 +11,7 @@ import qualified Zmq.FFI as FFI
 
 -- | <http://api.zeromq.org/4-3:zmq-setsockopt#toc56>
 subscribe
-  :: ForeignPtr FFI.Socket
+  :: Ptr FFI.Socket
   -> ByteString
   -> IO ()
 subscribe socket prefix =
