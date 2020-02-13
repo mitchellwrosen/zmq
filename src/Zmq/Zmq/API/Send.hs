@@ -6,7 +6,6 @@ import Data.Bits ((.|.))
 import qualified Data.ByteString.Unsafe as ByteString
 
 import qualified Libzmq
-import qualified Zmq.FFI as FFI
 
 import qualified Zmqhs
 
@@ -45,7 +44,7 @@ sendThatNeverBlocks__
   -> IO ()
 sendThatNeverBlocks__ socket message flags =
   ByteString.unsafeUseAsCStringLen message \( ptr, fromIntegral -> len ) ->
-    FFI.zmq_send ( Zmqhs.unSocket socket ) ptr len flags >>= \case
+    Libzmq.send ( Zmqhs.unSocket socket ) ptr len flags >>= \case
       -1 ->
         Libzmq.errno >>= exception "zmq_send"
 

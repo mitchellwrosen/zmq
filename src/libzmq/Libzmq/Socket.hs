@@ -9,6 +9,7 @@ module Libzmq.Socket
   , connect
   , disconnect
 
+  , send
   , receiveFrame
 
   , getSocketOption
@@ -41,6 +42,9 @@ foreign import ccall safe "zmq_connect"
 
 foreign import ccall safe "zmq_disconnect"
   disconnect :: Ptr Socket -> CString -> IO CInt
+
+foreign import ccall safe "zmq_send"
+  send :: Ptr Socket -> Ptr a -> CSize -> CInt -> IO CInt
 
 foreign import ccall unsafe "zmq_msg_recv"
   receiveFrame :: Ptr Frame -> Ptr Socket -> CInt -> IO CInt

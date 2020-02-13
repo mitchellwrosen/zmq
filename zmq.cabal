@@ -80,8 +80,6 @@ library
     Zmq.API.CtxTerm
     Zmq.API.Disconnect
     Zmq.API.GetSockOpt
-    Zmq.API.PollerDestroy
-    Zmq.API.PollerNew
     Zmq.API.Recv
     Zmq.API.Send
     Zmq.API.Socket
@@ -93,7 +91,6 @@ library
     Zmq.Exception
     Zmq.Internal
     Zmq.ManagedSocket
-    Zmq.Poller
     Zmq.Prelude
     Zmq.Socket
     Zmq.SubscriptionMessage
@@ -131,7 +128,6 @@ library libzmq
     Libzmq.Error
     Libzmq.Frame
     Libzmq.Socket
-    Zmq.FFI
 
   hs-source-dirs:
     src/libzmq
