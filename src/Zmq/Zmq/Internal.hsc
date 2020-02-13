@@ -5,6 +5,7 @@ module Zmq.Internal
   ( CompatibleTransport
   , Endpoint(..)
   , endpointToString
+  , renderEndpoint
   , SocketType(..)
   , Transport(..)
   ) where
@@ -18,6 +19,7 @@ import qualified Data.Text as Text
 import qualified GHC.TypeLits as TypeLits
 #endif
 
+import qualified Zmqhs
 
 --------------------------------------------------------------------------------
 -- Compatible transport
@@ -74,6 +76,7 @@ deriving stock instance Eq ( Endpoint transport )
 deriving stock instance Ord ( Endpoint transport )
 deriving stock instance Show ( Endpoint transport )
 
+-- | TODO remove endpointToString
 endpointToString
   :: Endpoint transport
   -> String
@@ -91,6 +94,25 @@ endpointToString = \case
   Tcp    address -> "tcp://"    ++ Text.unpack address
 #if defined ZMQ_HAVE_VMCI
   Vmci   address -> "vmci://"   ++ Text.unpack address
+#endif
+
+renderEndpoint
+  :: Endpoint transport
+  -> Zmqhs.Endpoint
+renderEndpoint = \case
+#if defined ZMQ_HAVE_OPENPGM
+  Epgm address -> Zmqhs.Endpoint ( "epgm://" <> address )
+#endif
+  Inproc address -> Zmqhs.Endpoint ( "inproc://" <> address )
+#if !defined ZMQ_HAVE_WINDOWS && !defined ZMQ_HAVE_OPENVMS && !defined ZMQ_HAVE_VXWORKS
+  Ipc address -> Zmqhs.Endpoint ( "ipc://" <> address )
+#endif
+#if defined ZMQ_HAVE_OPENPGM
+  Pgm address -> Zmqhs.Endpoint ( "pgm://" <> address )
+#endif
+  Tcp address -> Zmqhs.Endpoint ( "tcp://" <> address )
+#if defined ZMQ_HAVE_VMCI
+  Vmci address -> Zmqhs.Endpoint ( "vmci://" <> address )
 #endif
 
 

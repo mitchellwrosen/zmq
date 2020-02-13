@@ -8,15 +8,16 @@ module Zmq.Context
   , setMaxSockets
   ) where
 
-import qualified Libzmq
 import qualified Zmq.FFI as FFI
+
+import qualified Zmqhs
 
 import Zmq.Prelude
 import qualified Zmq.API.CtxTerm as API
 
 
 newtype Context
-  = Context { unContext :: Ptr Libzmq.Context }
+  = Context { unContext :: Zmqhs.Context }
 
 data Options
   = Options
@@ -36,7 +37,7 @@ newContext
   => Options
   -> m Context
 newContext options = liftIO do
-  context <- Libzmq.newContext
+  context <- Zmqhs.newContext
   setIoThreads context ( ioThreads options )
   setMaxSockets context ( maxSockets options )
   pure ( Context context )
@@ -52,14 +53,14 @@ terminateContext context =
 -- TODO move to Zmq.API.CtxSet
 
 setIoThreads
-  :: Ptr Libzmq.Context
+  :: Zmqhs.Context
   -> Natural
   -> IO ()
 setIoThreads =
   setNatural FFI.zMQ_IO_THREADS
 
 setMaxSockets
-  :: Ptr Libzmq.Context
+  :: Zmqhs.Context
   -> Natural
   -> IO ()
 setMaxSockets =
@@ -70,8 +71,8 @@ setMaxSockets =
 
 setNatural
   :: FFI.Contextopt
-  -> Ptr Libzmq.Context
+  -> Zmqhs.Context
   -> Natural
   -> IO ()
-setNatural option context =
+setNatural option ( Zmqhs.Context context ) =
     void . FFI.zmq_ctx_set context option . fromIntegral

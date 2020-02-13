@@ -33,7 +33,7 @@ open
 open context = liftIO do
   coerce do
     ManagedSocket.open
-      ( unContext context )
+      context
       Zmqhs.pUB
       API.sendThatNeverBlocks
 

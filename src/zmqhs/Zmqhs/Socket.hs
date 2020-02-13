@@ -11,9 +11,8 @@ module Zmqhs.Socket
   , disconnect
   ) where
 
-import Data.Coerce (coerce)
 import Foreign.C (CInt)
-import Foreign.Ptr (Ptr)
+import Foreign.Ptr (Ptr, nullPtr)
 
 import qualified Libzmq
 import qualified Zmq.FFI as FFI
@@ -31,9 +30,12 @@ newtype Socket
 socket
   :: Context
   -> SocketType
-  -> IO Socket
-socket context socketType =
-  coerce Libzmq.socket ( unContext context ) ( unSocketType socketType )
+  -> IO ( Either CInt Socket )
+socket context socketType = do
+  sock <- Libzmq.socket ( unContext context ) ( unSocketType socketType )
+  if sock == nullPtr
+    then Left <$> FFI.zmq_errno
+    else pure ( Right ( Socket sock ) )
 
 close
   :: Socket

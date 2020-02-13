@@ -37,7 +37,7 @@ import qualified Zmq.SubscriptionMessage as SubscriptionMessage
 
 
 newtype XSubscriber
-  = XSubscriber { unXSubscriber :: Ptr Libzmq.Socket }
+  = XSubscriber { unXSubscriber :: Zmqhs.Socket }
   deriving newtype ( Eq, Ord, Show )
 
 open
@@ -45,7 +45,7 @@ open
   => Context
   -> m XSubscriber
 open context = liftIO do
-  coerce ( API.socket ( unContext context ) Zmqhs.xSUB )
+  coerce ( API.socket context Zmqhs.xSUB )
 
 close
   :: MonadIO m

@@ -6,8 +6,9 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 import Foreign.Marshal.Alloc (alloca)
 import qualified Data.ByteString as ByteString
 
-import qualified Libzmq
 import qualified Zmq.FFI as FFI
+
+import qualified Zmqhs
 
 import Zmq.Error
 import Zmq.Exception
@@ -17,7 +18,7 @@ import Zmq.Socket
 
 -- | <http://api.zeromq.org/4-3:zmq-msg-recv>
 nonThreadsafeRecv
-  :: Ptr Libzmq.Socket
+  :: Zmqhs.Socket
   -> IO ( NonEmpty ByteString )
 nonThreadsafeRecv socket =
   withFrame \frame_ptr ->
@@ -25,7 +26,7 @@ nonThreadsafeRecv socket =
 
 nonThreadsafeRecv_
   :: Ptr FFI.Frame
-  -> Ptr Libzmq.Socket
+  -> Zmqhs.Socket
   -> IO ( NonEmpty ByteString )
 nonThreadsafeRecv_ frame socket =
   recv1 >>= loop []
@@ -34,7 +35,7 @@ nonThreadsafeRecv_ frame socket =
     recv1 :: IO ByteString
     recv1 =
       fix \again ->
-        FFI.zmq_msg_recv frame socket FFI.zMQ_DONTWAIT >>= \case
+        FFI.zmq_msg_recv frame ( Zmqhs.unSocket socket ) FFI.zMQ_DONTWAIT >>= \case
           -1 ->
             FFI.zmq_errno >>= \case
               EAGAIN -> do

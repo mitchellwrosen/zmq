@@ -2,24 +2,18 @@ module Zmq.API.Socket
   ( socket
   ) where
 
-import qualified Zmq.FFI as FFI
-import qualified Libzmq
-
 import qualified Zmqhs
 
+import Zmq.Context (Context(..))
 import Zmq.Exception
-import Zmq.Prelude
 
 
 -- | <http://api.zeromq.org/4-3:zmq-socket>
 socket
-  :: Ptr Libzmq.Context
+  :: Context
   -> Zmqhs.SocketType
-  -> IO ( Ptr Libzmq.Socket )
-socket context ( Zmqhs.SocketType socketType ) = do
-  ptr :: Ptr Libzmq.Socket <-
-    Libzmq.socket context socketType
-
-  if ptr == nullPtr
-    then FFI.zmq_errno >>= exception "zmq_socket"
-    else pure ptr
+  -> IO Zmqhs.Socket
+socket context socketType =
+  Zmqhs.socket ( unContext context ) socketType >>= \case
+    Left errno -> exception "zmq_socket" errno
+    Right sock -> pure sock

@@ -114,9 +114,6 @@ zMQ_SNDMORE          = #const ZMQ_SNDMORE
 foreign import ccall unsafe "zmq_ctx_set"
   zmq_ctx_set :: Ptr Context -> Contextopt -> CInt -> IO CInt
 
-foreign import ccall safe "zmq_ctx_term"
-  zmq_ctx_term :: Ptr Context -> IO CInt
-
 foreign import ccall unsafe "zmq_errno"
   zmq_errno :: IO CInt
 

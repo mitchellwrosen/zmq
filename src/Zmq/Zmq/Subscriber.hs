@@ -32,7 +32,7 @@ import qualified Zmq.API.Unbind as API
 
 
 newtype Subscriber
-  = Subscriber { unSubscriber :: Ptr Libzmq.Socket }
+  = Subscriber { unSubscriber :: Zmqhs.Socket }
   deriving newtype ( Eq, Ord, Show )
 
 open
@@ -40,7 +40,7 @@ open
   => Context
   -> m Subscriber
 open context = liftIO do
-  coerce ( API.socket ( unContext context ) Zmqhs.sUB )
+  coerce ( API.socket context Zmqhs.sUB )
 
 close
   :: MonadIO m

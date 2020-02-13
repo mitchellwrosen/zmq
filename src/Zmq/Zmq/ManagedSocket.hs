@@ -15,10 +15,9 @@ import Data.Ord (comparing)
 import GHC.IO (unsafeUnmask)
 import qualified SlaveThread
 
-import qualified Libzmq
-
 import qualified Zmqhs
 
+import Zmq.Context (Context)
 import Zmq.Endpoint
 import Zmq.Prelude
 import qualified Zmq.API.Bind as API
@@ -31,7 +30,7 @@ import qualified Zmq.API.Socket as API
 
 data ManagedSocket a
   = ManagedSocket
-  { socket :: Ptr Libzmq.Socket
+  { socket :: Zmqhs.Socket
 
   , close :: IO ()
 
@@ -70,9 +69,9 @@ data Request a where
 
 open
   :: forall a.
-     Ptr Libzmq.Context
+     Context
   -> Zmqhs.SocketType
-  -> ( Ptr Libzmq.Socket -> NonEmpty ByteString -> IO a )
+  -> ( Zmqhs.Socket -> NonEmpty ByteString -> IO a )
   -> IO ( ManagedSocket a )
 open context socketType sendImpl =
   mask_ do
@@ -113,10 +112,10 @@ open context socketType sendImpl =
 
 spawnManagerThread
   :: forall a.
-     Ptr Libzmq.Context
+     Context
   -> Zmqhs.SocketType
-  -> ( Ptr Libzmq.Socket -> NonEmpty ByteString -> IO a )
-  -> MVar ( Either SomeException ( Ptr Libzmq.Socket, TBQueue ( Request a ) ) )
+  -> ( Zmqhs.Socket -> NonEmpty ByteString -> IO a )
+  -> MVar ( Either SomeException ( Zmqhs.Socket, TBQueue ( Request a ) ) )
   -> IO ThreadId
 spawnManagerThread context socketType sendImpl openVar =
   SlaveThread.fork do
@@ -150,7 +149,7 @@ spawnManagerThread context socketType sendImpl openVar =
                     loop
 
               RequestClose ->
-                Libzmq.close sock
+                Zmqhs.close sock
 
               RequestSend message responseVar -> do
                 try ( sendImpl sock message ) >>= \case

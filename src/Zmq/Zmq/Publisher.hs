@@ -29,7 +29,7 @@ import qualified Zmq.API.Unbind as API
 
 
 newtype Publisher
-  = Publisher { unPublisher :: Ptr Libzmq.Socket }
+  = Publisher { unPublisher :: Zmqhs.Socket }
   deriving newtype ( Eq, Ord, Show )
 
 open
@@ -37,7 +37,7 @@ open
   => Context
   -> m Publisher
 open context = liftIO do
-  coerce ( API.socket ( unContext context ) Zmqhs.pUB )
+  coerce ( API.socket context Zmqhs.pUB )
 
 close
   :: MonadIO m

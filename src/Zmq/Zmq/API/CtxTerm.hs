@@ -19,7 +19,7 @@ ctxTerm context =
   fix \again -> do
     performGC -- trigger socket finalizers
 
-    FFI.zmq_ctx_term context >>= \case
+    Libzmq.terminateContext context >>= \case
       0 ->
         pure ()
 

@@ -7,30 +7,31 @@ module Zmq.Socket
 
 import Data.Bits ((.&.))
 
-import qualified Libzmq
 import qualified Zmq.FFI as FFI
+
+import qualified Zmqhs
 
 import Zmq.API.GetSockOpt (getSocketEventState, getSocketFd)
 import Zmq.Prelude
 
 
 nonThreadsafeWaitUntilCanRecv
-  :: Ptr Libzmq.Socket
+  :: Zmqhs.Socket
   -> IO ()
 nonThreadsafeWaitUntilCanRecv =
   nonThreadsafeWaitUntilCan FFI.zMQ_POLLIN
 
 nonThreadsafeWaitUntilCanSend
-  :: Ptr Libzmq.Socket
+  :: Zmqhs.Socket
   -> IO ()
 nonThreadsafeWaitUntilCanSend =
   nonThreadsafeWaitUntilCan FFI.zMQ_POLLOUT
 
 nonThreadsafeWaitUntilCan
   :: CInt
-  -> Ptr Libzmq.Socket
+  -> Zmqhs.Socket
   -> IO ()
-nonThreadsafeWaitUntilCan events socket = do
+nonThreadsafeWaitUntilCan events ( Zmqhs.Socket socket ) = do
   fd <- getSocketFd socket
 
   fix \again -> do
