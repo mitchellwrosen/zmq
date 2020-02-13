@@ -16,27 +16,26 @@ import qualified Zmq.Subscriber as Sub
 
 
 main :: IO ()
-main =
-  Zmq.main Zmq.defaultOptions do
-    getArgs >>= \case
-      [ "bind", "publisher", readMaybe @Int -> Just port ] -> do
-        Just pub <- Pub.open
-        Right () <-
-          Pub.bind pub ( Zmq.Tcp ( "127.0.0.1:" <> Text.pack ( show port ) ) )
-        forever do
-          line <- Text.getLine
-          Pub.send pub ( encodeUtf8 line :| [] )
+main = do
+  context <- Zmq.newContext Zmq.defaultOptions
 
-      [ "subscribe", readMaybe @Int -> Just port ] -> do
-        Just sub <- Sub.open
-        Right () <-
-          Sub.connect sub ( Zmq.Tcp ( "127.0.0.1:" <> Text.pack ( show port ) ) )
-        Sub.subscribe sub ""
-        forever do
-          message <- Sub.recv sub
-          for_ message \frame ->
-            Text.putStrLn ( decodeUtf8 frame )
-          Text.putStrLn ""
+  getArgs >>= \case
+    [ "bind", "publisher", readMaybe @Int -> Just port ] -> do
+      pub <- Pub.open context
+      Pub.bind pub ( Zmq.Tcp ( "127.0.0.1:" <> Text.pack ( show port ) ) )
+      forever do
+        line <- Text.getLine
+        Pub.send pub ( encodeUtf8 line :| [] )
 
-      _ ->
-        exitFailure
+    [ "subscribe", readMaybe @Int -> Just port ] -> do
+      sub <- Sub.open context
+      Sub.connect sub ( Zmq.Tcp ( "127.0.0.1:" <> Text.pack ( show port ) ) )
+      Sub.subscribe sub ""
+      forever do
+        message <- Sub.recv sub
+        for_ message \frame ->
+          Text.putStrLn ( decodeUtf8 frame )
+        Text.putStrLn ""
+
+    _ ->
+      exitFailure
