@@ -9,10 +9,15 @@ module Zmqhs.Socket
 
   , connect
   , disconnect
+
+  , getSocketEvents
+  , getSocketFd
   ) where
 
 import Foreign.C (CInt)
+import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (Ptr, nullPtr)
+import Foreign.Storable (peek, poke, sizeOf)
 
 import qualified Libzmq
 import qualified Zmq.FFI as FFI
@@ -82,3 +87,28 @@ disconnect sock endpoint =
     Libzmq.disconnect ( unSocket sock ) endpoint' >>= \case
       0 -> pure ( Right () )
       _ -> Left <$> FFI.zmq_errno
+
+getSocketEvents
+  :: Socket
+  -> IO ( Either CInt CInt )
+getSocketEvents =
+  getIntSocketOption Libzmq.events
+
+getSocketFd
+  :: Socket
+  -> IO ( Either CInt CInt )
+getSocketFd =
+  getIntSocketOption Libzmq.fd
+
+getIntSocketOption
+  :: CInt
+  -> Socket
+  -> IO ( Either CInt CInt )
+getIntSocketOption option sock =
+  alloca \intPtr ->
+    alloca \sizePtr -> do
+      poke sizePtr ( fromIntegral ( sizeOf ( undefined :: CInt ) ) )
+
+      Libzmq.getSocketOption ( unSocket sock ) option intPtr sizePtr >>= \case
+        0 -> Right <$> peek intPtr
+        _ -> Left <$> FFI.zmq_errno

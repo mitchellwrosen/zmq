@@ -14,6 +14,8 @@ module Zmqhs
   , unbind
   , connect
   , disconnect
+  , getSocketEvents
+  , getSocketFd
 
   , SocketType(..)
   , pub

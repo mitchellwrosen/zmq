@@ -8,6 +8,8 @@ module Libzmq.Socket
 
   , connect
   , disconnect
+
+  , getSocketOption
   ) where
 
 import Foreign.C
@@ -35,3 +37,6 @@ foreign import ccall unsafe "zmq_socket"
 
 foreign import ccall safe "zmq_unbind"
   unbind :: Ptr Socket -> CString -> IO CInt
+
+foreign import ccall unsafe "zmq_getsockopt"
+  getSocketOption :: Ptr Socket -> CInt -> Ptr a -> Ptr CSize -> IO CInt

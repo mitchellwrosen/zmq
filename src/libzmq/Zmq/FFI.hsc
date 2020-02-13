@@ -81,9 +81,7 @@ eTIMEDOUT       = #const ETIMEDOUT
 newtype Sockopt
   = Sockopt CInt
 
-zMQ_EVENTS, zMQ_FD, zMQ_SUBSCRIBE :: Sockopt
-zMQ_EVENTS    = Sockopt ( #const ZMQ_EVENTS )
-zMQ_FD        = Sockopt ( #const ZMQ_FD )
+zMQ_SUBSCRIBE :: Sockopt
 zMQ_SUBSCRIBE = Sockopt ( #const ZMQ_SUBSCRIBE )
 
 zMQ_DONTWAIT         :: CInt
@@ -104,9 +102,6 @@ zMQ_SNDMORE          = #const ZMQ_SNDMORE
 
 foreign import ccall unsafe "zmq_errno"
   zmq_errno :: IO CInt
-
-foreign import ccall unsafe "zmq_getsockopt"
-  zmq_getsockopt :: Ptr Socket -> Sockopt -> Ptr a -> Ptr CSize -> IO CInt
 
 foreign import ccall unsafe "zmq_msg_data"
   zmq_msg_data :: Ptr Frame -> IO ( Ptr CChar )

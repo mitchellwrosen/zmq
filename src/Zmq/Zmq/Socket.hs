@@ -11,7 +11,7 @@ import qualified Zmq.FFI as FFI
 
 import qualified Zmqhs
 
-import Zmq.API.GetSockOpt (getSocketEventState, getSocketFd)
+import Zmq.API.GetSockOpt (getSocketEvents, getSocketFd)
 import Zmq.Prelude
 
 
@@ -31,12 +31,12 @@ nonThreadsafeWaitUntilCan
   :: CInt
   -> Zmqhs.Socket
   -> IO ()
-nonThreadsafeWaitUntilCan events ( Zmqhs.Socket socket ) = do
+nonThreadsafeWaitUntilCan events socket = do
   fd <- getSocketFd socket
 
   fix \again -> do
     threadWaitRead fd -- "read" is not a typo
-    state <- getSocketEventState socket
+    state <- getSocketEvents socket
     -- http://api.zeromq.org/4-3:zmq-getsockopt
     --
     -- The combination of a file descriptor returned by
