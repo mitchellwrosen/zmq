@@ -1,24 +1,14 @@
 module Zmq.API.Send
   ( sendThatNeverBlocks
-  , SendError
   ) where
 
 import Data.Bits ((.|.))
 import qualified Data.ByteString.Unsafe as ByteString
 
-import Zmq.Error
 import Zmq.Exception
 import Zmq.Prelude
 import qualified Zmq.FFI as FFI
 
-
--- |
--- @
--- data SendError
---   = 'EHOSTUNREACH'
--- @
-type SendError
-  = Error "send"
 
 -- | Send on a socket that is guaranteed not to block in C (like PUB).
 sendThatNeverBlocks

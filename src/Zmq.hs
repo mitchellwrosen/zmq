@@ -12,8 +12,6 @@ module Zmq
 
   , ConcurrentPublisher
 
-  , SendError
-
   , Transport(..)
   , CompatibleTransport
 
@@ -22,16 +20,11 @@ module Zmq
 
   , SubscriptionMessage(..)
 
-  , Error(..)
-  , CanReturnEHOSTUNREACH
-
   , Zmq.Exception.Exception(..)
   ) where
 
-import Zmq.API.Send (SendError)
 import Zmq.Context
 import Zmq.Endpoint (Endpoint(..), inproc)
-import Zmq.Error
 import Zmq.Exception (Exception(..))
 import Zmq.Internal (CompatibleTransport, Transport(..))
 import Zmq.ConcurrentPublisher (ConcurrentPublisher)

@@ -35,11 +35,11 @@ nonThreadsafeRecv_ frame socket =
         FFI.zmq_msg_recv frame socket FFI.zMQ_DONTWAIT >>= \case
           -1 ->
             FFI.zmq_errno >>= \case
-              EAGAIN_ -> do
+              EAGAIN -> do
                 nonThreadsafeWaitUntilCanRecv socket
                 again
 
-              EINTR_ ->
+              EINTR ->
                 again
 
               errno ->

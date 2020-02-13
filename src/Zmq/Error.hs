@@ -1,82 +1,64 @@
 module Zmq.Error
-  ( Error(..)
-  , pattern EADDRINUSE_
-  , pattern EADDRNOTAVAIL_
-  , pattern EAGAIN_
-  , pattern EFAULT_
-  , pattern EHOSTUNREACH_
-  , pattern EINTR_
-  , pattern EINVAL_
-  , pattern EMFILE_
-  , pattern EMTHREAD_
-  , pattern ENODEV_
-  , pattern ENOENT_
-  , pattern ENOTSOCK_
-  , pattern ETERM_
-  , CanReturnEHOSTUNREACH
+  ( pattern EADDRINUSE
+  , pattern EADDRNOTAVAIL
+  , pattern EAGAIN
+  , pattern EFAULT
+  , pattern EHOSTUNREACH
+  , pattern EINTR
+  , pattern EINVAL
+  , pattern EMFILE
+  , pattern EMTHREAD
+  , pattern ENODEV
+  , pattern ENOENT
+  , pattern ENOTSOCK
+  , pattern ETERM
   ) where
 
 import Foreign.C
-import GHC.TypeLits (Symbol)
 
 import Zmq.FFI
 import Zmq.Prelude
 
 
-data Error ( function :: Symbol ) where
-  EHOSTUNREACH :: ( CanReturnEHOSTUNREACH function ~ 'True ) => Error function
+pattern EADDRINUSE :: CInt
+pattern EADDRINUSE <- ((== Zmq.FFI.eADDRINUSE) -> True)
 
-instance Show ( Error function ) where
-  show = \case
-    EHOSTUNREACH -> "EHOSTUNREACH"
+pattern EADDRNOTAVAIL :: CInt
+pattern EADDRNOTAVAIL <- ((== Zmq.FFI.eADDRNOTAVAIL) -> True)
 
+pattern EAGAIN :: CInt
+pattern EAGAIN <- ((== coerce eAGAIN) -> True)
 
-pattern EADDRINUSE_ :: CInt
-pattern EADDRINUSE_ <- ((== Zmq.FFI.eADDRINUSE) -> True)
+pattern EHOSTUNREACH :: CInt
+pattern EHOSTUNREACH <- ((== Zmq.FFI.eHOSTUNREACH) -> True)
 
-pattern EADDRNOTAVAIL_ :: CInt
-pattern EADDRNOTAVAIL_ <- ((== Zmq.FFI.eADDRNOTAVAIL) -> True)
+pattern EINTR :: CInt
+pattern EINTR <- ((== coerce eINTR) -> True)
 
-pattern EAGAIN_ :: CInt
-pattern EAGAIN_ <- ((== coerce eAGAIN) -> True)
+pattern EINVAL :: CInt
+pattern EINVAL <- ((== coerce eINVAL) -> True) where
+  EINVAL = coerce eINVAL
 
-pattern EHOSTUNREACH_ :: CInt
-pattern EHOSTUNREACH_ <- ((== Zmq.FFI.eHOSTUNREACH) -> True)
+pattern EFAULT :: CInt
+pattern EFAULT <- ((== coerce eFAULT) -> True) where
+  EFAULT = coerce eFAULT
 
-pattern EINTR_ :: CInt
-pattern EINTR_ <- ((== coerce eINTR) -> True)
+pattern EMFILE :: CInt
+pattern EMFILE <- ((== coerce eMFILE) -> True)
 
-pattern EINVAL_ :: CInt
-pattern EINVAL_ <- ((== coerce eINVAL) -> True) where
-  EINVAL_ = coerce eINVAL
+pattern EMTHREAD :: CInt
+pattern EMTHREAD <- ((== Zmq.FFI.eMTHREAD) -> True)
 
-pattern EFAULT_ :: CInt
-pattern EFAULT_ <- ((== coerce eFAULT) -> True) where
-  EFAULT_ = coerce eFAULT
+pattern ENODEV :: CInt
+pattern ENODEV <- ((== coerce eNODEV) -> True)
 
-pattern EMFILE_ :: CInt
-pattern EMFILE_ <- ((== coerce eMFILE) -> True)
+pattern ENOENT :: CInt
+pattern ENOENT <- ((== coerce eNOENT) -> True)
 
-pattern EMTHREAD_ :: CInt
-pattern EMTHREAD_ <- ((== Zmq.FFI.eMTHREAD) -> True)
+pattern ENOTSOCK :: CInt
+pattern ENOTSOCK <- ((== Zmq.FFI.eNOTSOCK) -> True) where
+  ENOTSOCK = Zmq.FFI.eNOTSOCK
 
-pattern ENODEV_ :: CInt
-pattern ENODEV_ <- ((== coerce eNODEV) -> True)
-
-pattern ENOENT_ :: CInt
-pattern ENOENT_ <- ((== coerce eNOENT) -> True)
-
-pattern ENOTSOCK_ :: CInt
-pattern ENOTSOCK_ <- ((== Zmq.FFI.eNOTSOCK) -> True) where
-  ENOTSOCK_ = Zmq.FFI.eNOTSOCK
-
-pattern ETERM_ :: CInt
-pattern ETERM_ <- ((== Zmq.FFI.eTERM) -> True) where
-  ETERM_ = Zmq.FFI.eTERM
-
-
-type family CanReturnEHOSTUNREACH ( function :: Symbol ) :: Bool where
-  -- TODO only a few socket types (stream, server, router if flag set) can
-  -- return EHOSTUNREACH on send
-  CanReturnEHOSTUNREACH "send" = 'True
-  CanReturnEHOSTUNREACH _ = 'False
+pattern ETERM :: CInt
+pattern ETERM <- ((== Zmq.FFI.eTERM) -> True) where
+  ETERM = Zmq.FFI.eTERM

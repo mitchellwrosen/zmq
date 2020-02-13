@@ -22,7 +22,7 @@ subscribe socket prefix =
 
       _ ->
         FFI.zmq_errno >>= \case
-          EINTR_ ->
+          EINTR ->
             again
 
           errno ->

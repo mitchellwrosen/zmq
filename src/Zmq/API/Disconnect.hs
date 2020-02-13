@@ -23,7 +23,7 @@ disconnect socket endpoint =
       _ ->
         FFI.zmq_errno >>= \case
           -- The provided endpoint is not connected.
-          ENOENT_ ->
+          ENOENT ->
             pure ()
 
           errno ->
