@@ -37,7 +37,7 @@ open
   => Context
   -> m Publisher
 open context = liftIO do
-  coerce ( API.socket ( unContext context ) Zmqhs.pub )
+  coerce ( API.socket ( unContext context ) Zmqhs.pUB )
 
 close
   :: MonadIO m

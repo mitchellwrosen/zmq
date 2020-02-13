@@ -40,7 +40,7 @@ open
   => Context
   -> m XPublisher
 open context = liftIO do
-  coerce ( API.socket ( unContext context ) Zmqhs.xpub )
+  coerce ( API.socket ( unContext context ) Zmqhs.xPUB )
 
 close
   :: MonadIO m

@@ -1,9 +1,9 @@
 module Zmqhs
   ( SocketType(..)
-  , pub
-  , sub
-  , xpub
-  , xsub
+  , pUB
+  , sUB
+  , xPUB
+  , xSUB
   ) where
 
 import Zmqhs.SocketType
