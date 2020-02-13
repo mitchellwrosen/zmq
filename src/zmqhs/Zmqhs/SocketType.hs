@@ -12,7 +12,8 @@ import Libzmq.Constants
 
 
 newtype SocketType
-  = SocketType CInt
+  = SocketType
+  { unSocketType :: CInt }
 
 pUB, sUB, xPUB, xSUB :: SocketType
 pUB = SocketType zMQ_PUB

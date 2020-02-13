@@ -109,6 +109,7 @@ library zmqhs
 
   exposed-modules:
     Zmqhs
+    Zmqhs.Context
     Zmqhs.Endpoint
     Zmqhs.Socket
     Zmqhs.SocketType
