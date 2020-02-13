@@ -14,6 +14,10 @@ module Zmq.XPublisher
   , recv
   ) where
 
+import qualified Libzmq
+
+import qualified Zmqhs
+
 import Zmq.Context
 import Zmq.Endpoint
 import Zmq.Prelude
@@ -25,11 +29,10 @@ import qualified Zmq.API.Recv as API
 import qualified Zmq.API.Send as API
 import qualified Zmq.API.Socket as API
 import qualified Zmq.API.Unbind as API
-import qualified Zmq.FFI as FFI
 
 
 newtype XPublisher
-  = XPublisher { unXPublisher :: Ptr FFI.Socket }
+  = XPublisher { unXPublisher :: Ptr Libzmq.Socket }
   deriving newtype ( Eq, Ord, Show )
 
 open
@@ -37,14 +40,14 @@ open
   => Context
   -> m XPublisher
 open context = liftIO do
-  coerce ( API.socket ( unContext context ) FFI.zMQ_XPUB )
+  coerce ( API.socket ( unContext context ) Zmqhs.xpub )
 
 close
   :: MonadIO m
   => XPublisher
   -> m ()
 close =
-  liftIO . coerce FFI.zmq_close
+  liftIO . coerce Libzmq.close
 
 bind
   :: MonadIO m

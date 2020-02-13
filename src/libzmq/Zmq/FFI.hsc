@@ -9,9 +9,11 @@ import Foreign.C
 import Foreign.Ptr
 import Foreign.Storable
 
-newtype Context = Context ()
-newtype Poller  = Poller ()
-newtype Socket  = Socket ()
+import Libzmq.Context
+import Libzmq.Socket
+
+
+newtype Poller = Poller ()
 
 newtype Frame
   = Frame { unFrame :: Ptr () }
@@ -93,15 +95,6 @@ zMQ_EVENTS    = Sockopt ( #const ZMQ_EVENTS )
 zMQ_FD        = Sockopt ( #const ZMQ_FD )
 zMQ_SUBSCRIBE = Sockopt ( #const ZMQ_SUBSCRIBE )
 
-newtype Socktype
-  = Socktype CInt
-
-zMQ_PUB, zMQ_SUB, zMQ_XPUB, zMQ_XSUB :: Socktype
-zMQ_PUB  = Socktype ( #const ZMQ_PUB )
-zMQ_SUB  = Socktype ( #const ZMQ_SUB )
-zMQ_XPUB = Socktype ( #const ZMQ_XPUB )
-zMQ_XSUB = Socktype ( #const ZMQ_XSUB )
-
 zMQ_DONTWAIT         :: CInt
 zMQ_IO_THREADS_DFLT  :: CInt
 zMQ_MAX_SOCKETS_DFLT :: CInt
@@ -118,26 +111,11 @@ zMQ_POLLOUT          = #const ZMQ_POLLOUT
 zMQ_SNDMORE          = #const ZMQ_SNDMORE
 
 
-foreign import ccall safe "zmq_bind"
-  zmq_bind :: Ptr Socket -> CString -> IO CInt
-
-foreign import ccall unsafe "zmq_close"
-  zmq_close :: Ptr Socket -> IO ()
-
-foreign import ccall safe "zmq_connect"
-  zmq_connect :: Ptr Socket -> CString -> IO CInt
-
-foreign import ccall unsafe "zmq_ctx_new"
-  zmq_ctx_new :: IO ( Ptr Context )
-
 foreign import ccall unsafe "zmq_ctx_set"
   zmq_ctx_set :: Ptr Context -> Contextopt -> CInt -> IO CInt
 
 foreign import ccall safe "zmq_ctx_term"
   zmq_ctx_term :: Ptr Context -> IO CInt
-
-foreign import ccall safe "zmq_disconnect"
-  zmq_disconnect :: Ptr Socket -> CString -> IO CInt
 
 foreign import ccall unsafe "zmq_errno"
   zmq_errno :: IO CInt
@@ -172,11 +150,5 @@ foreign import ccall safe "zmq_send"
 foreign import ccall unsafe "zmq_setsockopt"
   zmq_setsockopt :: Ptr Socket -> Sockopt -> Ptr a -> CSize -> IO CInt
 
-foreign import ccall unsafe "zmq_socket"
-  zmq_socket :: Ptr Context -> Socktype -> IO ( Ptr Socket )
-
 foreign import ccall unsafe "zmq_strerror"
   zmq_strerror :: CInt -> CString
-
-foreign import ccall safe "zmq_unbind"
-  zmq_unbind :: Ptr Socket -> CString -> IO CInt

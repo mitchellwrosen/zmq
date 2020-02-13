@@ -18,6 +18,10 @@ module Zmq.XSubscriber
 
 import Data.List.NonEmpty (NonEmpty((:|)))
 
+import qualified Libzmq
+
+import qualified Zmqhs
+
 import Zmq.Context
 import Zmq.Endpoint
 import Zmq.Prelude
@@ -29,12 +33,11 @@ import qualified Zmq.API.Recv as API
 import qualified Zmq.API.Send as API
 import qualified Zmq.API.Socket as API
 import qualified Zmq.API.Unbind as API
-import qualified Zmq.FFI as FFI
 import qualified Zmq.SubscriptionMessage as SubscriptionMessage
 
 
 newtype XSubscriber
-  = XSubscriber { unXSubscriber :: Ptr FFI.Socket }
+  = XSubscriber { unXSubscriber :: Ptr Libzmq.Socket }
   deriving newtype ( Eq, Ord, Show )
 
 open
@@ -42,14 +45,14 @@ open
   => Context
   -> m XSubscriber
 open context = liftIO do
-  coerce ( API.socket ( unContext context ) FFI.zMQ_XSUB )
+  coerce ( API.socket ( unContext context ) Zmqhs.xsub )
 
 close
   :: MonadIO m
   => XSubscriber
   -> m ()
 close =
-  liftIO . coerce FFI.zmq_close
+  liftIO . coerce Libzmq.close
 
 bind
   :: MonadIO m

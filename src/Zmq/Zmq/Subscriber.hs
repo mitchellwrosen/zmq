@@ -15,6 +15,10 @@ module Zmq.Subscriber
   , recv
   ) where
 
+import qualified Libzmq
+
+import qualified Zmqhs
+
 import Zmq.Context
 import Zmq.Endpoint
 import Zmq.Prelude
@@ -25,11 +29,10 @@ import qualified Zmq.API.Recv as API
 import qualified Zmq.API.Socket as API
 import qualified Zmq.API.Subscribe as API
 import qualified Zmq.API.Unbind as API
-import qualified Zmq.FFI as FFI
 
 
 newtype Subscriber
-  = Subscriber { unSubscriber :: Ptr FFI.Socket }
+  = Subscriber { unSubscriber :: Ptr Libzmq.Socket }
   deriving newtype ( Eq, Ord, Show )
 
 open
@@ -37,14 +40,14 @@ open
   => Context
   -> m Subscriber
 open context = liftIO do
-  coerce ( API.socket ( unContext context ) FFI.zMQ_SUB )
+  coerce ( API.socket ( unContext context ) Zmqhs.sub )
 
 close
   :: MonadIO m
   => Subscriber
   -> m ()
 close =
-  liftIO . coerce FFI.zmq_close
+  liftIO . coerce Libzmq.close
 
 bind
   :: MonadIO m

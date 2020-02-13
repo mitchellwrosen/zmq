@@ -4,12 +4,14 @@ module Zmq.API.SetSockOpt
 
 import qualified Data.ByteString.Unsafe as ByteString
 
-import Zmq.Prelude
 import qualified Zmq.FFI as FFI
+import qualified Libzmq
+
+import Zmq.Prelude
 
 
 setByteStringSockOpt
-  :: Ptr FFI.Socket
+  :: Ptr Libzmq.Socket
   -> FFI.Sockopt
   -> ByteString
   -> IO CInt

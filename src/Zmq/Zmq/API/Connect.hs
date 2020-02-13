@@ -2,20 +2,22 @@ module Zmq.API.Connect
   ( connect
   ) where
 
+import qualified Libzmq
+import qualified Zmq.FFI as FFI
+
 import Zmq.Endpoint
 import Zmq.Exception
 import Zmq.Prelude
-import qualified Zmq.FFI as FFI
 
 
 -- | <http://api.zeromq.org/4-3:zmq-connect>
 connect
-  :: Ptr FFI.Socket
+  :: Ptr Libzmq.Socket
   -> Endpoint transport
   -> IO ()
 connect socket endpoint =
   withEndpoint endpoint \c_endpoint ->
-    FFI.zmq_connect socket c_endpoint >>= \case
+    Libzmq.connect socket c_endpoint >>= \case
       0 ->
         pure ()
 

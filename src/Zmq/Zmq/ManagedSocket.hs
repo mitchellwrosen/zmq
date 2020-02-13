@@ -15,11 +15,14 @@ import Data.Ord (comparing)
 import GHC.IO (unsafeUnmask)
 import qualified SlaveThread
 
+import qualified Libzmq
+
+import qualified Zmqhs
+
 import Zmq.Endpoint
 import Zmq.Prelude
 import qualified Zmq.API.Bind as API
 import qualified Zmq.API.Socket as API
-import qualified Zmq.FFI as FFI
 
 -- TODO ManagedSocket close
 
@@ -28,7 +31,7 @@ import qualified Zmq.FFI as FFI
 
 data ManagedSocket a
   = ManagedSocket
-  { socket :: Ptr FFI.Socket
+  { socket :: Ptr Libzmq.Socket
 
   , close :: IO ()
 
@@ -67,9 +70,9 @@ data Request a where
 
 open
   :: forall a.
-     Ptr FFI.Context
-  -> FFI.Socktype
-  -> ( Ptr FFI.Socket -> NonEmpty ByteString -> IO a )
+     Ptr Libzmq.Context
+  -> Zmqhs.SocketType
+  -> ( Ptr Libzmq.Socket -> NonEmpty ByteString -> IO a )
   -> IO ( ManagedSocket a )
 open context socketType sendImpl =
   mask_ do
@@ -110,10 +113,10 @@ open context socketType sendImpl =
 
 spawnManagerThread
   :: forall a.
-     Ptr FFI.Context
-  -> FFI.Socktype
-  -> ( Ptr FFI.Socket -> NonEmpty ByteString -> IO a )
-  -> MVar ( Either SomeException ( Ptr FFI.Socket, TBQueue ( Request a ) ) )
+     Ptr Libzmq.Context
+  -> Zmqhs.SocketType
+  -> ( Ptr Libzmq.Socket -> NonEmpty ByteString -> IO a )
+  -> MVar ( Either SomeException ( Ptr Libzmq.Socket, TBQueue ( Request a ) ) )
   -> IO ThreadId
 spawnManagerThread context socketType sendImpl openVar =
   SlaveThread.fork do
@@ -147,7 +150,7 @@ spawnManagerThread context socketType sendImpl openVar =
                     loop
 
               RequestClose ->
-                FFI.zmq_close sock
+                Libzmq.close sock
 
               RequestSend message responseVar -> do
                 try ( sendImpl sock message ) >>= \case

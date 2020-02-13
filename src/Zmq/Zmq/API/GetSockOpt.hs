@@ -8,14 +8,16 @@ import Foreign.Marshal.Alloc (alloca)
 import Foreign.Storable (peek, poke, sizeOf)
 import System.Posix.Types (Fd(..))
 
+import qualified Libzmq
+import qualified Zmq.FFI as FFI
+
 import Zmq.Error
 import Zmq.Exception
 import Zmq.Prelude
-import qualified Zmq.FFI as FFI
 
 
 getIntSockOpt
-  :: Ptr FFI.Socket
+  :: Ptr Libzmq.Socket
   -> FFI.Sockopt
   -> IO CInt
 getIntSockOpt socket option =
@@ -37,13 +39,13 @@ getIntSockOpt socket option =
                 exception "zmq_getsockopt" errno
 
 getSocketEventState
-  :: Ptr FFI.Socket
+  :: Ptr Libzmq.Socket
   -> IO CInt
 getSocketEventState socket =
   getIntSockOpt socket FFI.zMQ_EVENTS
 
 getSocketFd
-  :: Ptr FFI.Socket
+  :: Ptr Libzmq.Socket
   -> IO Fd
 getSocketFd socket =
   Fd <$> getIntSockOpt socket FFI.zMQ_FD

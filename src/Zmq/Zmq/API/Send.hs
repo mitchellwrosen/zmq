@@ -5,21 +5,23 @@ module Zmq.API.Send
 import Data.Bits ((.|.))
 import qualified Data.ByteString.Unsafe as ByteString
 
+import qualified Libzmq
+import qualified Zmq.FFI as FFI
+
 import Zmq.Exception
 import Zmq.Prelude
-import qualified Zmq.FFI as FFI
 
 
 -- | Send on a socket that is guaranteed not to block in C (like PUB).
 sendThatNeverBlocks
-  :: Ptr FFI.Socket
+  :: Ptr Libzmq.Socket
   -> NonEmpty ByteString
   -> IO ()
 sendThatNeverBlocks socket =
   sendThatNeverBlocks_ socket . toList
 
 sendThatNeverBlocks_
-  :: Ptr FFI.Socket
+  :: Ptr Libzmq.Socket
   -> [ ByteString ] -- Invariant: non-empty
   -> IO ()
 sendThatNeverBlocks_ socket =
@@ -35,7 +37,7 @@ sendThatNeverBlocks_ socket =
       error "sendThatNeverBlocks_: []"
 
 sendThatNeverBlocks__
-  :: Ptr FFI.Socket
+  :: Ptr Libzmq.Socket
   -> ByteString
   -> CInt
   -> IO ()

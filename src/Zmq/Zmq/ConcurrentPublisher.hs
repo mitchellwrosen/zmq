@@ -12,12 +12,13 @@ module Zmq.ConcurrentPublisher
   , send
   ) where
 
+import qualified Zmqhs
+
 import Zmq.Context
 import Zmq.Endpoint
 import Zmq.ManagedSocket (ManagedSocket)
 import Zmq.Prelude
 import qualified Zmq.API.Send as API
-import qualified Zmq.FFI as FFI
 import qualified Zmq.ManagedSocket as ManagedSocket
 
 
@@ -33,7 +34,7 @@ open context = liftIO do
   coerce do
     ManagedSocket.open
       ( unContext context )
-      FFI.zMQ_PUB
+      Zmqhs.pub
       API.sendThatNeverBlocks
 
 close

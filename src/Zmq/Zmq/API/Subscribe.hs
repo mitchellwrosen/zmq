@@ -2,16 +2,18 @@ module Zmq.API.Subscribe
   ( subscribe
   ) where
 
+import qualified Libzmq
+import qualified Zmq.FFI as FFI
+
 import Zmq.API.SetSockOpt
 import Zmq.Error
 import Zmq.Exception
 import Zmq.Prelude
-import qualified Zmq.FFI as FFI
 
 
 -- | <http://api.zeromq.org/4-3:zmq-setsockopt#toc56>
 subscribe
-  :: Ptr FFI.Socket
+  :: Ptr Libzmq.Socket
   -> ByteString
   -> IO ()
 subscribe socket prefix =

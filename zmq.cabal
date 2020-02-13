@@ -58,6 +58,7 @@ library
     slave-thread,
     stm,
     text,
+    zmqhs,
 
   build-tool-depends:
     hsc2hs:hsc2hs ^>= 0.68,
@@ -104,9 +105,13 @@ library zmqhs
 
   build-depends:
     libzmq,
+    text,
 
   exposed-modules:
+    Zmqhs
+    Zmqhs.Endpoint
     Zmqhs.Socket
+    Zmqhs.SocketType
 
   hs-source-dirs:
     src/zmqhs
@@ -119,6 +124,10 @@ library libzmq
     hsc2hs:hsc2hs ^>= 0.68,
 
   exposed-modules:
+    Libzmq
+    Libzmq.Constants
+    Libzmq.Context
+    Libzmq.Socket
     Zmq.FFI
 
   hs-source-dirs:

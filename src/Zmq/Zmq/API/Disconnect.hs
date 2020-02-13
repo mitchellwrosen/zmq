@@ -2,21 +2,23 @@ module Zmq.API.Disconnect
   ( disconnect
   ) where
 
+import qualified Libzmq
+import qualified Zmq.FFI as FFI
+
 import Zmq.Endpoint
 import Zmq.Error
 import Zmq.Exception
 import Zmq.Prelude
-import qualified Zmq.FFI as FFI
 
 
 -- | <http://api.zeromq.org/4-3:zmq-disconnect>
 disconnect
-  :: Ptr FFI.Socket
+  :: Ptr Libzmq.Socket
   -> Endpoint transport
   -> IO ()
 disconnect socket endpoint =
   withEndpoint endpoint \c_endpoint ->
-    FFI.zmq_disconnect socket c_endpoint >>= \case
+    Libzmq.disconnect socket c_endpoint >>= \case
       0 ->
         pure ()
 

@@ -4,14 +4,16 @@ module Zmq.API.CtxTerm
 
 import System.Mem (performGC)
 
+import qualified Libzmq
+import qualified Zmq.FFI as FFI
+
 import Zmq.Error
 import Zmq.Exception
 import Zmq.Prelude
-import qualified Zmq.FFI as FFI
 
 
 ctxTerm
-  :: Ptr FFI.Context
+  :: Ptr Libzmq.Context
   -> IO ()
 ctxTerm context =
   fix \again -> do

@@ -13,6 +13,10 @@ module Zmq.Publisher
   , send
   ) where
 
+import qualified Libzmq
+
+import qualified Zmqhs
+
 import Zmq.Context
 import Zmq.Endpoint
 import Zmq.Prelude
@@ -22,11 +26,10 @@ import qualified Zmq.API.Disconnect as API
 import qualified Zmq.API.Send as API
 import qualified Zmq.API.Socket as API
 import qualified Zmq.API.Unbind as API
-import qualified Zmq.FFI as FFI
 
 
 newtype Publisher
-  = Publisher { unPublisher :: Ptr FFI.Socket }
+  = Publisher { unPublisher :: Ptr Libzmq.Socket }
   deriving newtype ( Eq, Ord, Show )
 
 open
@@ -34,14 +37,14 @@ open
   => Context
   -> m Publisher
 open context = liftIO do
-  coerce ( API.socket ( unContext context ) FFI.zMQ_PUB )
+  coerce ( API.socket ( unContext context ) Zmqhs.pub )
 
 close
   :: MonadIO m
   => Publisher
   -> m ()
 close =
-  liftIO . coerce FFI.zmq_close
+  liftIO . coerce Libzmq.close
 
 bind
   :: MonadIO m
