@@ -33,7 +33,7 @@ pollerDestroyIO poller =
         pure ()
 
       _ ->
-        FFI.zmq_errno <&> \case
+        Libzmq.errno <&> \case
           -- Poller pointer did not point to a valid pointer. Eh, ignore it.
           EFAULT_ -> ()
 

@@ -128,6 +128,7 @@ library libzmq
     Libzmq
     Libzmq.Constants
     Libzmq.Context
+    Libzmq.Error
     Libzmq.Socket
     Zmq.FFI
 

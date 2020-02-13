@@ -33,51 +33,6 @@ instance Storable Frame where
       @( Ptr ( Ptr CChar ) -> Ptr CChar -> IO () )
       #{ poke zmq_msg_t, _ }
 
-eADDRINUSE      :: CInt
-eADDRNOTAVAIL   :: CInt
-eAFNOSUPPORT    :: CInt
-eCONNABORTED    :: CInt
-eCONNREFUSED    :: CInt
-eCONNRESET      :: CInt
-eFSM            :: CInt
-eHOSTUNREACH    :: CInt
-eINPROGRESS     :: CInt
-eMSGSIZE        :: CInt
-eMTHREAD        :: CInt
-eNETDOWN        :: CInt
-eNETRESET       :: CInt
-eNETUNREACH     :: CInt
-eNOBUFS         :: CInt
-eNOCOMPATPROTO  :: CInt
-eNOTCONN        :: CInt
-eNOTSOCK        :: CInt
-eNOTSUP         :: CInt
-ePROTONOSUPPORT :: CInt
-eTERM           :: CInt
-eTIMEDOUT       :: CInt
-eADDRINUSE      = #const EADDRINUSE
-eADDRNOTAVAIL   = #const EADDRNOTAVAIL
-eAFNOSUPPORT    = #const EAFNOSUPPORT
-eCONNABORTED    = #const ECONNABORTED
-eCONNREFUSED    = #const ECONNREFUSED
-eCONNRESET      = #const ECONNRESET
-eFSM            = #const EFSM
-eHOSTUNREACH    = #const EHOSTUNREACH
-eINPROGRESS     = #const EINPROGRESS
-eMSGSIZE        = #const EMSGSIZE
-eMTHREAD        = #const EMTHREAD
-eNETDOWN        = #const ENETDOWN
-eNETRESET       = #const ENETRESET
-eNETUNREACH     = #const ENETUNREACH
-eNOBUFS         = #const ENOBUFS
-eNOCOMPATPROTO  = #const ENOCOMPATPROTO
-eNOTCONN        = #const ENOTCONN
-eNOTSOCK        = #const ENOTSOCK
-eNOTSUP         = #const ENOTSUP
-ePROTONOSUPPORT = #const EPROTONOSUPPORT
-eTERM           = #const ETERM
-eTIMEDOUT       = #const ETIMEDOUT
-
 zMQ_DONTWAIT         :: CInt
 zMQ_IO_THREADS_DFLT  :: CInt
 zMQ_MAX_SOCKETS_DFLT :: CInt
@@ -93,9 +48,6 @@ zMQ_POLLIN           = #const ZMQ_POLLIN
 zMQ_POLLOUT          = #const ZMQ_POLLOUT
 zMQ_SNDMORE          = #const ZMQ_SNDMORE
 
-
-foreign import ccall unsafe "zmq_errno"
-  zmq_errno :: IO CInt
 
 foreign import ccall unsafe "zmq_msg_data"
   zmq_msg_data :: Ptr Frame -> IO ( Ptr CChar )
@@ -120,6 +72,3 @@ foreign import ccall unsafe "zmq_msg_recv"
 
 foreign import ccall safe "zmq_send"
   zmq_send :: Ptr Socket -> Ptr a -> CSize -> CInt -> IO CInt
-
-foreign import ccall unsafe "zmq_strerror"
-  zmq_strerror :: CInt -> CString

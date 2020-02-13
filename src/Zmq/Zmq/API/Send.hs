@@ -5,6 +5,7 @@ module Zmq.API.Send
 import Data.Bits ((.|.))
 import qualified Data.ByteString.Unsafe as ByteString
 
+import qualified Libzmq
 import qualified Zmq.FFI as FFI
 
 import qualified Zmqhs
@@ -46,7 +47,7 @@ sendThatNeverBlocks__ socket message flags =
   ByteString.unsafeUseAsCStringLen message \( ptr, fromIntegral -> len ) ->
     FFI.zmq_send ( Zmqhs.unSocket socket ) ptr len flags >>= \case
       -1 ->
-        FFI.zmq_errno >>= exception "zmq_send"
+        Libzmq.errno >>= exception "zmq_send"
 
       -- Ignore number of bytes sent; why is this interesting?
       _ ->

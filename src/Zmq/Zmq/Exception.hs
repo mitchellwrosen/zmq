@@ -7,8 +7,9 @@ import Data.Text.Encoding (decodeUtf8)
 import qualified Control.Exception
 import qualified Data.ByteString.Unsafe as ByteString
 
+import qualified Libzmq
+
 import Zmq.Prelude hiding (Exception)
-import qualified Zmq.FFI as FFI
 
 
 data Exception
@@ -32,4 +33,4 @@ zmq_texterror
   :: CInt
   -> IO Text
 zmq_texterror =
-  fmap decodeUtf8 . ByteString.unsafePackCString . FFI.zmq_strerror
+  fmap decodeUtf8 . ByteString.unsafePackCString . Libzmq.strerror

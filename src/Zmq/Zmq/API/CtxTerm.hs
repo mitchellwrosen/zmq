@@ -5,7 +5,6 @@ module Zmq.API.CtxTerm
 import System.Mem (performGC)
 
 import qualified Libzmq
-import qualified Zmq.FFI as FFI
 
 import Zmq.Error
 import Zmq.Exception
@@ -24,7 +23,7 @@ ctxTerm context =
         pure ()
 
       _ ->
-        FFI.zmq_errno >>= \case
+        Libzmq.errno >>= \case
           EINTR ->
             again
 

@@ -16,21 +16,22 @@ module Zmq.Error
 
 import Foreign.C
 
-import Zmq.FFI
+import qualified Libzmq
+
 import Zmq.Prelude
 
 
 pattern EADDRINUSE :: CInt
-pattern EADDRINUSE <- ((== Zmq.FFI.eADDRINUSE) -> True)
+pattern EADDRINUSE <- ((== Libzmq.eADDRINUSE) -> True)
 
 pattern EADDRNOTAVAIL :: CInt
-pattern EADDRNOTAVAIL <- ((== Zmq.FFI.eADDRNOTAVAIL) -> True)
+pattern EADDRNOTAVAIL <- ((== Libzmq.eADDRNOTAVAIL) -> True)
 
 pattern EAGAIN :: CInt
 pattern EAGAIN <- ((== coerce eAGAIN) -> True)
 
 pattern EHOSTUNREACH :: CInt
-pattern EHOSTUNREACH <- ((== Zmq.FFI.eHOSTUNREACH) -> True)
+pattern EHOSTUNREACH <- ((== Libzmq.eHOSTUNREACH) -> True)
 
 pattern EINTR :: CInt
 pattern EINTR <- ((== coerce eINTR) -> True)
@@ -47,7 +48,7 @@ pattern EMFILE :: CInt
 pattern EMFILE <- ((== coerce eMFILE) -> True)
 
 pattern EMTHREAD :: CInt
-pattern EMTHREAD <- ((== Zmq.FFI.eMTHREAD) -> True)
+pattern EMTHREAD <- ((== Libzmq.eMTHREAD) -> True)
 
 pattern ENODEV :: CInt
 pattern ENODEV <- ((== coerce eNODEV) -> True)
@@ -56,9 +57,9 @@ pattern ENOENT :: CInt
 pattern ENOENT <- ((== coerce eNOENT) -> True)
 
 pattern ENOTSOCK :: CInt
-pattern ENOTSOCK <- ((== Zmq.FFI.eNOTSOCK) -> True) where
-  ENOTSOCK = Zmq.FFI.eNOTSOCK
+pattern ENOTSOCK <- ((== Libzmq.eNOTSOCK) -> True) where
+  ENOTSOCK = Libzmq.eNOTSOCK
 
 pattern ETERM :: CInt
-pattern ETERM <- ((== Zmq.FFI.eTERM) -> True) where
-  ETERM = Zmq.FFI.eTERM
+pattern ETERM <- ((== Libzmq.eTERM) -> True) where
+  ETERM = Libzmq.eTERM

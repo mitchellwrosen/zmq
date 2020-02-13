@@ -31,7 +31,7 @@ terminateContext
 terminateContext context =
   Libzmq.terminateContext ( unContext context ) >>= \case
     0 -> pure ( Right () )
-    _ -> Left <$> FFI.zmq_errno
+    _ -> Left <$> Libzmq.errno
 
 setContextOption
   :: Context
@@ -41,7 +41,7 @@ setContextOption
 setContextOption context option value =
   Libzmq.setContextOption ( unContext context ) ( unContextOption option ) value >>= \case
     0 -> pure ( Right () )
-    _ -> Left <$> FFI.zmq_errno
+    _ -> Left <$> Libzmq.errno
 
 
 newtype ContextOption

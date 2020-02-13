@@ -6,6 +6,7 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 import Foreign.Marshal.Alloc (alloca)
 import qualified Data.ByteString as ByteString
 
+import qualified Libzmq
 import qualified Zmq.FFI as FFI
 
 import qualified Zmqhs
@@ -37,7 +38,7 @@ nonThreadsafeRecv_ frame socket =
       fix \again ->
         FFI.zmq_msg_recv frame ( Zmqhs.unSocket socket ) FFI.zMQ_DONTWAIT >>= \case
           -1 ->
-            FFI.zmq_errno >>= \case
+            Libzmq.errno >>= \case
               EAGAIN -> do
                 nonThreadsafeWaitUntilCanRecv socket
                 again

@@ -23,7 +23,6 @@ import Foreign.Storable (peek, poke, sizeOf)
 import qualified Data.ByteString.Unsafe as ByteString
 
 import qualified Libzmq
-import qualified Zmq.FFI as FFI
 
 import Zmqhs.Context (Context(..))
 import Zmqhs.Endpoint (Endpoint, withEndpoint)
@@ -42,7 +41,7 @@ socket
 socket context socketType = do
   sock <- Libzmq.socket ( unContext context ) ( unSocketType socketType )
   if sock == nullPtr
-    then Left <$> FFI.zmq_errno
+    then Left <$> Libzmq.errno
     else pure ( Right ( Socket sock ) )
 
 close
@@ -59,7 +58,7 @@ bind sock endpoint =
   withEndpoint endpoint \endpoint' ->
     Libzmq.bind ( unSocket sock ) endpoint' >>= \case
       0 -> pure ( Right () )
-      _ -> Left <$> FFI.zmq_errno
+      _ -> Left <$> Libzmq.errno
 
 unbind
   :: Socket
@@ -69,7 +68,7 @@ unbind sock endpoint =
   withEndpoint endpoint \endpoint' ->
     Libzmq.unbind ( unSocket sock ) endpoint' >>= \case
       0 -> pure ( Right () )
-      _ -> Left <$> FFI.zmq_errno
+      _ -> Left <$> Libzmq.errno
 
 connect
   :: Socket
@@ -79,7 +78,7 @@ connect sock endpoint =
   withEndpoint endpoint \endpoint' ->
     Libzmq.connect ( unSocket sock ) endpoint' >>= \case
       0 -> pure ( Right () )
-      _ -> Left <$> FFI.zmq_errno
+      _ -> Left <$> Libzmq.errno
 
 disconnect
   :: Socket
@@ -89,7 +88,7 @@ disconnect sock endpoint =
   withEndpoint endpoint \endpoint' ->
     Libzmq.disconnect ( unSocket sock ) endpoint' >>= \case
       0 -> pure ( Right () )
-      _ -> Left <$> FFI.zmq_errno
+      _ -> Left <$> Libzmq.errno
 
 getSocketEvents
   :: Socket
@@ -114,7 +113,7 @@ getIntSocketOption option sock =
 
       Libzmq.getSocketOption ( unSocket sock ) option intPtr sizePtr >>= \case
         0 -> Right <$> peek intPtr
-        _ -> Left <$> FFI.zmq_errno
+        _ -> Left <$> Libzmq.errno
 
 setSocketSubscribe
   :: Socket
@@ -132,4 +131,4 @@ setBinarySocketOption option sock bytes =
   ByteString.unsafeUseAsCStringLen bytes \( bytes', len ) ->
     Libzmq.setSocketOption ( unSocket sock ) option bytes' ( fromIntegral len ) >>= \case
       0 -> pure ( Right () )
-      _ -> Left <$> FFI.zmq_errno
+      _ -> Left <$> Libzmq.errno
