@@ -53,6 +53,7 @@ library
 
   build-depends:
     bytestring,
+    libzmq,
     say,
     slave-thread,
     stm,
@@ -70,7 +71,7 @@ library
     Zmq.XSubscriber
 
   hs-source-dirs:
-    src
+    src/zmq
 
   other-modules:
     Zmq.API.Bind
@@ -90,13 +91,25 @@ library
     Zmq.Endpoint
     Zmq.Error
     Zmq.Exception
-    Zmq.FFI
     Zmq.Internal
     Zmq.ManagedSocket
     Zmq.Poller
     Zmq.Prelude
     Zmq.Socket
     Zmq.SubscriptionMessage
+
+library libzmq
+  import:
+    component
+
+  build-tool-depends:
+    hsc2hs:hsc2hs ^>= 0.68,
+
+  exposed-modules:
+    Zmq.FFI
+
+  hs-source-dirs:
+    src/libzmq
 
   pkgconfig-depends:
     libzmq == 4.3.2
