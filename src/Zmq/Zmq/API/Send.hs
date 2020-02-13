@@ -32,7 +32,7 @@ sendThatNeverBlocks_ socket =
       sendThatNeverBlocks__ socket message 0
 
     message : messages -> do
-      sendThatNeverBlocks__ socket message ( FFI.zMQ_DONTWAIT .|. FFI.zMQ_SNDMORE )
+      sendThatNeverBlocks__ socket message ( Libzmq.dontwait .|. Libzmq.sndmore )
       loop messages
 
     [] ->

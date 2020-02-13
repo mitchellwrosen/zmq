@@ -8,7 +8,7 @@ module Zmq.Context
   , setMaxSockets
   ) where
 
-import qualified Zmq.FFI as FFI
+import qualified Libzmq
 
 import qualified Zmqhs
 
@@ -28,8 +28,8 @@ data Options
 defaultOptions :: Options
 defaultOptions =
   Options
-    { ioThreads = fromIntegral FFI.zMQ_IO_THREADS_DFLT
-    , maxSockets = fromIntegral FFI.zMQ_MAX_SOCKETS_DFLT
+    { ioThreads = fromIntegral Libzmq.ioThreadsDflt
+    , maxSockets = fromIntegral Libzmq.maxSocketsDflt
     }
 
 newContext

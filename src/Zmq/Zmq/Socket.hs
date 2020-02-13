@@ -7,7 +7,7 @@ module Zmq.Socket
 
 import Data.Bits ((.&.))
 
-import qualified Zmq.FFI as FFI
+import qualified Libzmq
 
 import qualified Zmqhs
 
@@ -19,13 +19,13 @@ nonThreadsafeWaitUntilCanRecv
   :: Zmqhs.Socket
   -> IO ()
 nonThreadsafeWaitUntilCanRecv =
-  nonThreadsafeWaitUntilCan FFI.zMQ_POLLIN
+  nonThreadsafeWaitUntilCan Libzmq.pollin
 
 nonThreadsafeWaitUntilCanSend
   :: Zmqhs.Socket
   -> IO ()
 nonThreadsafeWaitUntilCanSend =
-  nonThreadsafeWaitUntilCan FFI.zMQ_POLLOUT
+  nonThreadsafeWaitUntilCan Libzmq.pollout
 
 nonThreadsafeWaitUntilCan
   :: CInt

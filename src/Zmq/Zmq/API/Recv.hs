@@ -7,7 +7,6 @@ import Foreign.Marshal.Alloc (alloca)
 import qualified Data.ByteString as ByteString
 
 import qualified Libzmq
-import qualified Zmq.FFI as FFI
 
 import qualified Zmqhs
 
@@ -36,7 +35,7 @@ nonThreadsafeRecv_ frame socket =
     recv1 :: IO ByteString
     recv1 =
       fix \again ->
-        Libzmq.receiveFrame frame ( Zmqhs.unSocket socket ) FFI.zMQ_DONTWAIT >>= \case
+        Libzmq.receiveFrame frame ( Zmqhs.unSocket socket ) Libzmq.dontwait >>= \case
           -1 ->
             Libzmq.errno >>= \case
               EAGAIN -> do
@@ -58,7 +57,7 @@ nonThreadsafeRecv_ frame socket =
       -> ByteString
       -> IO ( NonEmpty ByteString )
     loop acc1 acc0 =
-      Libzmq.getFrameProperty frame FFI.zMQ_MORE >>= \case
+      Libzmq.getFrameProperty frame Libzmq.more >>= \case
         1 -> do
           part <- recv1
           loop ( part : acc1 ) acc0
