@@ -26,7 +26,7 @@ nonThreadsafeRecv socket =
     nonThreadsafeRecv_ frame_ptr socket
 
 nonThreadsafeRecv_
-  :: Ptr FFI.Frame
+  :: Ptr Libzmq.Frame
   -> Zmqhs.Socket
   -> IO ( NonEmpty ByteString )
 nonThreadsafeRecv_ frame socket =
@@ -36,7 +36,7 @@ nonThreadsafeRecv_ frame socket =
     recv1 :: IO ByteString
     recv1 =
       fix \again ->
-        FFI.zmq_msg_recv frame ( Zmqhs.unSocket socket ) FFI.zMQ_DONTWAIT >>= \case
+        Libzmq.receiveFrame frame ( Zmqhs.unSocket socket ) FFI.zMQ_DONTWAIT >>= \case
           -1 ->
             Libzmq.errno >>= \case
               EAGAIN -> do
@@ -50,7 +50,7 @@ nonThreadsafeRecv_ frame socket =
                 exception "zmq_msg_recv" errno
 
           len -> do
-            data_ptr <- FFI.zmq_msg_data frame
+            data_ptr <- Libzmq.getFrameData frame
             ByteString.packCStringLen ( data_ptr, fromIntegral len )
 
     loop
@@ -58,7 +58,7 @@ nonThreadsafeRecv_ frame socket =
       -> ByteString
       -> IO ( NonEmpty ByteString )
     loop acc1 acc0 =
-      FFI.zmq_msg_get frame FFI.zMQ_MORE >>= \case
+      Libzmq.getFrameProperty frame FFI.zMQ_MORE >>= \case
         1 -> do
           part <- recv1
           loop ( part : acc1 ) acc0
@@ -67,11 +67,11 @@ nonThreadsafeRecv_ frame socket =
           pure ( acc0 :| reverse acc1 )
 
 withFrame
-  :: ( Ptr FFI.Frame -> IO a )
+  :: ( Ptr Libzmq.Frame -> IO a )
   -> IO a
 withFrame f =
   alloca \frame ->
     bracket_
-      ( FFI.zmq_msg_init frame )
-      ( FFI.zmq_msg_close frame )
+      ( Libzmq.initializeFrame frame )
+      ( Libzmq.closeFrame frame )
       ( f frame )

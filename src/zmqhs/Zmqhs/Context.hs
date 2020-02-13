@@ -13,7 +13,6 @@ import Foreign.C (CInt)
 import Foreign.Ptr (Ptr)
 
 import qualified Libzmq
-import qualified Zmq.FFI as FFI
 
 
 newtype Context
