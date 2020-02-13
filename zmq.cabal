@@ -98,6 +98,19 @@ library
     Zmq.Socket
     Zmq.SubscriptionMessage
 
+library zmqhs
+  import:
+    component
+
+  build-depends:
+    libzmq,
+
+  exposed-modules:
+    Zmqhs.Socket
+
+  hs-source-dirs:
+    src/zmqhs
+
 library libzmq
   import:
     component
