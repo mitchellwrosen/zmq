@@ -78,12 +78,6 @@ ePROTONOSUPPORT = #const EPROTONOSUPPORT
 eTERM           = #const ETERM
 eTIMEDOUT       = #const ETIMEDOUT
 
-newtype Sockopt
-  = Sockopt CInt
-
-zMQ_SUBSCRIBE :: Sockopt
-zMQ_SUBSCRIBE = Sockopt ( #const ZMQ_SUBSCRIBE )
-
 zMQ_DONTWAIT         :: CInt
 zMQ_IO_THREADS_DFLT  :: CInt
 zMQ_MAX_SOCKETS_DFLT :: CInt
@@ -126,9 +120,6 @@ foreign import ccall unsafe "zmq_msg_recv"
 
 foreign import ccall safe "zmq_send"
   zmq_send :: Ptr Socket -> Ptr a -> CSize -> CInt -> IO CInt
-
-foreign import ccall unsafe "zmq_setsockopt"
-  zmq_setsockopt :: Ptr Socket -> Sockopt -> Ptr a -> CSize -> IO CInt
 
 foreign import ccall unsafe "zmq_strerror"
   zmq_strerror :: CInt -> CString

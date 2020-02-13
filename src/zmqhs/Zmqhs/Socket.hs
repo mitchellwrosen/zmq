@@ -12,12 +12,15 @@ module Zmqhs.Socket
 
   , getSocketEvents
   , getSocketFd
+  , setSocketSubscribe
   ) where
 
+import Data.ByteString (ByteString)
 import Foreign.C (CInt)
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (Ptr, nullPtr)
 import Foreign.Storable (peek, poke, sizeOf)
+import qualified Data.ByteString.Unsafe as ByteString
 
 import qualified Libzmq
 import qualified Zmq.FFI as FFI
@@ -112,3 +115,21 @@ getIntSocketOption option sock =
       Libzmq.getSocketOption ( unSocket sock ) option intPtr sizePtr >>= \case
         0 -> Right <$> peek intPtr
         _ -> Left <$> FFI.zmq_errno
+
+setSocketSubscribe
+  :: Socket
+  -> ByteString
+  -> IO ( Either CInt () )
+setSocketSubscribe =
+  setBinarySocketOption Libzmq.subscribe
+
+setBinarySocketOption
+  :: CInt
+  -> Socket
+  -> ByteString
+  -> IO ( Either CInt () )
+setBinarySocketOption option sock bytes =
+  ByteString.unsafeUseAsCStringLen bytes \( bytes', len ) ->
+    Libzmq.setSocketOption ( unSocket sock ) option bytes' ( fromIntegral len ) >>= \case
+      0 -> pure ( Right () )
+      _ -> Left <$> FFI.zmq_errno

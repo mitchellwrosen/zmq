@@ -2,8 +2,6 @@ module Zmq.API.Connect
   ( connect
   ) where
 
-import qualified Libzmq
-
 import qualified Zmqhs
 
 import Zmq.Endpoint

@@ -2,16 +2,12 @@ module Zmq.API.Disconnect
   ( disconnect
   ) where
 
-import qualified Libzmq
-import qualified Zmq.FFI as FFI
-
 import qualified Zmqhs
 
 import Zmq.Endpoint
 import Zmq.Error
 import Zmq.Exception
 import Zmq.Internal (renderEndpoint)
-import Zmq.Prelude
 
 
 -- | <http://api.zeromq.org/4-3:zmq-disconnect>

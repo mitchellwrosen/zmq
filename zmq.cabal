@@ -84,7 +84,6 @@ library
     Zmq.API.PollerNew
     Zmq.API.Recv
     Zmq.API.Send
-    Zmq.API.SetSockOpt
     Zmq.API.Socket
     Zmq.API.Subscribe
     Zmq.API.Unbind
@@ -104,6 +103,7 @@ library zmqhs
     component
 
   build-depends:
+    bytestring,
     libzmq,
     text,
 

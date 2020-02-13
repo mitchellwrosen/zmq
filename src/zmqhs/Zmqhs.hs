@@ -16,6 +16,7 @@ module Zmqhs
   , disconnect
   , getSocketEvents
   , getSocketFd
+  , setSocketSubscribe
 
   , SocketType(..)
   , pub

@@ -3,12 +3,7 @@ module Zmq.API.GetSockOpt
   , getSocketFd
   ) where
 
-import Foreign.Marshal.Alloc (alloca)
-import Foreign.Storable (peek, poke, sizeOf)
 import System.Posix.Types (Fd(..))
-
-import qualified Libzmq
-import qualified Zmq.FFI as FFI
 
 import qualified Zmqhs
 
