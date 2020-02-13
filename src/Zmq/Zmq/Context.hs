@@ -57,22 +57,22 @@ setIoThreads
   -> Natural
   -> IO ()
 setIoThreads =
-  setNatural FFI.zMQ_IO_THREADS
+  setNatural Zmqhs.ioThreads
 
 setMaxSockets
   :: Zmqhs.Context
   -> Natural
   -> IO ()
 setMaxSockets =
-  setNatural FFI.zMQ_MAX_SOCKETS
+  setNatural Zmqhs.maxSockets
 
 
 ----------------------------------------------------------------------------------
 
 setNatural
-  :: FFI.Contextopt
+  :: Zmqhs.ContextOption
   -> Zmqhs.Context
   -> Natural
   -> IO ()
-setNatural option ( Zmqhs.Context context ) =
-    void . FFI.zmq_ctx_set context option . fromIntegral
+setNatural option context =
+  void . Zmqhs.setContextOption context option . fromIntegral

@@ -1,22 +1,22 @@
 module Zmqhs.SocketType
   ( SocketType(..)
-  , pUB
-  , sUB
-  , xPUB
-  , xSUB
+  , pub
+  , sub
+  , xpub
+  , xsub
   ) where
 
 import Foreign.C (CInt)
 
-import Libzmq.Constants
+import qualified Libzmq
 
 
 newtype SocketType
   = SocketType
   { unSocketType :: CInt }
 
-pUB, sUB, xPUB, xSUB :: SocketType
-pUB = SocketType zMQ_PUB
-sUB = SocketType zMQ_SUB
-xPUB = SocketType zMQ_XPUB
-xSUB = SocketType zMQ_XSUB
+pub, sub, xpub, xsub :: SocketType
+pub = SocketType Libzmq.pub
+sub = SocketType Libzmq.sub
+xpub = SocketType Libzmq.xpub
+xsub = SocketType Libzmq.xsub

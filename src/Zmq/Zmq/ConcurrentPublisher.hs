@@ -31,11 +31,7 @@ open
   => Context
   -> m ConcurrentPublisher
 open context = liftIO do
-  coerce do
-    ManagedSocket.open
-      context
-      Zmqhs.pUB
-      API.sendThatNeverBlocks
+  coerce ( ManagedSocket.open context Zmqhs.pub API.sendThatNeverBlocks )
 
 close
   :: MonadIO m

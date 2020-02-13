@@ -2,6 +2,10 @@ module Zmqhs
   ( Context(..)
   , newContext
   , terminateContext
+  , setContextOption
+  , ContextOption(..)
+  , ioThreads
+  , maxSockets
 
   , Socket(..)
   , socket
@@ -12,10 +16,10 @@ module Zmqhs
   , disconnect
 
   , SocketType(..)
-  , pUB
-  , sUB
-  , xPUB
-  , xSUB
+  , pub
+  , sub
+  , xpub
+  , xsub
 
   , Endpoint(..)
   ) where

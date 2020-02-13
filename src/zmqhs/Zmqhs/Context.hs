@@ -2,6 +2,10 @@ module Zmqhs.Context
   ( Context(..)
   , newContext
   , terminateContext
+  , setContextOption
+  , ContextOption(..)
+  , ioThreads
+  , maxSockets
   ) where
 
 import Data.Coerce (coerce)
@@ -21,8 +25,32 @@ newContext :: IO Context
 newContext =
   coerce Libzmq.newContext
 
-terminateContext :: Context -> IO ( Either CInt () )
+terminateContext
+  :: Context
+  -> IO ( Either CInt () )
 terminateContext context =
   Libzmq.terminateContext ( unContext context ) >>= \case
     0 -> pure ( Right () )
     _ -> Left <$> FFI.zmq_errno
+
+setContextOption
+  :: Context
+  -> ContextOption
+  -> CInt
+  -> IO ( Either CInt () )
+setContextOption context option value =
+  Libzmq.setContextOption ( unContext context ) ( unContextOption option ) value >>= \case
+    0 -> pure ( Right () )
+    _ -> Left <$> FFI.zmq_errno
+
+
+newtype ContextOption
+  = ContextOption { unContextOption :: CInt }
+
+ioThreads :: ContextOption
+ioThreads =
+  ContextOption Libzmq.ioThreads
+
+maxSockets :: ContextOption
+maxSockets =
+  ContextOption Libzmq.maxSockets

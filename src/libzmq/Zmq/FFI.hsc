@@ -9,7 +9,6 @@ import Foreign.C
 import Foreign.Ptr
 import Foreign.Storable
 
-import Libzmq.Context
 import Libzmq.Socket
 
 
@@ -79,14 +78,6 @@ ePROTONOSUPPORT = #const EPROTONOSUPPORT
 eTERM           = #const ETERM
 eTIMEDOUT       = #const ETIMEDOUT
 
-newtype Contextopt
-  = Contextopt CInt
-
-zMQ_IO_THREADS, zMQ_MAX_SOCKETS :: Contextopt
-zMQ_IO_THREADS  = Contextopt ( #const ZMQ_IO_THREADS )
-zMQ_MAX_SOCKETS = Contextopt ( #const ZMQ_MAX_SOCKETS )
-
-
 newtype Sockopt
   = Sockopt CInt
 
@@ -110,9 +101,6 @@ zMQ_POLLIN           = #const ZMQ_POLLIN
 zMQ_POLLOUT          = #const ZMQ_POLLOUT
 zMQ_SNDMORE          = #const ZMQ_SNDMORE
 
-
-foreign import ccall unsafe "zmq_ctx_set"
-  zmq_ctx_set :: Ptr Context -> Contextopt -> CInt -> IO CInt
 
 foreign import ccall unsafe "zmq_errno"
   zmq_errno :: IO CInt

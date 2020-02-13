@@ -40,7 +40,7 @@ open
   => Context
   -> m Subscriber
 open context = liftIO do
-  coerce ( API.socket context Zmqhs.sUB )
+  coerce ( API.socket context Zmqhs.sub )
 
 close
   :: MonadIO m

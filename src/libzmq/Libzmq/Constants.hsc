@@ -6,8 +6,17 @@ module Libzmq.Constants where
 
 import Foreign.C (CInt)
 
-zMQ_PUB, zMQ_SUB, zMQ_XPUB, zMQ_XSUB :: CInt
-zMQ_PUB  = #const ZMQ_PUB
-zMQ_SUB  = #const ZMQ_SUB
-zMQ_XPUB = #const ZMQ_XPUB
-zMQ_XSUB = #const ZMQ_XSUB
+
+ioThreads :: CInt
+maxSockets :: CInt
+pub :: CInt
+sub :: CInt
+xpub :: CInt
+xsub :: CInt
+
+ioThreads = #const ZMQ_IO_THREADS
+maxSockets = #const ZMQ_MAX_SOCKETS
+pub = #const ZMQ_PUB
+sub = #const ZMQ_SUB
+xpub = #const ZMQ_XPUB
+xsub = #const ZMQ_XSUB
