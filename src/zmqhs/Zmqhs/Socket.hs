@@ -1,7 +1,7 @@
 module Zmqhs.Socket
   ( Socket(..)
 
-  , socket
+  , open
   , close
 
   , bind
@@ -41,8 +41,8 @@ newtype Socket
 -- May throw:
 --   * @EMFILE@ if no more ZMQ sockets can be opened.
 --   * @ETERM@ if the context was terminated.
-socket :: MonadIO m => Context -> SocketType -> m Socket
-socket context socketType = liftIO do
+open :: MonadIO m => Context -> SocketType -> m Socket
+open context socketType = liftIO do
   sock <- Libzmq.socket ( unContext context ) ( socketTypeToCInt socketType )
   if sock /= nullPtr
     then pure ( Socket sock )

@@ -36,7 +36,7 @@ newtype XPublisher
 
 open :: MonadIO m => Context -> m XPublisher
 open context = do
-  sock <- Zmqhs.socket context Zmqhs.XPub
+  sock <- Zmqhs.open context Zmqhs.XPub
   sockVar <- UnliftIO.newMVar sock
   pure ( XPublisher sockVar )
 

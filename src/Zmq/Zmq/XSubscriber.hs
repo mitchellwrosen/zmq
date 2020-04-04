@@ -40,7 +40,7 @@ newtype XSubscriber
 
 open :: MonadIO m => Context -> m XSubscriber
 open context = do
-  sock <- Zmqhs.socket context Zmqhs.XSub
+  sock <- Zmqhs.open context Zmqhs.XSub
   sockVar <- UnliftIO.newMVar sock
   pure ( XSubscriber sockVar )
 

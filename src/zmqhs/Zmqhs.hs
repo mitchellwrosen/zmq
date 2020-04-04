@@ -8,7 +8,7 @@ module Zmqhs
   , maxSockets
 
   , Socket(..)
-  , socket
+  , open
   , close
   , bind
   , unbind

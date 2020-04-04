@@ -34,7 +34,7 @@ newtype Publisher
 
 open :: MonadIO m => Context -> m Publisher
 open context = do
-  sock <- Zmqhs.socket context Zmqhs.Pub
+  sock <- Zmqhs.open context Zmqhs.Pub
   sockVar <- UnliftIO.newMVar sock
   pure ( Publisher sockVar )
 

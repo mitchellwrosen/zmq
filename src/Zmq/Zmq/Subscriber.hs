@@ -36,7 +36,7 @@ newtype Subscriber
 
 open :: MonadIO m => Context -> m Subscriber
 open context = do
-  sock <- Zmqhs.socket context Zmqhs.Sub
+  sock <- Zmqhs.open context Zmqhs.Sub
   sockVar <- UnliftIO.newMVar sock
   pure ( Subscriber sockVar )
 
