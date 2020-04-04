@@ -29,4 +29,3 @@ ctxTerm context =
 
           errno ->
             exception "zmq_ctx_term" errno
-

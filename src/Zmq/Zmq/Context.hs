@@ -10,14 +10,12 @@ module Zmq.Context
 
 import qualified Libzmq
 
+import Zmqhs (Context(..))
 import qualified Zmqhs
 
 import Zmq.Prelude
 import qualified Zmq.API.CtxTerm as API
 
-
-newtype Context
-  = Context { unContext :: Zmqhs.Context }
 
 data Options
   = Options
@@ -40,7 +38,7 @@ newContext options = liftIO do
   context <- Zmqhs.newContext
   setIoThreads context ( ioThreads options )
   setMaxSockets context ( maxSockets options )
-  pure ( Context context )
+  pure context
 
 terminateContext
   :: MonadIO m

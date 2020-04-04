@@ -14,6 +14,6 @@ socket
   -> Zmqhs.SocketType
   -> IO Zmqhs.Socket
 socket context socketType =
-  Zmqhs.socket ( unContext context ) socketType >>= \case
+  Zmqhs.socket context socketType >>= \case
     Left errno -> exception "zmq_socket" errno
     Right sock -> pure sock
