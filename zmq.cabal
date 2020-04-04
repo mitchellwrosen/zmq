@@ -152,10 +152,8 @@ test-suite tests
 
   build-depends:
     hedgehog,
-    lens,
+    hspec,
     say,
-    tasty,
-    tasty-hedgehog,
     text,
     unliftio,
     zmq,
