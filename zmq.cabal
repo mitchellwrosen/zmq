@@ -78,7 +78,6 @@ library
   other-modules:
     Zmq.API.Bind
     Zmq.API.Connect
-    Zmq.API.CtxTerm
     Zmq.API.Disconnect
     Zmq.API.GetSockOpt
     Zmq.API.Recv

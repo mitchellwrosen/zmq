@@ -3,7 +3,7 @@ module Zmq.Context
   , Options(..)
   , defaultOptions
   , newContext
-  , terminateContext
+  , Zmqhs.terminateContext
   , setIoThreads
   , setMaxSockets
   ) where
@@ -14,7 +14,6 @@ import Zmqhs (Context(..))
 import qualified Zmqhs
 
 import Zmq.Prelude
-import qualified Zmq.API.CtxTerm as API
 
 
 data Options
@@ -34,33 +33,28 @@ newContext
   :: MonadIO m
   => Options
   -> m Context
-newContext options = liftIO do
+newContext options = do
   context <- Zmqhs.newContext
   setIoThreads context ( ioThreads options )
   setMaxSockets context ( maxSockets options )
   pure context
 
-terminateContext
-  :: MonadIO m
-  => Context
-  -> m ()
-terminateContext context =
-  liftIO ( coerce API.ctxTerm context )
-
 
 -- TODO move to Zmq.API.CtxSet
 
 setIoThreads
-  :: Zmqhs.Context
+  :: MonadIO m
+  => Zmqhs.Context
   -> Natural
-  -> IO ()
+  -> m ()
 setIoThreads =
   setNatural Zmqhs.ioThreads
 
 setMaxSockets
-  :: Zmqhs.Context
+  :: MonadIO m
+  => Zmqhs.Context
   -> Natural
-  -> IO ()
+  -> m ()
 setMaxSockets =
   setNatural Zmqhs.maxSockets
 
@@ -68,9 +62,10 @@ setMaxSockets =
 ----------------------------------------------------------------------------------
 
 setNatural
-  :: Zmqhs.ContextOption
+  :: MonadIO m
+  => Zmqhs.ContextOption
   -> Zmqhs.Context
   -> Natural
-  -> IO ()
+  -> m ()
 setNatural option context =
   void . Zmqhs.setContextOption context option . fromIntegral
