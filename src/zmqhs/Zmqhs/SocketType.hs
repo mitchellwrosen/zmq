@@ -1,22 +1,13 @@
 module Zmqhs.SocketType
   ( SocketType(..)
-  , pub
-  , sub
-  , xpub
-  , xsub
   ) where
 
-import Foreign.C (CInt)
-
-import qualified Libzmq
+import GHC.Generics (Generic)
 
 
-newtype SocketType
-  = SocketType
-  { unSocketType :: CInt }
-
-pub, sub, xpub, xsub :: SocketType
-pub = SocketType Libzmq.pub
-sub = SocketType Libzmq.sub
-xpub = SocketType Libzmq.xpub
-xsub = SocketType Libzmq.xsub
+data SocketType
+  = Pub
+  | Sub
+  | XPub
+  | XSub
+  deriving stock ( Eq, Generic, Show )

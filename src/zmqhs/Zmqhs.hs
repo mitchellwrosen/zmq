@@ -19,10 +19,6 @@ module Zmqhs
   , setSocketSubscribe
 
   , SocketType(..)
-  , pub
-  , sub
-  , xpub
-  , xsub
 
   , Endpoint(..)
   ) where

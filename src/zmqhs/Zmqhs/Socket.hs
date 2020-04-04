@@ -39,10 +39,17 @@ socket
   -> SocketType
   -> IO ( Either CInt Socket )
 socket context socketType = do
-  sock <- Libzmq.socket ( unContext context ) ( unSocketType socketType )
+  sock <- Libzmq.socket ( unContext context ) ( socketTypeToCInt socketType )
   if sock == nullPtr
     then Left <$> Libzmq.errno
     else pure ( Right ( Socket sock ) )
+  where
+    socketTypeToCInt :: SocketType -> CInt
+    socketTypeToCInt = \case
+      Pub -> Libzmq.pub
+      Sub -> Libzmq.sub
+      XPub -> Libzmq.xpub
+      XSub -> Libzmq.xsub
 
 close
   :: Socket

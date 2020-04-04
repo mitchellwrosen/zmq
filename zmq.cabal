@@ -12,6 +12,7 @@ common component
     BlockArguments
     DataKinds
     DeriveAnyClass
+    DeriveGeneric
     DerivingStrategies
     DuplicateRecordFields
     FlexibleContexts
