@@ -4,8 +4,6 @@ module Zmq.Context
   , defaultOptions
   , newContext
   , Zmqhs.terminateContext
-  , setIoThreads
-  , setMaxSockets
   ) where
 
 import qualified Libzmq
@@ -29,34 +27,16 @@ defaultOptions =
     , maxSockets = fromIntegral Libzmq.maxSocketsDflt
     }
 
+-- | Create a new ZMQ context.
 newContext
   :: MonadIO m
   => Options
   -> m Context
 newContext options = do
   context <- Zmqhs.newContext
-  setIoThreads context ( ioThreads options )
-  setMaxSockets context ( maxSockets options )
+  setNatural Zmqhs.ioThreads context ( ioThreads options )
+  setNatural Zmqhs.maxSockets context ( maxSockets options )
   pure context
-
-
--- TODO move to Zmq.API.CtxSet
-
-setIoThreads
-  :: MonadIO m
-  => Zmqhs.Context
-  -> Natural
-  -> m ()
-setIoThreads =
-  setNatural Zmqhs.ioThreads
-
-setMaxSockets
-  :: MonadIO m
-  => Zmqhs.Context
-  -> Natural
-  -> m ()
-setMaxSockets =
-  setNatural Zmqhs.maxSockets
 
 
 ----------------------------------------------------------------------------------
