@@ -20,8 +20,8 @@ import qualified Zmqhs
 
 import Zmq.Context
 import Zmq.Endpoint
+import Zmq.Internal (renderEndpoint)
 import Zmq.Prelude
-import qualified Zmq.API.Bind as API
 import qualified Zmq.API.Connect as API
 import qualified Zmq.API.Disconnect as API
 import qualified Zmq.API.Send as API
@@ -49,7 +49,7 @@ with context =
 bind :: MonadUnliftIO m => Publisher -> Endpoint transport -> m ()
 bind publisher endpoint =
   UnliftIO.withMVar ( unPublisher publisher ) \sock ->
-    liftIO ( API.bind sock endpoint )
+    Zmqhs.bind sock ( renderEndpoint endpoint )
 
 unbind :: MonadUnliftIO m => Publisher -> Endpoint transport -> m ()
 unbind publisher endpoint =

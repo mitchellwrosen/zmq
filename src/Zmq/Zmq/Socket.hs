@@ -15,22 +15,15 @@ import Zmq.API.GetSockOpt (getSocketEvents, getSocketFd)
 import Zmq.Prelude
 
 
-nonThreadsafeWaitUntilCanRecv
-  :: Zmqhs.Socket
-  -> IO ()
+nonThreadsafeWaitUntilCanRecv :: Zmqhs.Socket -> IO ()
 nonThreadsafeWaitUntilCanRecv =
   nonThreadsafeWaitUntilCan Libzmq.pollin
 
-nonThreadsafeWaitUntilCanSend
-  :: Zmqhs.Socket
-  -> IO ()
+nonThreadsafeWaitUntilCanSend :: Zmqhs.Socket -> IO ()
 nonThreadsafeWaitUntilCanSend =
   nonThreadsafeWaitUntilCan Libzmq.pollout
 
-nonThreadsafeWaitUntilCan
-  :: CInt
-  -> Zmqhs.Socket
-  -> IO ()
+nonThreadsafeWaitUntilCan :: CInt -> Zmqhs.Socket -> IO ()
 nonThreadsafeWaitUntilCan events socket = do
   fd <- getSocketFd socket
 

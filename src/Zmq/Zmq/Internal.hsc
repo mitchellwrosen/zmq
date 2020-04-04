@@ -4,7 +4,6 @@
 module Zmq.Internal
   ( CompatibleTransport
   , Endpoint(..)
-  , endpointToString
   , renderEndpoint
   , SocketType(..)
   , Transport(..)
@@ -14,7 +13,6 @@ module Zmq.Internal
 
 import Data.Kind (Constraint)
 import Data.Text (Text)
-import qualified Data.Text as Text
 #if defined ZMQ_HAVE_OPENPGM
 import qualified GHC.TypeLits as TypeLits
 #endif
@@ -75,26 +73,6 @@ data Endpoint ( transport :: Transport ) where
 deriving stock instance Eq ( Endpoint transport )
 deriving stock instance Ord ( Endpoint transport )
 deriving stock instance Show ( Endpoint transport )
-
--- | TODO remove endpointToString
-endpointToString
-  :: Endpoint transport
-  -> String
-endpointToString = \case
-#if defined ZMQ_HAVE_OPENPGM
-  Epgm   address -> "epgm://"   ++ Text.unpack address
-#endif
-  Inproc address -> "inproc://" ++ Text.unpack address
-#if !defined ZMQ_HAVE_WINDOWS && !defined ZMQ_HAVE_OPENVMS && !defined ZMQ_HAVE_VXWORKS
-  Ipc    address -> "ipc://"    ++ Text.unpack address
-#endif
-#if defined ZMQ_HAVE_OPENPGM
-  Pgm    address -> "pgm://"    ++ Text.unpack address
-#endif
-  Tcp    address -> "tcp://"    ++ Text.unpack address
-#if defined ZMQ_HAVE_VMCI
-  Vmci   address -> "vmci://"   ++ Text.unpack address
-#endif
 
 renderEndpoint
   :: Endpoint transport

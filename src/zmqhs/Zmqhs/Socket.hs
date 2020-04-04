@@ -61,12 +61,25 @@ close :: MonadIO m => Socket -> m ()
 close sock = liftIO do
   Libzmq.close ( unSocket sock )
 
-bind :: Socket -> Endpoint -> IO ( Either CInt () )
-bind sock endpoint =
+-- | <http://api.zeromq.org/4-3:zmq-bind>
+--
+-- May throw:
+--   * @EINVAL@ if the endpoint is invalid.
+--   * @EPROTONOSUPPORT@ if the transport protocol is not supported.
+--   * @ENOCOMPATPROTO@ if the transport protocol is not compatible with the
+--     socket type.
+--   * @EADDRINUSE@ if the address is already in use.
+--   * @EADDRNOTAVAIL@ if the address is not local.
+--   * @ENODEV@ if the address specifies a nonexistent interface.
+--   * @ETERM@ if the ZMQ context was terminated.
+--   * @ENOTSOCK@ if the socket is invalid.
+--   * @EMTHREAD@ if no IO thread is available.
+bind :: MonadIO m => Socket -> Endpoint -> m ()
+bind sock endpoint = liftIO do
   withEndpoint endpoint \endpoint' ->
     Libzmq.bind ( unSocket sock ) endpoint' >>= \case
-      0 -> pure ( Right () )
-      _ -> Left <$> Libzmq.errno
+      0 -> pure ()
+      _ -> Libzmq.errno >>= throwError "zmq_bind"
 
 unbind :: Socket -> Endpoint -> IO ( Either CInt () )
 unbind sock endpoint =

@@ -21,8 +21,8 @@ import qualified Zmqhs
 
 import Zmq.Context
 import Zmq.Endpoint
+import Zmq.Internal (renderEndpoint)
 import Zmq.Prelude
-import qualified Zmq.API.Bind as API
 import qualified Zmq.API.Connect as API
 import qualified Zmq.API.Disconnect as API
 import qualified Zmq.API.Recv as API
@@ -47,7 +47,7 @@ close subscriber =
 bind :: MonadUnliftIO m => Subscriber -> Endpoint transport -> m ()
 bind subscriber endpoint =
   UnliftIO.withMVar ( unSubscriber subscriber ) \sock ->
-    liftIO ( API.bind sock endpoint )
+    Zmqhs.bind sock ( renderEndpoint endpoint )
 
 unbind :: MonadUnliftIO m => Subscriber -> Endpoint transport -> m ()
 unbind subscriber endpoint =
