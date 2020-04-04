@@ -64,16 +64,15 @@ close sock = liftIO do
 -- | <http://api.zeromq.org/4-3:zmq-bind>
 --
 -- May throw:
---   * @EINVAL@ if the endpoint is invalid.
---   * @EPROTONOSUPPORT@ if the transport protocol is not supported.
---   * @ENOCOMPATPROTO@ if the transport protocol is not compatible with the
---     socket type.
 --   * @EADDRINUSE@ if the address is already in use.
 --   * @EADDRNOTAVAIL@ if the address is not local.
---   * @ENODEV@ if the address specifies a nonexistent interface.
---   * @ETERM@ if the ZMQ context was terminated.
---   * @ENOTSOCK@ if the socket is invalid.
+--   * @EINVAL@ if the endpoint is invalid.
 --   * @EMTHREAD@ if no IO thread is available.
+--   * @ENOCOMPATPROTO@ if the protocol is not compatible with the socket type.
+--   * @ENODEV@ if the address specifies a nonexistent interface.
+--   * @ENOTSOCK@ if the socket is invalid.
+--   * @EPROTONOSUPPORT@ if the protocol is not supported.
+--   * @ETERM@ if the ZMQ context was terminated.
 bind :: MonadIO m => Socket -> Endpoint -> m ()
 bind sock endpoint = liftIO do
   withEndpoint endpoint \endpoint' ->
@@ -85,8 +84,8 @@ bind sock endpoint = liftIO do
 --
 -- May throw:
 --   * @EINVAL@ if the endpoint is invalid.
---   * @ETERM@ if the context was terminated.
 --   * @ENOTSOCK@ if the socket is invalid.
+--   * @ETERM@ if the context was terminated.
 unbind :: MonadIO m => Socket -> Endpoint -> m ()
 unbind sock endpoint = liftIO do
   withEndpoint endpoint \endpoint' ->
@@ -97,12 +96,21 @@ unbind sock endpoint = liftIO do
           ENOENT -> pure () -- The endpoint supplied was not previously bound.
           errno -> throwError "zmq_unbind" errno
 
-connect :: Socket -> Endpoint -> IO ( Either CInt () )
-connect sock endpoint =
+-- | <http://api.zeromq.org/4-3:zmq-connect>
+--
+-- May throw:
+--   * @EINVAL@ if the endpoint is invalid.
+--   * @EMTHREAD@ if no IO thread is available.
+--   * @ENOCOMPATPROTO@ if the protocol is not compatible with the socket type.
+--   * @ENOTSOCK@ if the socket is invalid.
+--   * @EPROTONOSUPPORT@ if the protocol is not supported.
+--   * @ETERM@ if the context was terminated.
+connect :: MonadIO m => Socket -> Endpoint -> m ()
+connect sock endpoint = liftIO do
   withEndpoint endpoint \endpoint' ->
     Libzmq.connect ( unSocket sock ) endpoint' >>= \case
-      0 -> pure ( Right () )
-      _ -> Left <$> Libzmq.errno
+      0 -> pure ()
+      _ -> Libzmq.errno >>= throwError "zmq_connect"
 
 disconnect :: Socket -> Endpoint -> IO ( Either CInt () )
 disconnect sock endpoint =

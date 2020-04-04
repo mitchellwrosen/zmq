@@ -23,7 +23,6 @@ import Zmq.Context
 import Zmq.Endpoint
 import Zmq.Internal (renderEndpoint)
 import Zmq.Prelude
-import qualified Zmq.API.Connect as API
 import qualified Zmq.API.Disconnect as API
 import qualified Zmq.API.Recv as API
 import qualified Zmq.API.Subscribe as API
@@ -56,7 +55,7 @@ unbind subscriber endpoint =
 connect :: MonadUnliftIO m => Subscriber -> Endpoint transport -> m ()
 connect subscriber endpoint =
   UnliftIO.withMVar ( unSubscriber subscriber ) \sock ->
-    liftIO ( API.connect sock endpoint )
+    Zmqhs.connect sock ( renderEndpoint endpoint )
 
 disconnect :: MonadUnliftIO m => Subscriber -> Endpoint transport -> m ()
 disconnect subscriber endpoint =
