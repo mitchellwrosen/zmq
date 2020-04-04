@@ -31,7 +31,6 @@ import qualified Zmq.API.Connect as API
 import qualified Zmq.API.Disconnect as API
 import qualified Zmq.API.Recv as API
 import qualified Zmq.API.Send as API
-import qualified Zmq.API.Socket as API
 import qualified Zmq.API.Unbind as API
 import qualified Zmq.SubscriptionMessage as SubscriptionMessage
 
@@ -44,8 +43,8 @@ open
   :: MonadIO m
   => Context
   -> m XSubscriber
-open context = liftIO do
-  coerce ( API.socket context Zmqhs.XSub )
+open context =
+  XSubscriber <$> Zmqhs.socket context Zmqhs.XSub
 
 close
   :: MonadIO m

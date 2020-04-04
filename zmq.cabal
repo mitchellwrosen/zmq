@@ -82,7 +82,6 @@ library
     Zmq.API.GetSockOpt
     Zmq.API.Recv
     Zmq.API.Send
-    Zmq.API.Socket
     Zmq.API.Subscribe
     Zmq.API.Unbind
     Zmq.Context

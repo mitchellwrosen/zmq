@@ -21,7 +21,6 @@ import Zmq.Context (Context)
 import Zmq.Endpoint
 import Zmq.Prelude
 import qualified Zmq.API.Bind as API
-import qualified Zmq.API.Socket as API
 
 -- TODO ManagedSocket close
 
@@ -31,17 +30,9 @@ import qualified Zmq.API.Socket as API
 data ManagedSocket a
   = ManagedSocket
   { socket :: Zmqhs.Socket
-
   , close :: IO ()
-
-  , bind
-      :: forall transport.
-         Endpoint transport
-      -> IO ()
-
-  , send
-      :: NonEmpty ByteString
-      -> IO ( STM ( IO a ) )
+  , bind :: forall transport. Endpoint transport -> IO ()
+  , send :: NonEmpty ByteString -> IO ( STM ( IO a ) )
   }
 
 instance Eq ( ManagedSocket a ) where
@@ -120,10 +111,11 @@ spawnManagerThread
 spawnManagerThread context socketType sendImpl openVar =
   SlaveThread.fork do
     unsafeUnmask do
-      try ( API.socket context socketType ) >>= \case
+      try ( Zmqhs.socket context socketType ) >>= \case
         Left ex ->
           case fromException @SomeAsyncException ex of
             Nothing -> putMVar openVar ( Left ex )
+            -- TODO put a "managed thread died" exception in the mvar
             Just _ -> throwIO ex
 
         Right sock -> do
