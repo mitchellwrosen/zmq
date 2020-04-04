@@ -14,8 +14,6 @@ module Zmq.XPublisher
   , recv
   ) where
 
-import qualified Libzmq
-
 import qualified Zmqhs
 
 import Zmq.Context
@@ -45,8 +43,8 @@ close
   :: MonadIO m
   => XPublisher
   -> m ()
-close =
-  liftIO . coerce Libzmq.close
+close ( XPublisher sock ) =
+  Zmqhs.close sock
 
 bind
   :: MonadIO m

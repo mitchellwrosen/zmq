@@ -18,8 +18,6 @@ module Zmq.XSubscriber
 
 import Data.List.NonEmpty (NonEmpty((:|)))
 
-import qualified Libzmq
-
 import qualified Zmqhs
 
 import Zmq.Context
@@ -50,8 +48,8 @@ close
   :: MonadIO m
   => XSubscriber
   -> m ()
-close =
-  liftIO . coerce Libzmq.close
+close ( XSubscriber sock ) =
+  Zmqhs.close sock
 
 bind
   :: MonadIO m

@@ -13,8 +13,6 @@ module Zmq.Publisher
   , send
   ) where
 
-import qualified Libzmq
-
 import qualified Zmqhs
 
 import Zmq.Context
@@ -39,11 +37,12 @@ open context =
   Publisher <$> Zmqhs.socket context Zmqhs.Pub
 
 close
-  :: MonadIO m
+  :: forall m.
+     MonadIO m
   => Publisher
   -> m ()
-close =
-  liftIO . coerce Libzmq.close
+close ( Publisher sock ) =
+  Zmqhs.close sock
 
 bind
   :: MonadIO m

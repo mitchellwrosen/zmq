@@ -15,8 +15,6 @@ module Zmq.Subscriber
   , recv
   ) where
 
-import qualified Libzmq
-
 import qualified Zmqhs
 
 import Zmq.Context
@@ -45,8 +43,8 @@ close
   :: MonadIO m
   => Subscriber
   -> m ()
-close =
-  liftIO . coerce Libzmq.close
+close ( Subscriber sock ) =
+  Zmqhs.close sock
 
 bind
   :: MonadIO m

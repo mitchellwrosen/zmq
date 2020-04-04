@@ -56,8 +56,8 @@ socket context socketType = liftIO do
       XPub -> Libzmq.xpub
       XSub -> Libzmq.xsub
 
-close :: Socket -> IO ()
-close sock =
+close :: MonadIO m => Socket -> m ()
+close sock = liftIO do
   Libzmq.close ( unSocket sock )
 
 bind :: Socket -> Endpoint -> IO ( Either CInt () )
