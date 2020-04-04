@@ -13,14 +13,12 @@ import Test.Tasty
 import Test.Tasty.Hedgehog (testProperty)
 import UnliftIO.Concurrent
 import UnliftIO.Exception
-import UnliftIO.Timeout
 import qualified Data.Text as Text
 import qualified Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
 import qualified Zmq
-import qualified Zmq.ConcurrentPublisher as Cpub
 import qualified Zmq.Publisher as Pub
 import qualified Zmq.Subscriber as Sub
 import qualified Zmq.XPublisher as Xpub
@@ -36,42 +34,39 @@ main = do
 tests :: Zmq.Context -> [ TestTree ]
 tests ctx =
   [ testGroup "Publisher tests" ( publisherTests ctx )
-
-  , test "Subscriber open" do
-      sub <- Sub.open ctx
-      Sub.close sub
+  , testGroup "Subscriber tests" ( subscriberTests ctx )
 
   , test "Pubsub" do
       ( pub, sub ) <- openPubSub ctx
       Sub.subscribe sub "a"
-      Pub.send pub ( "b" :| [] )
+      liftIO ( Pub.send pub ( "b" :| [] ) )
       let message = "a" :| []
-      Pub.send pub message
+      liftIO ( Pub.send pub message )
       Sub.recv sub >>= ( === message )
-      Pub.close pub
+      liftIO ( Pub.close pub )
       Sub.close sub
 
-    -- Publish M messages to a socket from each of N threads. Ensure that the
-    -- subscriber receives N*M.
   , test "Concurrent publisher" do
       endpoint <- randomInproc
 
-      pub <- Cpub.open ctx
-      Cpub.bind pub endpoint
+      pub <- liftIO ( Pub.open ctx )
+      liftIO ( Pub.bind pub endpoint )
 
-      replicateM_ 10 do
-        ( liftIO . forkOS ) do
-          forever do
-            Cpub.send pub ( "" :| [] )
+      let threads = 200
+      readyVar <- newEmptyMVar
+      liftIO do
+        replicateM_ threads do
+          mask \restore ->
+            ( forkIO . void . try @_ @SomeException . restore ) do
+              readMVar readyVar
+              forever ( Pub.send pub ( "" :| [] ) )
 
       sub <- Sub.open ctx
       Sub.connect sub endpoint
       Sub.subscribe sub ""
-      matches _Just () =<<
-        liftIO do
-          timeout 5_000_000 do
-            replicateM_ 2000 ( Sub.recv sub )
-      Cpub.close pub
+      putMVar readyVar ()
+      replicateM_ 20000 ( Sub.recv sub )
+      liftIO ( Pub.close pub )
       Sub.close sub
 
   , test "XPublisher recv subscription" do
@@ -88,79 +83,147 @@ tests ctx =
 
   , test "XSubscriber send subscription" do
       endpoint <- randomInproc
-      pub <- Pub.open ctx
+      pub <- liftIO ( Pub.open ctx )
       xsub <- Xsub.open ctx
-      Pub.bind pub endpoint
+      liftIO ( Pub.bind pub endpoint )
       Xsub.connect xsub endpoint
       Xsub.subscribe xsub ""
-      Pub.send pub ( "hi" :| [] )
+      liftIO ( Pub.send pub ( "hi" :| [] ) )
       message <- Xsub.recv xsub
       message === "hi" :| []
-      Pub.close pub
+      liftIO ( Pub.close pub )
       Xsub.close xsub
   ]
 
 publisherTests :: Zmq.Context -> [ TestTree ]
 publisherTests ctx =
-  [ test "Publisher open close" do
-      pub <- Pub.open ctx
-      Pub.close pub
+  [ test "open-close" do
+      pub <- liftIO ( Pub.open ctx )
+      liftIO ( Pub.close pub )
 
-  , test "Publisher bind" do
-      pub <- Pub.open ctx
+  , test "open-close-close" do
+      pub <- liftIO ( Pub.open ctx )
+      liftIO ( Pub.close pub )
+      liftIO ( Pub.close pub )
+
+  , test "bind" do
+      pub <- liftIO ( Pub.open ctx )
       endpoint <- randomInproc
-      Pub.bind pub endpoint
-      Pub.close pub
+      liftIO ( Pub.bind pub endpoint )
+      liftIO ( Pub.close pub )
 
-  , test "Publisher unbind" do
-      pub <- Pub.open ctx
+  , test "bind-unbind" do
+      pub <- liftIO ( Pub.open ctx )
       endpoint <- randomInproc
-      Pub.bind pub endpoint
-      Pub.unbind pub endpoint
-      Pub.close pub
+      liftIO ( Pub.bind pub endpoint )
+      liftIO ( Pub.unbind pub endpoint )
+      liftIO ( Pub.close pub )
 
-  , test "Publisher unbind when not bound" do
-      pub <- Pub.open ctx
+  , test "unbind" do
+      pub <- liftIO ( Pub.open ctx )
       endpoint <- randomInproc
-      Pub.unbind pub endpoint
-      Pub.close pub
+      liftIO ( Pub.unbind pub endpoint )
+      liftIO ( Pub.close pub )
 
-  , test "Publisher unbind bogus" do
-      pub <- Pub.open ctx
-      Pub.unbind pub ( Zmq.Tcp "" ) `throws`
-        Zmq.Exception "zmq_unbind" 22 "Invalid argument"
-      Pub.close pub
+  , test "unbind bogus" do
+      pub <- liftIO ( Pub.open ctx )
+      liftIO ( Pub.unbind pub ( Zmq.Tcp "" ) ) `throws`
+        Zmq.Error "zmq_unbind" 22 "Invalid argument"
+      liftIO ( Pub.close pub )
 
-  , test "Publisher connect" do
-      pub <- Pub.open ctx
+  , test "connect" do
+      pub <- liftIO ( Pub.open ctx )
       endpoint <- randomInproc
-      Pub.connect pub endpoint
-      Pub.close pub
+      liftIO ( Pub.connect pub endpoint )
+      liftIO ( Pub.close pub )
 
-  , test "Publisher disconnect" do
-      pub <- Pub.open ctx
+  , test "connect-disconnect" do
+      pub <- liftIO ( Pub.open ctx )
       endpoint <- randomInproc
-      Pub.connect pub endpoint
-      Pub.disconnect pub endpoint
-      Pub.close pub
+      liftIO ( Pub.connect pub endpoint )
+      liftIO ( Pub.disconnect pub endpoint )
+      liftIO ( Pub.close pub )
 
-  , test "Publisher disconnect when not connected" do
-      pub <- Pub.open ctx
+  , test "disconnect" do
+      pub <- liftIO ( Pub.open ctx )
       endpoint <- randomInproc
-      Pub.disconnect pub endpoint
-      Pub.close pub
+      liftIO ( Pub.disconnect pub endpoint )
+      liftIO ( Pub.close pub )
 
-  , test "Publisher disconnect bogus" do
-      pub <- Pub.open ctx
-      Pub.disconnect pub ( Zmq.Tcp "" ) `throws`
-        Zmq.Exception "zmq_disconnect" 22 "Invalid argument"
-      Pub.close pub
+  , test "disconnect bogus" do
+      pub <- liftIO ( Pub.open ctx )
+      liftIO ( Pub.disconnect pub ( Zmq.Tcp "" ) ) `throws`
+        Zmq.Error "zmq_disconnect" 22 "Invalid argument"
+      liftIO ( Pub.close pub )
 
-  , test "Publisher send" do
-      pub <- Pub.open ctx
-      Pub.send pub ( "" :| [] )
-      Pub.close pub
+  , test "send" do
+      pub <- liftIO ( Pub.open ctx )
+      liftIO ( Pub.send pub ( "" :| [] ) )
+      liftIO ( Pub.close pub )
   ]
+
+subscriberTests :: Zmq.Context -> [ TestTree ]
+subscriberTests ctx =
+  [ test "open-close" do
+      sub <- Sub.open ctx
+      Sub.close sub
+
+  , test "open-close-close" do
+      sub <- Sub.open ctx
+      Sub.close sub
+      Sub.close sub
+
+  , test "bind" do
+      sub <- Sub.open ctx
+      endpoint <- randomInproc
+      Sub.bind sub endpoint
+      Sub.close sub
+
+  , test "bind-unbind" do
+      sub <- Sub.open ctx
+      endpoint <- randomInproc
+      Sub.bind sub endpoint
+      Sub.unbind sub endpoint
+      Sub.close sub
+
+  , test "unbind" do
+      sub <- Sub.open ctx
+      endpoint <- randomInproc
+      Sub.unbind sub endpoint
+      Sub.close sub
+
+  , test "unbind bogus" do
+      sub <- Sub.open ctx
+      Sub.unbind sub ( Zmq.Tcp "" ) `throws`
+        Zmq.Error "zmq_unbind" 22 "Invalid argument"
+      Sub.close sub
+
+  , test "connect" do
+      sub <- Sub.open ctx
+      endpoint <- randomInproc
+      Sub.connect sub endpoint
+      Sub.close sub
+
+  , test "connect-disconnect" do
+      sub <- Sub.open ctx
+      endpoint <- randomInproc
+      Sub.connect sub endpoint
+      Sub.disconnect sub endpoint
+      Sub.close sub
+
+  , test "disconnect" do
+      sub <- Sub.open ctx
+      endpoint <- randomInproc
+      Sub.disconnect sub endpoint
+      Sub.close sub
+
+  , test "disconnect bogus" do
+      sub <- Sub.open ctx
+      Sub.disconnect sub ( Zmq.Tcp "" ) `throws`
+        Zmq.Error "zmq_disconnect" 22 "Invalid argument"
+      Sub.close sub
+  ]
+
 
 --------------------------------------------------------------------------------
 
@@ -170,9 +233,9 @@ openPubSub
   -> m ( Zmq.Publisher, Zmq.Subscriber )
 openPubSub ctx = do
   endpoint <- randomInproc
-  pub <- Pub.open ctx
+  pub <- liftIO ( Pub.open ctx )
   sub <- Sub.open ctx
-  Pub.bind pub endpoint
+  liftIO ( Pub.bind pub endpoint )
   Sub.connect sub endpoint
   pure ( pub, sub )
 

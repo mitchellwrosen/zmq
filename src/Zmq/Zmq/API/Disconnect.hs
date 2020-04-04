@@ -5,8 +5,6 @@ module Zmq.API.Disconnect
 import qualified Zmqhs
 
 import Zmq.Endpoint
-import Zmq.Error
-import Zmq.Exception
 import Zmq.Internal (renderEndpoint)
 
 
@@ -18,6 +16,6 @@ disconnect
 disconnect socket endpoint =
   Zmqhs.disconnect socket ( renderEndpoint endpoint ) >>= \case
     -- The provided endpoint is not connected.
-    Left ENOENT -> pure ()
-    Left errno -> exception "zmq_disconnect" errno
+    Left Zmqhs.ENOENT -> pure ()
+    Left errno -> Zmqhs.throwError "zmq_disconnect" errno
     Right () -> pure ()

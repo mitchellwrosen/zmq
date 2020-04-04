@@ -3,6 +3,7 @@ module Zmq.Publisher
 
   , open
   , close
+  , with
 
   , bind
   , unbind
@@ -12,6 +13,8 @@ module Zmq.Publisher
 
   , send
   ) where
+
+import qualified UnliftIO
 
 import qualified Zmqhs
 
@@ -26,60 +29,44 @@ import qualified Zmq.API.Unbind as API
 
 
 newtype Publisher
-  = Publisher { unPublisher :: Zmqhs.Socket }
-  deriving newtype ( Eq, Ord, Show )
+  = Publisher { unPublisher :: MVar Zmqhs.Socket }
+  deriving newtype ( Eq )
 
-open
-  :: MonadIO m
-  => Context
-  -> m Publisher
-open context =
-  Publisher <$> Zmqhs.socket context Zmqhs.Pub
+open :: MonadIO m => Context -> m Publisher
+open context = do
+  sock <- Zmqhs.socket context Zmqhs.Pub
+  sockVar <- UnliftIO.newMVar sock
+  pure ( Publisher sockVar )
 
-close
-  :: forall m.
-     MonadIO m
-  => Publisher
-  -> m ()
-close ( Publisher sock ) =
-  Zmqhs.close sock
+close :: MonadUnliftIO m => Publisher -> m ()
+close publisher =
+  UnliftIO.withMVar ( unPublisher publisher ) Zmqhs.close
 
-bind
-  :: MonadIO m
-  => Publisher
-  -> Endpoint transport
-  -> m ()
-bind publisher endpoint = liftIO do
-  API.bind ( unPublisher publisher ) endpoint
+with :: MonadUnliftIO m => Context -> ( Publisher -> m a ) -> m a
+with context =
+  UnliftIO.bracket ( open context ) close
 
-unbind
-  :: MonadIO m
-  => Publisher
-  -> Endpoint transport
-  -> m ()
-unbind publisher endpoint = liftIO do
-  API.unbind ( unPublisher publisher ) endpoint
+bind :: MonadUnliftIO m => Publisher -> Endpoint transport -> m ()
+bind publisher endpoint =
+  UnliftIO.withMVar ( unPublisher publisher ) \sock ->
+    liftIO ( API.bind sock endpoint )
 
-connect
-  :: MonadIO m
-  => Publisher
-  -> Endpoint transport
-  -> m ()
+unbind :: MonadUnliftIO m => Publisher -> Endpoint transport -> m ()
+unbind publisher endpoint =
+  UnliftIO.withMVar ( unPublisher publisher ) \sock ->
+    liftIO ( API.unbind sock endpoint )
+
+connect :: MonadUnliftIO m => Publisher -> Endpoint transport -> m ()
 connect publisher endpoint = liftIO do
-  API.connect ( unPublisher publisher ) endpoint
+  UnliftIO.withMVar ( unPublisher publisher ) \sock ->
+    liftIO ( API.connect sock endpoint )
 
-disconnect
-  :: MonadIO m
-  => Publisher
-  -> Endpoint transport
-  -> m ()
-disconnect publisher endpoint = liftIO do
-  API.disconnect ( unPublisher publisher ) endpoint
+disconnect :: MonadUnliftIO m => Publisher -> Endpoint transport -> m ()
+disconnect publisher endpoint =
+  UnliftIO.withMVar ( unPublisher publisher ) \sock ->
+    liftIO ( API.disconnect sock endpoint )
 
-send
-  :: MonadIO m
-  => Publisher
-  -> NonEmpty ByteString
-  -> m ()
-send publisher message = liftIO do
-  API.sendThatNeverBlocks ( unPublisher publisher ) message
+send :: MonadUnliftIO m => Publisher -> NonEmpty ByteString -> m ()
+send publisher message =
+  UnliftIO.withMVar ( unPublisher publisher ) \sock ->
+    liftIO ( API.sendThatNeverBlocks sock message )

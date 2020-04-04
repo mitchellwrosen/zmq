@@ -4,8 +4,6 @@ module Zmq.API.Subscribe
 
 import qualified Zmqhs
 
-import Zmq.Error
-import Zmq.Exception
 import Zmq.Prelude
 
 
@@ -17,6 +15,6 @@ subscribe
 subscribe socket prefix =
   fix \again ->
     Zmqhs.setSocketSubscribe socket prefix >>= \case
-      Left EINTR -> again
-      Left errno -> exception "zmq_setsockopt" errno
+      Left Zmqhs.EINTR -> again
+      Left errno -> Zmqhs.throwError "zmq_setsockopt" errno
       Right () -> pure ()

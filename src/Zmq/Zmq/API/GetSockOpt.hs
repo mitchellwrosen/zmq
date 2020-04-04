@@ -7,8 +7,6 @@ import System.Posix.Types (Fd(..))
 
 import qualified Zmqhs
 
-import Zmq.Error
-import Zmq.Exception
 import Zmq.Prelude
 
 
@@ -19,8 +17,8 @@ retrying
 retrying action socket =
   fix \again ->
     action socket >>= \case
-      Left EINTR -> again
-      Left errno -> exception "zmq_getsockopt" errno
+      Left Zmqhs.EINTR -> again
+      Left errno -> Zmqhs.throwError "zmq_getsockopt" errno
       Right n -> pure n
 
 getSocketEvents

@@ -2,6 +2,7 @@ module Zmq.API.Recv
   ( nonThreadsafeRecv
   ) where
 
+import Control.Exception (bracket_)
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Foreign.Marshal.Alloc (alloca)
 import qualified Data.ByteString as ByteString
@@ -10,8 +11,6 @@ import qualified Libzmq
 
 import qualified Zmqhs
 
-import Zmq.Error
-import Zmq.Exception
 import Zmq.Prelude
 import Zmq.Socket
 
@@ -38,15 +37,15 @@ nonThreadsafeRecv_ frame socket =
         Libzmq.receiveFrame frame ( Zmqhs.unSocket socket ) Libzmq.dontwait >>= \case
           -1 ->
             Libzmq.errno >>= \case
-              EAGAIN -> do
+              Zmqhs.EAGAIN -> do
                 nonThreadsafeWaitUntilCanRecv socket
                 again
 
-              EINTR ->
+              Zmqhs.EINTR ->
                 again
 
               errno ->
-                exception "zmq_msg_recv" errno
+                Zmqhs.throwError "zmq_msg_recv" errno
 
           len -> do
             data_ptr <- Libzmq.getFrameData frame

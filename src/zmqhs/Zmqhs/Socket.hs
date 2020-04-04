@@ -27,7 +27,7 @@ import qualified Libzmq
 
 import Zmqhs.Context (Context(..))
 import Zmqhs.Endpoint (Endpoint, withEndpoint)
-import Zmqhs.Error (throwError)
+import Zmqhs.Internal.Error (throwError)
 import Zmqhs.SocketType (SocketType(..))
 
 
@@ -56,6 +56,7 @@ socket context socketType = liftIO do
       XPub -> Libzmq.xpub
       XSub -> Libzmq.xsub
 
+-- | <http://api.zeromq.org/4-3:zmq-close>
 close :: MonadIO m => Socket -> m ()
 close sock = liftIO do
   Libzmq.close ( unSocket sock )

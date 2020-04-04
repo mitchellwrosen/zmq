@@ -5,8 +5,6 @@ module Zmq.API.Unbind
 import qualified Zmqhs
 
 import Zmq.Endpoint
-import Zmq.Error
-import Zmq.Exception
 import Zmq.Internal (renderEndpoint)
 
 
@@ -18,6 +16,6 @@ unbind
 unbind socket endpoint =
   Zmqhs.unbind socket ( renderEndpoint endpoint ) >>= \case
     -- The endpoint supplied was not previously bound.
-    Left ENOENT -> pure ()
-    Left errno -> exception "zmq_unbind" errno
+    Left Zmqhs.ENOENT -> pure ()
+    Left errno -> Zmqhs.throwError "zmq_unbind" errno
     Right () -> pure ()

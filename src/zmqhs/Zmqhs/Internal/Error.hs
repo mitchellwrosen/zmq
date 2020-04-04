@@ -1,5 +1,8 @@
-module Zmq.Error
-  ( pattern EADDRINUSE
+module Zmqhs.Internal.Error
+  ( Error(..)
+  , throwError
+
+  , pattern EADDRINUSE
   , pattern EADDRNOTAVAIL
   , pattern EAGAIN
   , pattern EFAULT
@@ -14,11 +17,39 @@ module Zmq.Error
   , pattern ETERM
   ) where
 
+import Control.Exception (Exception, throwIO)
+import Control.Monad.IO.Class (MonadIO(..))
+import Data.Coerce (coerce)
+import Data.Text (Text)
+import Data.Text.Encoding (decodeUtf8)
 import Foreign.C
+import qualified Data.ByteString.Unsafe as ByteString
 
 import qualified Libzmq
 
-import Zmq.Prelude
+
+data Error
+  = Error
+  { function :: Text
+  , errno :: CInt
+  , description :: Text
+  } deriving stock ( Eq, Show )
+    deriving anyclass ( Exception )
+
+throwError
+  :: MonadIO m
+  => Text
+  -> CInt
+  -> m a
+throwError function errno = liftIO do
+  description <- zmq_texterror errno
+  throwIO Error{..}
+
+zmq_texterror
+  :: CInt
+  -> IO Text
+zmq_texterror =
+  fmap decodeUtf8 . ByteString.unsafePackCString . Libzmq.strerror
 
 
 pattern EADDRINUSE :: CInt
@@ -63,3 +94,4 @@ pattern ENOTSOCK <- ((== Libzmq.eNOTSOCK) -> True) where
 pattern ETERM :: CInt
 pattern ETERM <- ((== Libzmq.eTERM) -> True) where
   ETERM = Libzmq.eTERM
+

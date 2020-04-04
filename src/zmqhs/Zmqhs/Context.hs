@@ -16,7 +16,7 @@ import Foreign.Ptr (Ptr)
 
 import qualified Libzmq
 
-import Zmqhs.Error
+import Zmqhs.Internal.Error
 
 
 newtype Context

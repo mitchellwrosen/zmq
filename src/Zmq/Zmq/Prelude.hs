@@ -4,7 +4,7 @@ module Zmq.Prelude
 
 import Control.Concurrent as X
 import Control.Concurrent.STM as X
-import Control.Exception as X
+import Control.Exception as X (Exception)
 import Control.Monad as X
 import Control.Monad.IO.Class as X
 import Data.ByteString as X (ByteString)
@@ -21,3 +21,4 @@ import Foreign.C as X (CChar, CInt, CSize, CString, Errno, withCString)
 import Foreign.Ptr as X (Ptr, nullPtr)
 import Numeric.Natural as X (Natural)
 import Say as X
+import UnliftIO as X (MonadUnliftIO)

@@ -5,7 +5,6 @@ module Zmq.API.Connect
 import qualified Zmqhs
 
 import Zmq.Endpoint
-import Zmq.Exception
 import Zmq.Internal (renderEndpoint)
 
 
@@ -16,5 +15,5 @@ connect
   -> IO ()
 connect socket endpoint =
   Zmqhs.connect socket ( renderEndpoint endpoint ) >>= \case
-    Left errno -> exception "zmq_connect" errno
+    Left errno -> Zmqhs.throwError "zmq_connect" errno
     Right () -> pure ()

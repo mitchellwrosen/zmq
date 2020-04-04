@@ -5,7 +5,6 @@ module Zmq.API.Bind
 import qualified Zmqhs
 
 import Zmq.Endpoint
-import Zmq.Exception
 import Zmq.Internal (renderEndpoint)
 
 
@@ -16,5 +15,5 @@ bind
   -> IO ()
 bind socket endpoint =
   Zmqhs.bind socket ( renderEndpoint endpoint ) >>= \case
-    Left errno -> exception "zmq_bind" errno
+    Left errno -> Zmqhs.throwError "zmq_bind" errno
     Right () -> pure ()
