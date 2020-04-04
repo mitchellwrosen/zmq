@@ -83,7 +83,6 @@ library
     Zmq.API.Recv
     Zmq.API.Send
     Zmq.API.Subscribe
-    Zmq.API.Unbind
     Zmq.Context
     Zmq.Endpoint
     Zmq.Internal

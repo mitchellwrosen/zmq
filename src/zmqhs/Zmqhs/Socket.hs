@@ -27,7 +27,7 @@ import qualified Libzmq
 
 import Zmqhs.Context (Context(..))
 import Zmqhs.Endpoint (Endpoint, withEndpoint)
-import Zmqhs.Internal.Error (throwError)
+import Zmqhs.Internal.Error
 import Zmqhs.SocketType (SocketType(..))
 
 
@@ -81,12 +81,21 @@ bind sock endpoint = liftIO do
       0 -> pure ()
       _ -> Libzmq.errno >>= throwError "zmq_bind"
 
-unbind :: Socket -> Endpoint -> IO ( Either CInt () )
-unbind sock endpoint =
+-- | <http://api.zeromq.org/4-3:zmq-unbind>
+--
+-- May throw:
+--   * @EINVAL@ if the endpoint is invalid.
+--   * @ETERM@ if the context was terminated.
+--   * @ENOTSOCK@ if the socket is invalid.
+unbind :: MonadIO m => Socket -> Endpoint -> m ()
+unbind sock endpoint = liftIO do
   withEndpoint endpoint \endpoint' ->
     Libzmq.unbind ( unSocket sock ) endpoint' >>= \case
-      0 -> pure ( Right () )
-      _ -> Left <$> Libzmq.errno
+      0 -> pure ()
+      _ ->
+        Libzmq.errno >>= \case
+          ENOENT -> pure () -- The endpoint supplied was not previously bound.
+          errno -> throwError "zmq_unbind" errno
 
 connect :: Socket -> Endpoint -> IO ( Either CInt () )
 connect sock endpoint =

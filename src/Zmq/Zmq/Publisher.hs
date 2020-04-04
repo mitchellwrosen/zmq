@@ -25,7 +25,6 @@ import Zmq.Prelude
 import qualified Zmq.API.Connect as API
 import qualified Zmq.API.Disconnect as API
 import qualified Zmq.API.Send as API
-import qualified Zmq.API.Unbind as API
 
 
 newtype Publisher
@@ -54,7 +53,7 @@ bind publisher endpoint =
 unbind :: MonadUnliftIO m => Publisher -> Endpoint transport -> m ()
 unbind publisher endpoint =
   UnliftIO.withMVar ( unPublisher publisher ) \sock ->
-    liftIO ( API.unbind sock endpoint )
+    Zmqhs.unbind sock ( renderEndpoint endpoint )
 
 connect :: MonadUnliftIO m => Publisher -> Endpoint transport -> m ()
 connect publisher endpoint = liftIO do
