@@ -22,8 +22,6 @@ import Zmq.Endpoint
 import Zmq.Prelude
 import qualified Zmq.API.Bind as API
 
--- TODO ManagedSocket close
-
 -- TODO ManagedSocket recv
 
 
@@ -44,10 +42,11 @@ instance Ord ( ManagedSocket a ) where
 instance Show ( ManagedSocket a ) where
   show = show . socket
 
+
 data Request a where
   RequestBind
     :: Endpoint transport
-    -> MVar ( Maybe SomeException )
+    -> MVar ( Either Zmqhs.Error () )
     -> Request a
 
   RequestClose
@@ -55,8 +54,9 @@ data Request a where
 
   RequestSend
     :: NonEmpty ByteString
-    -> MVar ( Either SomeException a )
+    -> MVar ( Either Zmqhs.Error a )
     -> Request a
+
 
 open
   :: forall a.
@@ -64,96 +64,77 @@ open
   -> Zmqhs.SocketType
   -> ( Zmqhs.Socket -> NonEmpty ByteString -> IO a )
   -> IO ( ManagedSocket a )
-open context socketType sendImpl =
-  mask_ do
-    openVar <- newEmptyMVar
-    void ( spawnManagerThread context socketType sendImpl openVar )
+open context socketType sendImpl = do
+  openVar <- newEmptyMVar
+  _ <- SlaveThread.fork ( runManagerThread context socketType sendImpl openVar )
+  readMVar openVar >>= \case
+    Left ex ->
+      throwIO ex
 
-    readMVar openVar >>= \case
-      Left ex ->
-        throwIO ex
+    Right ( socket, requestQueue ) -> do
+      pure ManagedSocket
+        { bind =
+            \endpoint -> do
+              responseVar <- newEmptyMVar
+              atomically do
+                writeTBQueue requestQueue ( RequestBind endpoint responseVar )
+              takeMVar responseVar >>= either throwIO pure
+        , close = atomically ( writeTBQueue requestQueue RequestClose )
+        , send =
+            \message -> do
+              responseVar <- newEmptyMVar
+              pure do
+                writeTBQueue requestQueue ( RequestSend message responseVar )
+                pure ( takeMVar responseVar >>= either throwIO pure )
+        , socket = socket
+        }
 
-      Right ( socket, requestQueue ) -> do
-        let
-          close :: IO ()
-          close =
-            atomically ( writeTBQueue requestQueue RequestClose )
-
-        let
-          bind
-            :: Endpoint transport
-            -> IO ()
-          bind endpoint = do
-            responseVar <- newEmptyMVar
-            atomically do
-              writeTBQueue requestQueue ( RequestBind endpoint responseVar )
-            readMVar responseVar >>= maybe ( pure () ) throwIO
-
-        let
-          send
-            :: NonEmpty ByteString
-            -> IO ( STM ( IO a ) )
-          send message = do
-            responseVar <- newEmptyMVar
-            pure do
-              writeTBQueue requestQueue ( RequestSend message responseVar )
-              pure ( takeMVar responseVar >>= either throwIO pure )
-
-        pure ManagedSocket{..}
-
-spawnManagerThread
+runManagerThread
   :: forall a.
      Context
   -> Zmqhs.SocketType
   -> ( Zmqhs.Socket -> NonEmpty ByteString -> IO a )
-  -> MVar ( Either SomeException ( Zmqhs.Socket, TBQueue ( Request a ) ) )
-  -> IO ThreadId
-spawnManagerThread context socketType sendImpl openVar =
-  SlaveThread.fork do
-    unsafeUnmask do
-      try ( Zmqhs.socket context socketType ) >>= \case
-        Left ex ->
-          case fromException @SomeAsyncException ex of
-            Nothing -> putMVar openVar ( Left ex )
-            -- TODO put a "managed thread died" exception in the mvar
-            Just _ -> throwIO ex
+  -> MVar ( Either Zmqhs.Error ( Zmqhs.Socket, TBQueue ( Request a ) ) )
+  -> IO ()
+runManagerThread context socketType sendImpl openVar =
+  try ( Zmqhs.socket context socketType ) >>= \case
+    Left err -> putMVar openVar ( Left err )
+    Right sock -> do
+      -- TODO better magic num based on HWM?
+      requestQueue <- newTBQueueIO 1024
+      putMVar openVar ( Right ( sock, requestQueue ) )
+      unsafeUnmask do
+        loopManagerThread
+          SocketHandle
+            { doBind = API.bind sock
+            , doClose = Zmqhs.close sock
+            , doSend = sendImpl sock
+            }
+          ( atomically ( readTBQueue requestQueue ) )
 
-        Right sock -> do
-          requestQueue :: TBQueue ( Request a ) <-
-            newTBQueueIO 1024 -- TODO better magic num based on HWM?
+data SocketHandle a
+  = SocketHandle
+  { doBind :: forall transport. Endpoint transport -> IO ()
+  , doClose :: IO ()
+  , doSend :: NonEmpty ByteString -> IO a
+  }
 
-          putMVar openVar ( Right ( sock, requestQueue ) )
+loopManagerThread
+  :: SocketHandle a
+  -> IO ( Request a )
+  -> IO ()
+loopManagerThread sock awaitRequest =
+  fix \loop -> do
+    awaitRequest >>= \case
+      RequestBind endpoint responseVar -> do
+        result <- try ( doBind sock endpoint )
+        putMVar responseVar result
+        loop
 
-          fix \loop -> do
-            atomically ( readTBQueue requestQueue ) >>= \case
-              RequestBind endpoint responseVar -> do
-                try ( API.bind sock endpoint ) >>= \case
-                  Left ex ->
-                    case fromException @SomeAsyncException ex of
-                      Nothing -> do
-                        putMVar responseVar ( Just ex )
-                        loop
-                      Just _ ->
-                        throwIO ex
+      RequestClose ->
+        doClose sock
 
-                  Right () -> do
-                    putMVar responseVar Nothing
-                    loop
-
-              RequestClose ->
-                Zmqhs.close sock
-
-              RequestSend message responseVar -> do
-                try ( sendImpl sock message ) >>= \case
-                  Left ex ->
-                    case fromException @SomeAsyncException ex of
-                      Nothing -> do
-                        putMVar responseVar ( Left ex )
-                        loop
-
-                      Just _ ->
-                        throwIO ex
-
-                  Right result -> do
-                    putMVar responseVar ( Right result )
-                    loop
+      RequestSend message responseVar -> do
+        result <- try ( doSend sock message )
+        putMVar responseVar result
+        loop
