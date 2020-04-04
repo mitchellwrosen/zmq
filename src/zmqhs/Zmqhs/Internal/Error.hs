@@ -94,4 +94,3 @@ pattern ENOTSOCK <- ((== Libzmq.eNOTSOCK) -> True) where
 pattern ETERM :: CInt
 pattern ETERM <- ((== Libzmq.eTERM) -> True) where
   ETERM = Libzmq.eTERM
-

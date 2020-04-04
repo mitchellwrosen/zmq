@@ -21,6 +21,7 @@ common component
     GeneralizedNewtypeDeriving
     InstanceSigs
     LambdaCase
+    NamedFieldPuns
     NumericUnderscores
     OverloadedStrings
     PatternSynonyms

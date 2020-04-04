@@ -30,7 +30,7 @@ import qualified Zmq.API.Unbind as API
 
 newtype Publisher
   = Publisher { unPublisher :: MVar Zmqhs.Socket }
-  deriving newtype ( Eq )
+  deriving stock ( Eq )
 
 open :: MonadIO m => Context -> m Publisher
 open context = do

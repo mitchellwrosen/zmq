@@ -21,8 +21,8 @@ import qualified Hedgehog.Range as Range
 import qualified Zmq
 import qualified Zmq.Publisher as Pub
 import qualified Zmq.Subscriber as Sub
-import qualified Zmq.XPublisher as Xpub
-import qualified Zmq.XSubscriber as Xsub
+import qualified Zmq.XPublisher as XPub
+import qualified Zmq.XSubscriber as XSub
 
 main :: IO ()
 main = do
@@ -33,20 +33,19 @@ main = do
 
 tests :: Zmq.Context -> [ TestTree ]
 tests ctx =
-  [ testGroup "Publisher tests" ( publisherTests ctx )
-  , testGroup "Subscriber tests" ( subscriberTests ctx )
+  [ testGroup
+      "Basic socket tests"
+      ( basicTests
+          [ somePublisherSocket
+          , someSubscriberSocket
+          , someXPublisherSocket
+          , someXSubscriberSocket
+          ]
+          ctx
+      )
+  , testGroup "Publisher tests" ( publisherTests ctx )
 
   , test "Pubsub" do
-      ( pub, sub ) <- openPubSub ctx
-      Sub.subscribe sub "a"
-      liftIO ( Pub.send pub ( "b" :| [] ) )
-      let message = "a" :| []
-      liftIO ( Pub.send pub message )
-      Sub.recv sub >>= ( === message )
-      liftIO ( Pub.close pub )
-      Sub.close sub
-
-  , test "Concurrent publisher" do
       endpoint <- randomInproc
 
       pub <- liftIO ( Pub.open ctx )
@@ -61,169 +60,239 @@ tests ctx =
               readMVar readyVar
               forever ( Pub.send pub ( "" :| [] ) )
 
-      sub <- Sub.open ctx
-      Sub.connect sub endpoint
-      Sub.subscribe sub ""
+      sub <- liftIO ( Sub.open ctx )
+      liftIO ( Sub.connect sub endpoint )
+      liftIO ( Sub.subscribe sub "" )
       putMVar readyVar ()
-      replicateM_ 20000 ( Sub.recv sub )
+      liftIO ( replicateM_ 20000 ( Sub.recv sub ) )
       liftIO ( Pub.close pub )
-      Sub.close sub
+      liftIO ( Sub.close sub )
 
   , test "XPublisher recv subscription" do
       endpoint <- randomInproc
-      xpub <- Xpub.open ctx
-      sub <- Sub.open ctx
-      Xpub.bind xpub endpoint
-      Sub.connect sub endpoint
-      Sub.subscribe sub "hi"
-      message <- Xpub.recv xpub
+      xpub <- liftIO ( XPub.open ctx )
+      sub <- liftIO ( Sub.open ctx )
+      liftIO ( XPub.bind xpub endpoint )
+      liftIO ( Sub.connect sub endpoint )
+      liftIO ( Sub.subscribe sub "hi" )
+      message <- liftIO ( XPub.recv xpub )
       message === Zmq.Subscribe "hi"
-      Xpub.close xpub
-      Sub.close sub
+      liftIO ( XPub.close xpub )
+      liftIO ( Sub.close sub )
 
   , test "XSubscriber send subscription" do
       endpoint <- randomInproc
       pub <- liftIO ( Pub.open ctx )
-      xsub <- Xsub.open ctx
+      xsub <- liftIO ( XSub.open ctx )
       liftIO ( Pub.bind pub endpoint )
-      Xsub.connect xsub endpoint
-      Xsub.subscribe xsub ""
+      liftIO ( XSub.connect xsub endpoint )
+      liftIO ( XSub.subscribe xsub "" )
       liftIO ( Pub.send pub ( "hi" :| [] ) )
-      message <- Xsub.recv xsub
+      message <- liftIO ( XSub.recv xsub )
       message === "hi" :| []
       liftIO ( Pub.close pub )
-      Xsub.close xsub
+      liftIO ( XSub.close xsub )
+  ]
+
+basicTests :: [ SomeSocket ] -> Zmq.Context -> [ TestTree ]
+basicTests sockets ctx =
+  [ testGroup
+      "open-close"
+      ( map
+          ( \SomeSocket{name, open, close} ->
+              test name do
+                sock <- open ctx
+                close sock
+          )
+          sockets
+      )
+
+  , testGroup
+      "open-close-close"
+      ( map
+          ( \SomeSocket{name, open, close} ->
+              test name do
+                sock <- open ctx
+                close sock
+                close sock
+          )
+          sockets
+      )
+
+  , testGroup
+      "bind"
+      ( map
+          ( \SomeSocket{name, open, close, bind} ->
+              test name do
+                sock <- open ctx
+                endpoint <- randomInproc
+                bind sock endpoint
+                close sock
+          )
+          sockets
+      )
+
+  , testGroup
+      "bind-unbind"
+      ( map
+          ( \SomeSocket{name, open, close, bind, unbind} ->
+              test name do
+                sock <- open ctx
+                endpoint <- randomInproc
+                bind sock endpoint
+                unbind sock endpoint
+                close sock
+          )
+          sockets
+      )
+
+  , testGroup
+      "unbind"
+      ( map
+          ( \SomeSocket{name, open, close, unbind} ->
+              test name do
+                sock <- open ctx
+                endpoint <- randomInproc
+                unbind sock endpoint
+                close sock
+          )
+          sockets
+      )
+
+  , testGroup
+      "unbind bogus"
+      ( map
+          ( \SomeSocket{name, open, close, unbind} ->
+              test name do
+                sock <- open ctx
+                unbind sock ( Zmq.Tcp "" ) `throws`
+                  Zmq.Error "zmq_unbind" 22 "Invalid argument"
+                close sock
+          )
+          sockets
+      )
+
+  , testGroup
+      "connect"
+      ( map
+          ( \SomeSocket{name, open, close, connect} ->
+              test name do
+                sock <- open ctx
+                endpoint <- randomInproc
+                connect sock endpoint
+                close sock
+          )
+          sockets
+      )
+
+  , testGroup
+      "connect-disconnect"
+      ( map
+          ( \SomeSocket{name, open, close, connect, disconnect} ->
+              test name do
+                sock <- open ctx
+                endpoint <- randomInproc
+                connect sock endpoint
+                disconnect sock endpoint
+                close sock
+          )
+          sockets
+      )
+
+  , testGroup
+      "disconnect"
+      ( map
+          ( \SomeSocket{name, open, close, disconnect} ->
+              test name do
+                sock <- open ctx
+                endpoint <- randomInproc
+                disconnect sock endpoint
+                close sock
+          )
+          sockets
+      )
+
+  , testGroup
+      "disconnect bogus"
+      ( map
+          ( \SomeSocket{name, open, close, disconnect} ->
+              test name do
+                sock <- open ctx
+                disconnect sock ( Zmq.Tcp "" ) `throws`
+                  Zmq.Error "zmq_disconnect" 22 "Invalid argument"
+                close sock
+          )
+          sockets
+      )
   ]
 
 publisherTests :: Zmq.Context -> [ TestTree ]
 publisherTests ctx =
-  [ test "open-close" do
-      pub <- liftIO ( Pub.open ctx )
-      liftIO ( Pub.close pub )
-
-  , test "open-close-close" do
-      pub <- liftIO ( Pub.open ctx )
-      liftIO ( Pub.close pub )
-      liftIO ( Pub.close pub )
-
-  , test "bind" do
-      pub <- liftIO ( Pub.open ctx )
-      endpoint <- randomInproc
-      liftIO ( Pub.bind pub endpoint )
-      liftIO ( Pub.close pub )
-
-  , test "bind-unbind" do
-      pub <- liftIO ( Pub.open ctx )
-      endpoint <- randomInproc
-      liftIO ( Pub.bind pub endpoint )
-      liftIO ( Pub.unbind pub endpoint )
-      liftIO ( Pub.close pub )
-
-  , test "unbind" do
-      pub <- liftIO ( Pub.open ctx )
-      endpoint <- randomInproc
-      liftIO ( Pub.unbind pub endpoint )
-      liftIO ( Pub.close pub )
-
-  , test "unbind bogus" do
-      pub <- liftIO ( Pub.open ctx )
-      liftIO ( Pub.unbind pub ( Zmq.Tcp "" ) ) `throws`
-        Zmq.Error "zmq_unbind" 22 "Invalid argument"
-      liftIO ( Pub.close pub )
-
-  , test "connect" do
-      pub <- liftIO ( Pub.open ctx )
-      endpoint <- randomInproc
-      liftIO ( Pub.connect pub endpoint )
-      liftIO ( Pub.close pub )
-
-  , test "connect-disconnect" do
-      pub <- liftIO ( Pub.open ctx )
-      endpoint <- randomInproc
-      liftIO ( Pub.connect pub endpoint )
-      liftIO ( Pub.disconnect pub endpoint )
-      liftIO ( Pub.close pub )
-
-  , test "disconnect" do
-      pub <- liftIO ( Pub.open ctx )
-      endpoint <- randomInproc
-      liftIO ( Pub.disconnect pub endpoint )
-      liftIO ( Pub.close pub )
-
-  , test "disconnect bogus" do
-      pub <- liftIO ( Pub.open ctx )
-      liftIO ( Pub.disconnect pub ( Zmq.Tcp "" ) ) `throws`
-        Zmq.Error "zmq_disconnect" 22 "Invalid argument"
-      liftIO ( Pub.close pub )
-
-  , test "send" do
+  [ test "send" do
       pub <- liftIO ( Pub.open ctx )
       liftIO ( Pub.send pub ( "" :| [] ) )
       liftIO ( Pub.close pub )
   ]
 
-subscriberTests :: Zmq.Context -> [ TestTree ]
-subscriberTests ctx =
-  [ test "open-close" do
-      sub <- Sub.open ctx
-      Sub.close sub
+data SomeSocket
+  = forall socket.
+    SomeSocket
+  { name :: TestName
+  , open :: forall m. MonadIO m => Zmq.Context -> m socket
+  , close :: forall m. MonadIO m => socket -> m ()
+  , bind :: forall m transport. MonadIO m => socket -> Zmq.Endpoint transport -> m ()
+  , unbind :: forall m transport. MonadIO m => socket -> Zmq.Endpoint transport -> m ()
+  , connect :: forall m transport. MonadIO m => socket -> Zmq.Endpoint transport -> m ()
+  , disconnect :: forall m transport. MonadIO m => socket -> Zmq.Endpoint transport -> m ()
+  }
 
-  , test "open-close-close" do
-      sub <- Sub.open ctx
-      Sub.close sub
-      Sub.close sub
+somePublisherSocket :: SomeSocket
+somePublisherSocket =
+  SomeSocket
+    { name = "Publisher"
+    , open = \ctx -> liftIO ( Pub.open ctx )
+    , close = \sock -> liftIO ( Pub.close sock )
+    , bind = \sock endpoint -> liftIO ( Pub.bind sock endpoint )
+    , unbind = \sock endpoint -> liftIO ( Pub.unbind sock endpoint )
+    , connect = \sock endpoint -> liftIO ( Pub.connect sock endpoint )
+    , disconnect = \sock endpoint -> liftIO ( Pub.disconnect sock endpoint )
+    }
 
-  , test "bind" do
-      sub <- Sub.open ctx
-      endpoint <- randomInproc
-      Sub.bind sub endpoint
-      Sub.close sub
+someSubscriberSocket :: SomeSocket
+someSubscriberSocket =
+  SomeSocket
+    { name = "Subscriber"
+    , open = \ctx -> liftIO ( Sub.open ctx )
+    , close = \sock -> liftIO ( Sub.close sock )
+    , bind = \sock endpoint -> liftIO ( Sub.bind sock endpoint )
+    , unbind = \sock endpoint -> liftIO ( Sub.unbind sock endpoint )
+    , connect = \sock endpoint -> liftIO ( Sub.connect sock endpoint )
+    , disconnect = \sock endpoint -> liftIO ( Sub.disconnect sock endpoint )
+    }
 
-  , test "bind-unbind" do
-      sub <- Sub.open ctx
-      endpoint <- randomInproc
-      Sub.bind sub endpoint
-      Sub.unbind sub endpoint
-      Sub.close sub
+someXPublisherSocket :: SomeSocket
+someXPublisherSocket =
+  SomeSocket
+    { name = "XPublisher"
+    , open = \ctx -> liftIO ( XPub.open ctx )
+    , close = \sock -> liftIO ( XPub.close sock )
+    , bind = \sock endpoint -> liftIO ( XPub.bind sock endpoint )
+    , unbind = \sock endpoint -> liftIO ( XPub.unbind sock endpoint )
+    , connect = \sock endpoint -> liftIO ( XPub.connect sock endpoint )
+    , disconnect = \sock endpoint -> liftIO ( XPub.disconnect sock endpoint )
+    }
 
-  , test "unbind" do
-      sub <- Sub.open ctx
-      endpoint <- randomInproc
-      Sub.unbind sub endpoint
-      Sub.close sub
-
-  , test "unbind bogus" do
-      sub <- Sub.open ctx
-      Sub.unbind sub ( Zmq.Tcp "" ) `throws`
-        Zmq.Error "zmq_unbind" 22 "Invalid argument"
-      Sub.close sub
-
-  , test "connect" do
-      sub <- Sub.open ctx
-      endpoint <- randomInproc
-      Sub.connect sub endpoint
-      Sub.close sub
-
-  , test "connect-disconnect" do
-      sub <- Sub.open ctx
-      endpoint <- randomInproc
-      Sub.connect sub endpoint
-      Sub.disconnect sub endpoint
-      Sub.close sub
-
-  , test "disconnect" do
-      sub <- Sub.open ctx
-      endpoint <- randomInproc
-      Sub.disconnect sub endpoint
-      Sub.close sub
-
-  , test "disconnect bogus" do
-      sub <- Sub.open ctx
-      Sub.disconnect sub ( Zmq.Tcp "" ) `throws`
-        Zmq.Error "zmq_disconnect" 22 "Invalid argument"
-      Sub.close sub
-  ]
-
+someXSubscriberSocket :: SomeSocket
+someXSubscriberSocket =
+  SomeSocket
+    { name = "XSubscriber"
+    , open = \ctx -> liftIO ( XSub.open ctx )
+    , close = \sock -> liftIO ( XSub.close sock )
+    , bind = \sock endpoint -> liftIO ( XSub.bind sock endpoint )
+    , unbind = \sock endpoint -> liftIO ( XSub.unbind sock endpoint )
+    , connect = \sock endpoint -> liftIO ( XSub.connect sock endpoint )
+    , disconnect = \sock endpoint -> liftIO ( XSub.disconnect sock endpoint )
+    }
 
 --------------------------------------------------------------------------------
 
@@ -234,9 +303,9 @@ openPubSub
 openPubSub ctx = do
   endpoint <- randomInproc
   pub <- liftIO ( Pub.open ctx )
-  sub <- Sub.open ctx
+  sub <- liftIO ( Sub.open ctx )
   liftIO ( Pub.bind pub endpoint )
-  Sub.connect sub endpoint
+  liftIO ( Sub.connect sub endpoint )
   pure ( pub, sub )
 
 

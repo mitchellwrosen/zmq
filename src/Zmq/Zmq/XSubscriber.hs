@@ -17,6 +17,7 @@ module Zmq.XSubscriber
   ) where
 
 import Data.List.NonEmpty (NonEmpty((:|)))
+import qualified UnliftIO
 
 import qualified Zmqhs
 
@@ -34,84 +35,56 @@ import qualified Zmq.SubscriptionMessage as SubscriptionMessage
 
 
 newtype XSubscriber
-  = XSubscriber { unXSubscriber :: Zmqhs.Socket }
-  deriving newtype ( Eq, Ord, Show )
+  = XSubscriber { unXSubscriber :: MVar Zmqhs.Socket }
+  deriving stock ( Eq )
 
-open
-  :: MonadIO m
-  => Context
-  -> m XSubscriber
-open context =
-  XSubscriber <$> Zmqhs.socket context Zmqhs.XSub
+open :: MonadIO m => Context -> m XSubscriber
+open context = do
+  sock <- Zmqhs.socket context Zmqhs.XSub
+  sockVar <- UnliftIO.newMVar sock
+  pure ( XSubscriber sockVar )
 
-close
-  :: MonadIO m
-  => XSubscriber
-  -> m ()
-close ( XSubscriber sock ) =
-  Zmqhs.close sock
+close :: MonadUnliftIO m => XSubscriber -> m ()
+close subscriber =
+  UnliftIO.withMVar ( unXSubscriber subscriber ) Zmqhs.close
 
-bind
-  :: MonadIO m
-  => XSubscriber
-  -> Endpoint transport
-  -> m ()
-bind subscriber endpoint = liftIO do
-  API.bind ( unXSubscriber subscriber ) endpoint
+bind :: MonadUnliftIO m => XSubscriber -> Endpoint transport -> m ()
+bind subscriber endpoint =
+  UnliftIO.withMVar ( unXSubscriber subscriber ) \sock ->
+    liftIO ( API.bind sock endpoint )
 
-unbind
-  :: MonadIO m
-  => XSubscriber
-  -> Endpoint transport
-  -> m ()
-unbind subscriber endpoint = liftIO do
-  API.unbind ( unXSubscriber subscriber ) endpoint
+unbind :: MonadUnliftIO m => XSubscriber -> Endpoint transport -> m ()
+unbind subscriber endpoint =
+  UnliftIO.withMVar ( unXSubscriber subscriber ) \sock ->
+    liftIO ( API.unbind sock endpoint )
 
-connect
-  :: MonadIO m
-  => XSubscriber
-  -> Endpoint transport
-  -> m ()
-connect subscriber endpoint = liftIO do
-  API.connect ( unXSubscriber subscriber ) endpoint
+connect :: MonadUnliftIO m => XSubscriber -> Endpoint transport -> m ()
+connect subscriber endpoint =
+  UnliftIO.withMVar ( unXSubscriber subscriber ) \sock ->
+    liftIO ( API.connect sock endpoint )
 
-disconnect
-  :: MonadIO m
-  => XSubscriber
-  -> Endpoint transport
-  -> m ()
-disconnect subscriber endpoint = liftIO do
-  API.disconnect ( unXSubscriber subscriber ) endpoint
+disconnect :: MonadUnliftIO m => XSubscriber -> Endpoint transport -> m ()
+disconnect subscriber endpoint =
+  UnliftIO.withMVar ( unXSubscriber subscriber ) \sock ->
+    liftIO ( API.disconnect sock endpoint )
 
-subscribe
-  :: MonadIO m
-  => XSubscriber
-  -> ByteString
-  -> m ()
+subscribe :: MonadUnliftIO m => XSubscriber -> ByteString -> m ()
 subscribe subscriber prefix =
   send subscriber ( Subscribe prefix )
 
-unsubscribe
-  :: MonadIO m
-  => XSubscriber
-  -> ByteString
-  -> m ()
+unsubscribe :: MonadUnliftIO m => XSubscriber -> ByteString -> m ()
 unsubscribe subscriber prefix =
   send subscriber ( Unsubscribe prefix )
 
-send
-  :: MonadIO m
-  => XSubscriber
-  -> SubscriptionMessage
-  -> m ()
-send subscriber message = liftIO do
-  API.sendThatNeverBlocks
-    ( unXSubscriber subscriber )
-    ( SubscriptionMessage.serialize message :| [] )
+send :: MonadUnliftIO m => XSubscriber -> SubscriptionMessage -> m ()
+send subscriber message =
+  UnliftIO.withMVar ( unXSubscriber subscriber ) \sock ->
+  liftIO do
+    API.sendThatNeverBlocks
+      sock
+      ( SubscriptionMessage.serialize message :| [] )
 
-recv
-  :: MonadIO m
-  => XSubscriber
-  -> m ( NonEmpty ByteString )
-recv =
-  liftIO . coerce API.nonThreadsafeRecv
+recv :: MonadUnliftIO m => XSubscriber -> m ( NonEmpty ByteString )
+recv subscriber =
+  UnliftIO.withMVar ( unXSubscriber subscriber ) \sock ->
+    liftIO ( API.nonThreadsafeRecv sock )
