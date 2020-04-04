@@ -22,7 +22,6 @@ import Zmq.Context
 import Zmq.Endpoint
 import Zmq.Internal (renderEndpoint)
 import Zmq.Prelude
-import qualified Zmq.API.Disconnect as API
 import qualified Zmq.API.Send as API
 
 
@@ -62,7 +61,7 @@ connect publisher endpoint = liftIO do
 disconnect :: MonadUnliftIO m => Publisher -> Endpoint transport -> m ()
 disconnect publisher endpoint =
   UnliftIO.withMVar ( unPublisher publisher ) \sock ->
-    liftIO ( API.disconnect sock endpoint )
+    Zmqhs.disconnect sock ( renderEndpoint endpoint )
 
 send :: MonadUnliftIO m => Publisher -> NonEmpty ByteString -> m ()
 send publisher message =

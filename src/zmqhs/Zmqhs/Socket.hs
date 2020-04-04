@@ -112,12 +112,21 @@ connect sock endpoint = liftIO do
       0 -> pure ()
       _ -> Libzmq.errno >>= throwError "zmq_connect"
 
-disconnect :: Socket -> Endpoint -> IO ( Either CInt () )
-disconnect sock endpoint =
+-- | <http://api.zeromq.org/4-3:zmq-disconnect>
+--
+-- May throw:
+--   * @EINVAL@ if the endpoint is invalid.
+--   * @ETERM@ if the context was terminated.
+--   * @ENOTSOCK@ if the socket is invalid.
+disconnect :: MonadIO m => Socket -> Endpoint -> m ()
+disconnect sock endpoint = liftIO do
   withEndpoint endpoint \endpoint' ->
     Libzmq.disconnect ( unSocket sock ) endpoint' >>= \case
-      0 -> pure ( Right () )
-      _ -> Left <$> Libzmq.errno
+      0 -> pure ()
+      _ ->
+        Libzmq.errno >>= \case
+          ENOENT -> pure () -- The endpoint was not connected.
+          errno -> throwError "zmq_disconnect" errno
 
 getSocketEvents :: Socket -> IO ( Either CInt CInt )
 getSocketEvents =
