@@ -9,10 +9,13 @@ module Zmqhs.Context
   ) where
 
 import Data.Coerce (coerce)
+import Data.Function (fix)
 import Foreign.C (CInt)
 import Foreign.Ptr (Ptr)
 
 import qualified Libzmq
+
+import Zmqhs.Error
 
 
 newtype Context
@@ -24,13 +27,21 @@ newContext :: IO Context
 newContext =
   coerce Libzmq.newContext
 
+-- | <http://api.zeromq.org/4-3:zmq-ctx-term>
+--
+-- May throw:
+--   * @EFAULT@ if the provided context was invalid.
 terminateContext
   :: Context
   -> IO ( Either CInt () )
 terminateContext context =
-  Libzmq.terminateContext ( unContext context ) >>= \case
-    0 -> pure ( Right () )
-    _ -> Left <$> Libzmq.errno
+  fix \again ->
+    Libzmq.terminateContext ( unContext context ) >>= \case
+      0 -> pure ( Right () )
+      _ ->
+        Libzmq.errno >>= \case
+          EINTR -> again
+          errno -> throwError "zmq_ctx_term" errno
 
 setContextOption
   :: Context

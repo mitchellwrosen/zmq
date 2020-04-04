@@ -21,9 +21,12 @@ module Zmqhs
   , SocketType(..)
 
   , Endpoint(..)
+
+  , Error(..)
   ) where
 
 import Zmqhs.Context
 import Zmqhs.Endpoint
+import Zmqhs.Error
 import Zmqhs.Socket
 import Zmqhs.SocketType
