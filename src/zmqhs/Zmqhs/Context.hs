@@ -32,10 +32,7 @@ newContext = liftIO do
 --
 -- May throw:
 --   * @EFAULT@ if the provided context was invalid.
-terminateContext
-  :: MonadIO m
-  => Context
-  -> m ()
+terminateContext :: MonadIO m => Context -> m ()
 terminateContext context = liftIO do
   fix \again ->
     Libzmq.terminateContext ( unContext context ) >>= \case

@@ -1,4 +1,4 @@
-cabal-version: 2.4
+cabal-version: 3.0
 
 name: zmq
 version: 0
@@ -80,7 +80,6 @@ library
     Zmq.API.GetSockOpt
     Zmq.API.Recv
     Zmq.API.Send
-    Zmq.API.Subscribe
     Zmq.Context
     Zmq.Endpoint
     Zmq.Internal
@@ -157,12 +156,16 @@ test-suite tests
     text,
     unliftio,
     zmq,
+    zmq:zmqhs,
 
   hs-source-dirs:
     test
 
   main-is:
     Main.hs
+
+  other-modules:
+    ZmqhsSpec
 
   type:
     exitcode-stdio-1.0

@@ -11,6 +11,7 @@ module Zmq.Subscriber
   , disconnect
 
   , subscribe
+  , unsubscribe
 
   , recv
   ) where
@@ -24,7 +25,6 @@ import Zmq.Endpoint
 import Zmq.Internal (renderEndpoint)
 import Zmq.Prelude
 import qualified Zmq.API.Recv as API
-import qualified Zmq.API.Subscribe as API
 
 
 newtype Subscriber
@@ -64,7 +64,12 @@ disconnect subscriber endpoint =
 subscribe :: MonadUnliftIO m => Subscriber -> ByteString -> m ()
 subscribe subscriber prefix =
   UnliftIO.withMVar ( unSubscriber subscriber ) \sock ->
-    liftIO ( API.subscribe sock prefix )
+    Zmqhs.setSocketSubscribe sock prefix
+
+unsubscribe :: MonadUnliftIO m => Subscriber -> ByteString -> m ()
+unsubscribe subscriber prefix =
+  UnliftIO.withMVar ( unSubscriber subscriber ) \sock ->
+    Zmqhs.setSocketUnsubscribe sock prefix
 
 recv :: MonadUnliftIO m => Subscriber -> m ( NonEmpty ByteString )
 recv subscriber =

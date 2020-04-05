@@ -76,10 +76,10 @@ unsubscribe subscriber prefix =
 send :: MonadUnliftIO m => XSubscriber -> SubscriptionMessage -> m ()
 send subscriber message =
   UnliftIO.withMVar ( unXSubscriber subscriber ) \sock ->
-  liftIO do
-    API.sendThatNeverBlocks
-      sock
-      ( SubscriptionMessage.serialize message :| [] )
+    liftIO do
+      API.sendThatNeverBlocks
+        sock
+        ( SubscriptionMessage.serialize message :| [] )
 
 recv :: MonadUnliftIO m => XSubscriber -> m ( NonEmpty ByteString )
 recv subscriber =

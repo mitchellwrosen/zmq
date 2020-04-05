@@ -1,10 +1,13 @@
 module Zmq.Context
-  ( Context(..)
+  ( newContext
+  , Zmqhs.terminateContext
+  , withContext
+  , Context(..)
   , Options(..)
   , defaultOptions
-  , newContext
-  , Zmqhs.terminateContext
   ) where
+
+import qualified UnliftIO
 
 import qualified Libzmq
 
@@ -28,15 +31,16 @@ defaultOptions =
     }
 
 -- | Create a new ZMQ context.
-newContext
-  :: MonadIO m
-  => Options
-  -> m Context
+newContext :: MonadIO m => Options -> m Context
 newContext options = do
   context <- Zmqhs.newContext
   setNatural Zmqhs.ioThreads context ( ioThreads options )
   setNatural Zmqhs.maxSockets context ( maxSockets options )
   pure context
+
+withContext :: MonadUnliftIO m => Options -> ( Context -> m a ) -> m a
+withContext options =
+  UnliftIO.bracket ( newContext options ) Zmqhs.terminateContext
 
 
 ----------------------------------------------------------------------------------

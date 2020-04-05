@@ -21,6 +21,7 @@ pub :: CInt
 sndmore :: CInt
 sub :: CInt
 subscribe :: CInt
+unsubscribe :: CInt
 xpub :: CInt
 xsub :: CInt
 
@@ -38,5 +39,6 @@ pub = #const ZMQ_PUB
 sndmore = #const ZMQ_SNDMORE
 sub = #const ZMQ_SUB
 subscribe = #const ZMQ_SUBSCRIBE
+unsubscribe = #const ZMQ_UNSUBSCRIBE
 xpub = #const ZMQ_XPUB
 xsub = #const ZMQ_XSUB

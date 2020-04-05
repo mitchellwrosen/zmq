@@ -13,10 +13,12 @@ module Zmqhs.Socket
   , getSocketEvents
   , getSocketFd
   , setSocketSubscribe
+  , setSocketUnsubscribe
   ) where
 
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.ByteString (ByteString)
+import Data.Function (fix)
 import Foreign.C (CInt)
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (Ptr, nullPtr)
@@ -39,7 +41,7 @@ newtype Socket
 -- | <http://api.zeromq.org/4-3:zmq-socket>
 --
 -- May throw:
---   * @EMFILE@ if no more ZMQ sockets can be opened.
+--   * @EMFILE@ if no more sockets can be opened.
 --   * @ETERM@ if the context was terminated.
 open :: MonadIO m => Context -> SocketType -> m Socket
 open context socketType = liftIO do
@@ -72,7 +74,7 @@ close sock = liftIO do
 --   * @ENODEV@ if the address specifies a nonexistent interface.
 --   * @ENOTSOCK@ if the socket is invalid.
 --   * @EPROTONOSUPPORT@ if the protocol is not supported.
---   * @ETERM@ if the ZMQ context was terminated.
+--   * @ETERM@ if the context was terminated.
 bind :: MonadIO m => Socket -> Endpoint -> m ()
 bind sock endpoint = liftIO do
   withEndpoint endpoint \endpoint' ->
@@ -146,13 +148,38 @@ getIntSocketOption option sock =
         0 -> Right <$> peek intPtr
         _ -> Left <$> Libzmq.errno
 
-setSocketSubscribe :: Socket -> ByteString -> IO ( Either CInt () )
+-- | <http://api.zeromq.org/4-3:zmq-setsockopt>
+--
+-- May throw:
+--   * @EINVAL@ if the option is invalid.
+--   * @ETERM@ if the context was terminated.
+--   * @ENOTSOCK@ if the socket is invalid.
+setSocketSubscribe :: MonadIO m => Socket -> ByteString -> m ()
 setSocketSubscribe =
   setBinarySocketOption Libzmq.subscribe
 
-setBinarySocketOption :: CInt -> Socket -> ByteString -> IO ( Either CInt () )
-setBinarySocketOption option sock bytes =
+-- | <http://api.zeromq.org/4-3:zmq-setsockopt>
+--
+-- May throw:
+--   * @EINVAL@ if the option is invalid.
+--   * @ETERM@ if the context was terminated.
+--   * @ENOTSOCK@ if the socket is invalid.
+setSocketUnsubscribe :: MonadIO m => Socket -> ByteString -> m ()
+setSocketUnsubscribe =
+  setBinarySocketOption Libzmq.unsubscribe
+
+setBinarySocketOption :: MonadIO m => CInt -> Socket -> ByteString -> m ()
+setBinarySocketOption option sock bytes = liftIO do
   ByteString.unsafeUseAsCStringLen bytes \( bytes', len ) ->
-    Libzmq.setSocketOption ( unSocket sock ) option bytes' ( fromIntegral len ) >>= \case
-      0 -> pure ( Right () )
-      _ -> Left <$> Libzmq.errno
+    let
+      set =
+        Libzmq.setSocketOption
+          ( unSocket sock ) option bytes' ( fromIntegral len )
+    in
+      fix \again ->
+        set >>= \case
+          0 -> pure ()
+          _ ->
+            Libzmq.errno >>= \case
+              EINTR -> again
+              errno -> throwError "zmq_setsockopt" errno

@@ -1,9 +1,10 @@
 module Zmq
-  ( Context
-  , newContext
+  ( newContext
+  , terminateContext
+  , withContext
+  , Context
   , Options(..)
   , defaultOptions
-  , terminateContext
 
   , Publisher
   , Subscriber

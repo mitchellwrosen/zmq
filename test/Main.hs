@@ -9,8 +9,8 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 import Hedgehog (Gen)
 -- import Say
 import Test.Hspec
-import UnliftIO.Concurrent
-import UnliftIO.Exception
+import UnliftIO
+import UnliftIO.Concurrent (forkIO)
 import qualified Data.Text as Text
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
@@ -21,17 +21,21 @@ import qualified Zmq.Subscriber as Sub
 import qualified Zmq.XPublisher as XPub
 import qualified Zmq.XSubscriber as XSub
 
+import qualified ZmqhsSpec
+
 main :: IO ()
-main = do
-  bracket
-    ( Zmq.newContext Zmq.defaultOptions )
-    Zmq.terminateContext
-    ( \ctx -> hspec ( spec ctx ) )
+main =
+  Zmq.withContext Zmq.defaultOptions \ctx ->
+    hspec do
+      describe "zmqhs" ( ZmqhsSpec.spec ctx )
+      describe "zmq" ( spec ctx )
 
 spec :: Zmq.Context -> Spec
 spec ctx = do
-  describe "Basic socket" ( basicSpec someSockets ctx )
+  describe "Basic socket" ( basicSocketSpec someSockets ctx )
   describe "Publisher" ( publisherSpec ctx )
+  describe "XPublisher" ( xpublisherSpec ctx )
+  describe "XSubscriber" ( xsubscriberSpec ctx )
 
   it "Pubsub" do
     endpoint <- randomInproc
@@ -42,10 +46,9 @@ spec ctx = do
     let threads = 200
     readyVar <- newEmptyMVar
     replicateM_ threads do
-      mask \restore ->
-        ( forkIO . void . try @_ @SomeException . restore ) do
-          readMVar readyVar
-          forever ( Pub.send pub ( "" :| [] ) )
+      ( forkIO . void . tryAny ) do
+        readMVar readyVar
+        forever ( Pub.send pub ( "" :| [] ) )
 
     sub <- Sub.open ctx
     Sub.connect sub endpoint
@@ -55,31 +58,8 @@ spec ctx = do
     Pub.close pub
     Sub.close sub
 
-  it "XPublisher recv subscription" do
-    endpoint <- randomInproc
-    xpub <- XPub.open ctx
-    sub <- Sub.open ctx
-    XPub.bind xpub endpoint
-    Sub.connect sub endpoint
-    Sub.subscribe sub "hi"
-    XPub.recv xpub `shouldReturn` Zmq.Subscribe "hi"
-    XPub.close xpub
-    Sub.close sub
-
-  it "XSubscriber send subscription" do
-    endpoint <- randomInproc
-    pub <- Pub.open ctx
-    xsub <- XSub.open ctx
-    Pub.bind pub endpoint
-    XSub.connect xsub endpoint
-    XSub.subscribe xsub ""
-    Pub.send pub ( "hi" :| [] )
-    XSub.recv xsub `shouldReturn` "hi" :| []
-    Pub.close pub
-    XSub.close xsub
-
-basicSpec :: [ SomeSocket ] -> Zmq.Context -> Spec
-basicSpec sockets ctx = do
+basicSocketSpec :: [ SomeSocket ] -> Zmq.Context -> Spec
+basicSocketSpec sockets ctx = do
   for_ sockets \SomeSocket{name, open, close, bind, unbind, connect, disconnect} -> do
     describe name do
       it "open-close" do
@@ -113,7 +93,7 @@ basicSpec sockets ctx = do
       it "unbind bogus" do
         sock <- open ctx
         unbind sock ( Zmq.Tcp "" ) `shouldThrow`
-          ( == Zmq.Error "zmq_unbind" 22 "Invalid argument" )
+          ( == Zmq.Error "zmq_unbind" Zmq.EINVAL "Invalid argument" )
         liftIO ( close sock )
 
       it "connect" do
@@ -138,7 +118,7 @@ basicSpec sockets ctx = do
       it "disconnect bogus" do
         sock <- open ctx
         disconnect sock ( Zmq.Tcp "" ) `shouldThrow`
-          ( == Zmq.Error "zmq_disconnect" 22 "Invalid argument" )
+          ( == Zmq.Error "zmq_disconnect" Zmq.EINVAL "Invalid argument" )
         close sock
 
 publisherSpec :: Zmq.Context -> Spec
@@ -147,6 +127,37 @@ publisherSpec ctx =
     pub <- Pub.open @IO ctx
     Pub.send pub ( "" :| [] )
     Pub.close pub
+
+xpublisherSpec :: Zmq.Context -> Spec
+xpublisherSpec ctx =
+  it "receives explicit subscription messages" do
+    endpoint <- randomInproc
+    xpub <- XPub.open ctx
+    sub <- Sub.open ctx
+    XPub.bind xpub endpoint
+    Sub.connect sub endpoint
+    Sub.subscribe sub "hi"
+    XPub.recv xpub `shouldReturn` Zmq.Subscribe "hi"
+    Sub.unsubscribe sub "hi"
+    XPub.recv xpub `shouldReturn` Zmq.Unsubscribe "hi"
+    XPub.close xpub
+    Sub.close sub
+
+xsubscriberSpec :: Zmq.Context -> Spec
+xsubscriberSpec ctx =
+  it "can subscribe to a publisher" do
+    endpoint <- randomInproc
+    pub <- Pub.open ctx
+    xsub <- XSub.open ctx
+    Pub.bind pub endpoint
+    XSub.connect xsub endpoint
+    XSub.subscribe xsub ""
+    ( void . forkIO . void . tryAny . forever ) do
+      Pub.send pub ( "hi" :| [] )
+    XSub.recv xsub `shouldReturn` "hi" :| []
+    Pub.close pub
+    XSub.close xsub
+
 
 data SomeSocket
   = forall socket.
@@ -203,9 +214,7 @@ someSockets =
 
 --------------------------------------------------------------------------------
 
-openPubSub
-  :: Zmq.Context
-  -> IO ( Zmq.Publisher, Zmq.Subscriber )
+openPubSub :: Zmq.Context -> IO ( Zmq.Publisher, Zmq.Subscriber )
 openPubSub ctx = do
   endpoint <- randomInproc
   pub <- liftIO ( Pub.open ctx )
@@ -217,15 +226,11 @@ openPubSub ctx = do
 
 --------------------------------------------------------------------------------
 
-randomInproc
-  :: MonadIO m
-  => m ( Zmq.Endpoint 'Zmq.TransportInproc )
+randomInproc :: MonadIO m => m ( Zmq.Endpoint 'Zmq.TransportInproc )
 randomInproc =
   Gen.sample ( Gen.prune genInproc )
 
-randomTcp
-  :: MonadIO m
-  => m ( Zmq.Endpoint 'Zmq.TransportTcp )
+randomTcp :: MonadIO m => m ( Zmq.Endpoint 'Zmq.TransportTcp )
 randomTcp =
   Gen.sample genTcp
 
