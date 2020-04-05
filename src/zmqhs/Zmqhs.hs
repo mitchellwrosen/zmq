@@ -10,6 +10,7 @@ module Zmqhs
   , Socket(..)
   , open
   , close
+  , with
   , bind
   , unbind
   , connect

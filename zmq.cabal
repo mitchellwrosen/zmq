@@ -95,6 +95,7 @@ library zmqhs
     bytestring,
     libzmq,
     text,
+    unliftio,
 
   exposed-modules:
     Zmqhs

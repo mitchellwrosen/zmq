@@ -3,6 +3,7 @@ module Zmqhs.Socket
 
   , open
   , close
+  , with
 
   , bind
   , unbind
@@ -16,13 +17,13 @@ module Zmqhs.Socket
   , setSocketUnsubscribe
   ) where
 
-import Control.Monad.IO.Class (MonadIO(..))
 import Data.ByteString (ByteString)
 import Data.Function (fix)
 import Foreign.C (CInt)
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (Ptr, nullPtr)
 import Foreign.Storable (peek, poke, sizeOf)
+import UnliftIO
 import qualified Data.ByteString.Unsafe as ByteString
 
 import qualified Libzmq
@@ -62,6 +63,10 @@ open context socketType = liftIO do
 close :: MonadIO m => Socket -> m ()
 close sock = liftIO do
   Libzmq.close ( unSocket sock )
+
+with :: MonadUnliftIO m => Context -> SocketType -> ( Socket -> m a ) -> m a
+with context socketType =
+  bracket ( open context socketType ) close
 
 -- | <http://api.zeromq.org/4-3:zmq-bind>
 --

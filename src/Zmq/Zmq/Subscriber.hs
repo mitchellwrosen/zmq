@@ -3,6 +3,7 @@ module Zmq.Subscriber
 
   , open
   , close
+  , with
 
   , bind
   , unbind
@@ -41,6 +42,10 @@ close :: MonadUnliftIO m => Subscriber -> m ()
 close subscriber =
   UnliftIO.withMVar ( unSubscriber subscriber ) Zmqhs.close
 
+with :: MonadUnliftIO m => Context -> ( Subscriber -> m a ) -> m a
+with context =
+  UnliftIO.bracket ( open context ) close
+
 bind :: MonadUnliftIO m => Subscriber -> Endpoint transport -> m ()
 bind subscriber endpoint =
   UnliftIO.withMVar ( unSubscriber subscriber ) \sock ->
@@ -61,11 +66,21 @@ disconnect subscriber endpoint =
   UnliftIO.withMVar ( unSubscriber subscriber ) \sock ->
     Zmqhs.disconnect sock ( renderEndpoint endpoint )
 
+-- | <http://api.zeromq.org/4-3:zmq-setsockopt>
+--
+-- May throw:
+--   * @ETERM@ if the context was terminated.
+--   * @ENOTSOCK@ if the socket is invalid.
 subscribe :: MonadUnliftIO m => Subscriber -> ByteString -> m ()
 subscribe subscriber prefix =
   UnliftIO.withMVar ( unSubscriber subscriber ) \sock ->
     Zmqhs.setSocketSubscribe sock prefix
 
+-- | <http://api.zeromq.org/4-3:zmq-setsockopt>
+--
+-- May throw:
+--   * @ETERM@ if the context was terminated.
+--   * @ENOTSOCK@ if the socket is invalid.
 unsubscribe :: MonadUnliftIO m => Subscriber -> ByteString -> m ()
 unsubscribe subscriber prefix =
   UnliftIO.withMVar ( unSubscriber subscriber ) \sock ->

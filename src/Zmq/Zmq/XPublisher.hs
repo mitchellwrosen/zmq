@@ -3,6 +3,7 @@ module Zmq.XPublisher
 
   , open
   , close
+  , with
 
   , bind
   , unbind
@@ -40,6 +41,10 @@ open context = do
 close :: MonadUnliftIO m => XPublisher -> m ()
 close publisher =
   UnliftIO.withMVar ( unXPublisher publisher ) Zmqhs.close
+
+with :: MonadUnliftIO m => Context -> ( XPublisher -> m a ) -> m a
+with context =
+  UnliftIO.bracket ( open context ) close
 
 bind :: MonadUnliftIO m => XPublisher -> Endpoint transport -> m ()
 bind publisher endpoint =

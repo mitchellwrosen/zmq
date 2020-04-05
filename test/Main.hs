@@ -40,130 +40,114 @@ spec ctx = do
   it "Pubsub" do
     endpoint <- randomInproc
 
-    pub <- Pub.open @IO ctx
-    Pub.bind pub endpoint
+    Pub.with @IO ctx \pub -> do
+      Pub.bind pub endpoint
 
-    let threads = 200
-    readyVar <- newEmptyMVar
-    replicateM_ threads do
-      ( forkIO . void . tryAny ) do
-        readMVar readyVar
-        forever ( Pub.send pub ( "" :| [] ) )
+      let threads = 200
+      readyVar <- newEmptyMVar
+      replicateM_ threads do
+        ( forkIO . void . tryAny ) do
+          readMVar readyVar
+          forever ( Pub.send pub ( "" :| [] ) )
 
-    sub <- Sub.open ctx
-    Sub.connect sub endpoint
-    Sub.subscribe sub ""
-    putMVar readyVar ()
-    replicateM_ 20000 ( Sub.recv sub )
-    Pub.close pub
-    Sub.close sub
+      Sub.with ctx \sub -> do
+        Sub.connect sub endpoint
+        Sub.subscribe sub ""
+        putMVar readyVar ()
+        replicateM_ 20000 ( Sub.recv sub )
 
 basicSocketSpec :: [ SomeSocket ] -> Zmq.Context -> Spec
 basicSocketSpec sockets ctx = do
-  for_ sockets \SomeSocket{name, open, close, bind, unbind, connect, disconnect} -> do
+  for_ sockets \SomeSocket{name, with, close, bind, unbind, connect, disconnect} -> do
     describe name do
       it "open-close" do
-        sock <- open ctx
-        close sock
+        with ctx \_ ->
+          pure ()
 
       it "open-close-close" do
-        sock <- open ctx
-        close sock
-        close sock
+        with ctx \sock ->
+          close sock
 
       it "bind" do
-        sock <- open ctx
-        endpoint <- randomInproc
-        bind sock endpoint
-        close sock
+        with ctx \sock -> do
+          endpoint <- randomInproc
+          bind sock endpoint
 
       it "bind-unbind" do
-        sock <- open ctx
-        endpoint <- randomInproc
-        bind sock endpoint
-        unbind sock endpoint
-        close sock
+        with ctx \sock -> do
+          endpoint <- randomInproc
+          bind sock endpoint
+          unbind sock endpoint
 
       it "unbind" do
-        sock <- open ctx
-        endpoint <- randomInproc
-        unbind sock endpoint
-        close sock
+        with ctx \sock -> do
+          endpoint <- randomInproc
+          unbind sock endpoint
 
       it "unbind bogus" do
-        sock <- open ctx
-        unbind sock ( Zmq.Tcp "" ) `shouldThrow`
-          ( == Zmq.Error "zmq_unbind" Zmq.EINVAL "Invalid argument" )
-        liftIO ( close sock )
+        with ctx \sock -> do
+          unbind sock ( Zmq.Tcp "" ) `shouldThrow`
+            ( == Zmq.Error "zmq_unbind" Zmq.EINVAL "Invalid argument" )
 
       it "connect" do
-        sock <- open ctx
-        endpoint <- randomInproc
-        connect sock endpoint
-        close sock
+        with ctx \sock -> do
+          endpoint <- randomInproc
+          connect sock endpoint
 
       it "connect-disconnect" do
-        sock <- open ctx
-        endpoint <- randomInproc
-        connect sock endpoint
-        disconnect sock endpoint
-        close sock
+        with ctx \sock -> do
+          endpoint <- randomInproc
+          connect sock endpoint
+          disconnect sock endpoint
 
       it "disconnect" do
-        sock <- open ctx
-        endpoint <- randomInproc
-        disconnect sock endpoint
-        close sock
+        with ctx \sock -> do
+          endpoint <- randomInproc
+          disconnect sock endpoint
 
       it "disconnect bogus" do
-        sock <- open ctx
-        disconnect sock ( Zmq.Tcp "" ) `shouldThrow`
-          ( == Zmq.Error "zmq_disconnect" Zmq.EINVAL "Invalid argument" )
-        close sock
+        with ctx \sock ->
+          disconnect sock ( Zmq.Tcp "" ) `shouldThrow`
+            ( == Zmq.Error "zmq_disconnect" Zmq.EINVAL "Invalid argument" )
 
 publisherSpec :: Zmq.Context -> Spec
 publisherSpec ctx =
   it "send" do
-    pub <- Pub.open @IO ctx
-    Pub.send pub ( "" :| [] )
-    Pub.close pub
+    Pub.with @IO ctx \pub ->
+      Pub.send pub ( "" :| [] )
 
 xpublisherSpec :: Zmq.Context -> Spec
 xpublisherSpec ctx =
   it "receives explicit subscription messages" do
     endpoint <- randomInproc
-    xpub <- XPub.open ctx
-    sub <- Sub.open ctx
-    XPub.bind xpub endpoint
-    Sub.connect sub endpoint
-    Sub.subscribe sub "hi"
-    XPub.recv xpub `shouldReturn` Zmq.Subscribe "hi"
-    Sub.unsubscribe sub "hi"
-    XPub.recv xpub `shouldReturn` Zmq.Unsubscribe "hi"
-    XPub.close xpub
-    Sub.close sub
+    XPub.with ctx \xpub ->
+      Sub.with ctx \sub -> do
+        XPub.bind xpub endpoint
+        Sub.connect sub endpoint
+        Sub.subscribe sub "hi"
+        XPub.recv xpub `shouldReturn` Zmq.Subscribe "hi"
+        Sub.unsubscribe sub "hi"
+        XPub.recv xpub `shouldReturn` Zmq.Unsubscribe "hi"
 
 xsubscriberSpec :: Zmq.Context -> Spec
 xsubscriberSpec ctx =
   it "can subscribe to a publisher" do
     endpoint <- randomInproc
-    pub <- Pub.open ctx
-    xsub <- XSub.open ctx
-    Pub.bind pub endpoint
-    XSub.connect xsub endpoint
-    XSub.subscribe xsub ""
-    ( void . forkIO . void . tryAny . forever ) do
-      Pub.send pub ( "hi" :| [] )
-    XSub.recv xsub `shouldReturn` "hi" :| []
-    Pub.close pub
-    XSub.close xsub
+    Pub.with ctx \pub ->
+      XSub.with ctx \xsub -> do
+        Pub.bind pub endpoint
+        XSub.connect xsub endpoint
+        XSub.subscribe xsub ""
+        ( void . forkIO . void . tryAny . forever ) do
+          Pub.send pub ( "hi" :| [] )
+        XSub.recv xsub `shouldReturn` "hi" :| []
 
 
 data SomeSocket
   = forall socket.
     SomeSocket
   { name :: String
-  , open :: Zmq.Context -> IO socket
+  , with :: forall a. Zmq.Context -> ( socket -> IO a ) -> IO a
   , close :: socket -> IO ()
   , bind :: forall transport. socket -> Zmq.Endpoint transport -> IO ()
   , unbind :: forall transport. socket -> Zmq.Endpoint transport -> IO ()
@@ -175,53 +159,41 @@ someSockets :: [ SomeSocket ]
 someSockets =
   [ SomeSocket
       { name = "Publisher"
-      , open = \ctx -> liftIO ( Pub.open ctx )
-      , close = \sock -> liftIO ( Pub.close sock )
-      , bind = \sock endpoint -> liftIO ( Pub.bind sock endpoint )
-      , unbind = \sock endpoint -> liftIO ( Pub.unbind sock endpoint )
-      , connect = \sock endpoint -> liftIO ( Pub.connect sock endpoint )
-      , disconnect = \sock endpoint -> liftIO ( Pub.disconnect sock endpoint )
+      , with = Pub.with
+      , close = Pub.close
+      , bind = Pub.bind
+      , unbind = Pub.unbind
+      , connect = Pub.connect
+      , disconnect = Pub.disconnect
       }
   , SomeSocket
       { name = "Subscriber"
-      , open = \ctx -> liftIO ( Sub.open ctx )
-      , close = \sock -> liftIO ( Sub.close sock )
-      , bind = \sock endpoint -> liftIO ( Sub.bind sock endpoint )
-      , unbind = \sock endpoint -> liftIO ( Sub.unbind sock endpoint )
-      , connect = \sock endpoint -> liftIO ( Sub.connect sock endpoint )
-      , disconnect = \sock endpoint -> liftIO ( Sub.disconnect sock endpoint )
+      , with = Sub.with
+      , close = Sub.close
+      , bind = Sub.bind
+      , unbind = Sub.unbind
+      , connect = Sub.connect
+      , disconnect = Sub.disconnect
       }
   , SomeSocket
       { name = "XPublisher"
-      , open = \ctx -> liftIO ( XPub.open ctx )
-      , close = \sock -> liftIO ( XPub.close sock )
-      , bind = \sock endpoint -> liftIO ( XPub.bind sock endpoint )
-      , unbind = \sock endpoint -> liftIO ( XPub.unbind sock endpoint )
-      , connect = \sock endpoint -> liftIO ( XPub.connect sock endpoint )
-      , disconnect = \sock endpoint -> liftIO ( XPub.disconnect sock endpoint )
+      , with = XPub.with
+      , close = XPub.close
+      , bind = XPub.bind
+      , unbind = XPub.unbind
+      , connect = XPub.connect
+      , disconnect = XPub.disconnect
       }
   , SomeSocket
       { name = "XSubscriber"
-      , open = \ctx -> liftIO ( XSub.open ctx )
-      , close = \sock -> liftIO ( XSub.close sock )
-      , bind = \sock endpoint -> liftIO ( XSub.bind sock endpoint )
-      , unbind = \sock endpoint -> liftIO ( XSub.unbind sock endpoint )
-      , connect = \sock endpoint -> liftIO ( XSub.connect sock endpoint )
-      , disconnect = \sock endpoint -> liftIO ( XSub.disconnect sock endpoint )
+      , with = XSub.with
+      , close = XSub.close
+      , bind = XSub.bind
+      , unbind = XSub.unbind
+      , connect = XSub.connect
+      , disconnect = XSub.disconnect
       }
   ]
-
-
---------------------------------------------------------------------------------
-
-openPubSub :: Zmq.Context -> IO ( Zmq.Publisher, Zmq.Subscriber )
-openPubSub ctx = do
-  endpoint <- randomInproc
-  pub <- liftIO ( Pub.open ctx )
-  sub <- liftIO ( Sub.open ctx )
-  liftIO ( Pub.bind pub endpoint )
-  liftIO ( Sub.connect sub endpoint )
-  pure ( pub, sub )
 
 
 --------------------------------------------------------------------------------

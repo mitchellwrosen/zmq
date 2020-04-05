@@ -3,6 +3,7 @@ module Zmq.XSubscriber
 
   , open
   , close
+  , with
 
   , bind
   , unbind
@@ -44,6 +45,10 @@ open context = do
 close :: MonadUnliftIO m => XSubscriber -> m ()
 close subscriber =
   UnliftIO.withMVar ( unXSubscriber subscriber ) Zmqhs.close
+
+with :: MonadUnliftIO m => Context -> ( XSubscriber -> m a ) -> m a
+with context =
+  UnliftIO.bracket ( open context ) close
 
 bind :: MonadUnliftIO m => XSubscriber -> Endpoint transport -> m ()
 bind subscriber endpoint =
