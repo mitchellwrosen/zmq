@@ -1,11 +1,11 @@
 module Zmqhs
-  ( Context(..)
-  , newContext
+  ( newContext
   , terminateContext
-  , setContextOption
-  , ContextOption(..)
-  , ioThreads
-  , maxSockets
+  , withContext
+  , Context(..)
+  , setContextIoThreads
+  , setContextMaxMessageSize
+  , setContextMaxSockets
 
   , Socket(..)
   , open

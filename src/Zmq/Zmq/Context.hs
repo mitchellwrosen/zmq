@@ -20,6 +20,7 @@ import Zmq.Prelude
 data Options
   = Options
   { ioThreads :: Natural
+  , maxMessageSize :: Natural
   , maxSockets :: Natural
   }
 
@@ -27,6 +28,7 @@ defaultOptions :: Options
 defaultOptions =
   Options
     { ioThreads = fromIntegral Libzmq.ioThreadsDflt
+    , maxMessageSize = fromIntegral @Int maxBound
     , maxSockets = fromIntegral Libzmq.maxSocketsDflt
     }
 
@@ -34,22 +36,11 @@ defaultOptions =
 newContext :: MonadIO m => Options -> m Context
 newContext options = do
   context <- Zmqhs.newContext
-  setNatural Zmqhs.ioThreads context ( ioThreads options )
-  setNatural Zmqhs.maxSockets context ( maxSockets options )
+  Zmqhs.setContextIoThreads context ( ioThreads options )
+  Zmqhs.setContextMaxMessageSize context ( maxMessageSize options )
+  Zmqhs.setContextMaxSockets context ( maxSockets options )
   pure context
 
 withContext :: MonadUnliftIO m => Options -> ( Context -> m a ) -> m a
 withContext options =
   UnliftIO.bracket ( newContext options ) Zmqhs.terminateContext
-
-
-----------------------------------------------------------------------------------
-
-setNatural
-  :: MonadIO m
-  => Zmqhs.ContextOption
-  -> Zmqhs.Context
-  -> Natural
-  -> m ()
-setNatural option context =
-  void . Zmqhs.setContextOption context option . fromIntegral

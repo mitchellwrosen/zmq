@@ -12,6 +12,7 @@ events :: CInt
 fd :: CInt
 ioThreads :: CInt
 ioThreadsDflt :: CInt
+maxMsgsz :: CInt
 maxSockets :: CInt
 maxSocketsDflt :: CInt
 more :: CInt
@@ -30,6 +31,7 @@ events = #const ZMQ_EVENTS
 fd = #const ZMQ_FD
 ioThreads = #const ZMQ_IO_THREADS
 ioThreadsDflt = #const ZMQ_IO_THREADS_DFLT
+maxMsgsz = #const ZMQ_MAX_MSGSZ
 maxSockets = #const ZMQ_MAX_SOCKETS
 maxSocketsDflt = #const ZMQ_MAX_SOCKETS_DFLT
 more = #const ZMQ_MORE

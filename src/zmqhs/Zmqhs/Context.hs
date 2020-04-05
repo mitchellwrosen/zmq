@@ -1,11 +1,12 @@
 module Zmqhs.Context
-  ( Context(..)
-  , newContext
+  ( newContext
   , terminateContext
-  , setContextOption
-  , ContextOption(..)
-  , ioThreads
-  , maxSockets
+  , withContext
+  , Context(..)
+
+  , setContextIoThreads
+  , setContextMaxMessageSize
+  , setContextMaxSockets
   ) where
 
 import Control.Monad.IO.Class (MonadIO(..))
@@ -13,6 +14,8 @@ import Data.Coerce (coerce)
 import Data.Function (fix)
 import Foreign.C (CInt)
 import Foreign.Ptr (Ptr)
+import Numeric.Natural (Natural)
+import UnliftIO (MonadUnliftIO, bracket)
 
 import qualified Libzmq
 
@@ -42,25 +45,32 @@ terminateContext context = liftIO do
           EINTR -> again
           errno -> throwError "zmq_ctx_term" errno
 
-setContextOption
-  :: MonadIO m
-  => Context
-  -> ContextOption
-  -> CInt
-  -> m ( Either CInt () )
+withContext :: MonadUnliftIO m => ( Context -> m a ) -> m a
+withContext =
+  bracket newContext terminateContext
+
+-- | <http://api.zeromq.org/4-3:zmq-ctx-set>
+setContextIoThreads :: MonadIO m => Context -> Natural -> m ()
+setContextIoThreads context n =
+  setContextOption context Libzmq.ioThreads ( fromIntegral n )
+
+-- | <http://api.zeromq.org/4-3:zmq-ctx-set>
+setContextMaxMessageSize :: MonadIO m => Context -> Natural -> m ()
+setContextMaxMessageSize context n =
+  setContextOption
+    context Libzmq.maxMsgsz ( fromIntegral ( min n intmax ) )
+  where
+    intmax :: Natural
+    intmax =
+      fromIntegral ( maxBound :: Int )
+
+-- | <http://api.zeromq.org/4-3:zmq-ctx-set>
+setContextMaxSockets :: MonadIO m => Context -> Natural -> m ()
+setContextMaxSockets context n =
+  setContextOption context Libzmq.maxSockets ( fromIntegral n )
+
+setContextOption :: MonadIO m => Context -> CInt -> CInt -> m ()
 setContextOption context option value = liftIO do
-  Libzmq.setContextOption ( unContext context ) ( unContextOption option ) value >>= \case
-    0 -> pure ( Right () )
-    _ -> Left <$> Libzmq.errno
-
-
-newtype ContextOption
-  = ContextOption { unContextOption :: CInt }
-
-ioThreads :: ContextOption
-ioThreads =
-  ContextOption Libzmq.ioThreads
-
-maxSockets :: ContextOption
-maxSockets =
-  ContextOption Libzmq.maxSockets
+  Libzmq.setContextOption ( unContext context ) option value >>= \case
+    0 -> pure ()
+    _ -> Libzmq.errno >>= throwError "zmq_ctx_set"
