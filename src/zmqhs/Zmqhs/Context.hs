@@ -58,11 +58,9 @@ setContextIoThreads context n =
 setContextMaxMessageSize :: MonadIO m => Context -> Natural -> m ()
 setContextMaxMessageSize context n =
   setContextOption
-    context Libzmq.maxMsgsz ( fromIntegral ( min n intmax ) )
-  where
-    intmax :: Natural
-    intmax =
-      fromIntegral ( maxBound :: Int )
+    context
+    Libzmq.maxMsgsz
+    ( fromIntegral ( min n ( fromIntegral ( maxBound :: CInt ) ) ) )
 
 -- | <http://api.zeromq.org/4-3:zmq-ctx-set>
 setContextMaxSockets :: MonadIO m => Context -> Natural -> m ()

@@ -25,19 +25,22 @@ import qualified ZmqhsSpec
 
 main :: IO ()
 main =
-  Zmq.withContext Zmq.defaultOptions \ctx ->
-    hspec do
-      describe "zmqhs" ( ZmqhsSpec.spec ctx )
-      describe "zmq" ( spec ctx )
+  hspec do
+    around
+      ( Zmq.withContext Zmq.defaultOptions )
+      ( do
+          describe "zmqhs" ZmqhsSpec.spec
+          describe "zmq" spec
+      )
 
-spec :: Zmq.Context -> Spec
-spec ctx = do
-  describe "Basic socket" ( basicSocketSpec someSockets ctx )
-  describe "Publisher" ( publisherSpec ctx )
-  describe "XPublisher" ( xpublisherSpec ctx )
-  describe "XSubscriber" ( xsubscriberSpec ctx )
+spec :: SpecWith Zmq.Context
+spec = do
+  describe "Basic socket" ( basicSocketSpec someSockets )
+  describe "Publisher" publisherSpec
+  describe "XPublisher" xpublisherSpec
+  describe "XSubscriber" xsubscriberSpec
 
-  it "Pubsub" do
+  it "Pubsub" \ctx -> do
     endpoint <- randomInproc
 
     Pub.with @IO ctx \pub -> do
@@ -56,69 +59,69 @@ spec ctx = do
         putMVar readyVar ()
         replicateM_ 20000 ( Sub.recv sub )
 
-basicSocketSpec :: [ SomeSocket ] -> Zmq.Context -> Spec
-basicSocketSpec sockets ctx = do
+basicSocketSpec :: [ SomeSocket ] -> SpecWith Zmq.Context
+basicSocketSpec sockets = do
   for_ sockets \SomeSocket{name, with, close, bind, unbind, connect, disconnect} -> do
     describe name do
-      it "open-close" do
+      it "open-close" \ctx ->
         with ctx \_ ->
           pure ()
 
-      it "open-close-close" do
+      it "open-close-close" \ctx ->
         with ctx \sock ->
           close sock
 
-      it "bind" do
+      it "bind" \ctx ->
         with ctx \sock -> do
           endpoint <- randomInproc
           bind sock endpoint
 
-      it "bind-unbind" do
+      it "bind-unbind" \ctx ->
         with ctx \sock -> do
           endpoint <- randomInproc
           bind sock endpoint
           unbind sock endpoint
 
-      it "unbind" do
+      it "unbind" \ctx ->
         with ctx \sock -> do
           endpoint <- randomInproc
           unbind sock endpoint
 
-      it "unbind bogus" do
-        with ctx \sock -> do
+      it "unbind bogus" \ctx ->
+        with ctx \sock ->
           unbind sock ( Zmq.Tcp "" ) `shouldThrow`
             ( == Zmq.Error "zmq_unbind" Zmq.EINVAL "Invalid argument" )
 
-      it "connect" do
+      it "connect" \ctx ->
         with ctx \sock -> do
           endpoint <- randomInproc
           connect sock endpoint
 
-      it "connect-disconnect" do
+      it "connect-disconnect" \ctx ->
         with ctx \sock -> do
           endpoint <- randomInproc
           connect sock endpoint
           disconnect sock endpoint
 
-      it "disconnect" do
+      it "disconnect" \ctx ->
         with ctx \sock -> do
           endpoint <- randomInproc
           disconnect sock endpoint
 
-      it "disconnect bogus" do
+      it "disconnect bogus" \ctx ->
         with ctx \sock ->
           disconnect sock ( Zmq.Tcp "" ) `shouldThrow`
             ( == Zmq.Error "zmq_disconnect" Zmq.EINVAL "Invalid argument" )
 
-publisherSpec :: Zmq.Context -> Spec
-publisherSpec ctx =
-  it "send" do
+publisherSpec :: SpecWith Zmq.Context
+publisherSpec =
+  it "send" \ctx ->
     Pub.with @IO ctx \pub ->
       Pub.send pub ( "" :| [] )
 
-xpublisherSpec :: Zmq.Context -> Spec
-xpublisherSpec ctx =
-  it "receives explicit subscription messages" do
+xpublisherSpec :: SpecWith Zmq.Context
+xpublisherSpec =
+  it "receives explicit subscription messages" \ctx -> do
     endpoint <- randomInproc
     XPub.with ctx \xpub ->
       Sub.with ctx \sub -> do
@@ -129,9 +132,9 @@ xpublisherSpec ctx =
         Sub.unsubscribe sub "hi"
         XPub.recv xpub `shouldReturn` Zmq.Unsubscribe "hi"
 
-xsubscriberSpec :: Zmq.Context -> Spec
-xsubscriberSpec ctx =
-  it "can subscribe to a publisher" do
+xsubscriberSpec :: SpecWith Zmq.Context
+xsubscriberSpec =
+  it "can subscribe to a publisher" \ctx -> do
     endpoint <- randomInproc
     Pub.with ctx \pub ->
       XSub.with ctx \xsub -> do

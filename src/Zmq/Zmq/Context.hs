@@ -28,7 +28,7 @@ defaultOptions :: Options
 defaultOptions =
   Options
     { ioThreads = fromIntegral Libzmq.ioThreadsDflt
-    , maxMessageSize = fromIntegral @Int maxBound
+    , maxMessageSize = fromIntegral @CInt maxBound
     , maxSockets = fromIntegral Libzmq.maxSocketsDflt
     }
 
