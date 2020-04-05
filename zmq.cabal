@@ -77,14 +77,11 @@ library
     src/zmq
 
   other-modules:
-    Zmq.API.GetSockOpt
-    Zmq.API.Recv
     Zmq.API.Send
     Zmq.Context
     Zmq.Endpoint
     Zmq.Internal
     Zmq.Prelude
-    Zmq.Socket
     Zmq.SubscriptionMessage
 
 library zmqhs
@@ -102,6 +99,7 @@ library zmqhs
     Zmqhs.Context
     Zmqhs.Endpoint
     Zmqhs.Error
+    Zmqhs.Frame
     -- TODO make this internal
     Zmqhs.Internal.Error
     Zmqhs.Socket

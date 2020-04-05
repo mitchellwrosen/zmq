@@ -32,7 +32,7 @@ main = do
       Sub.connect sub ( Zmq.Tcp ( "127.0.0.1:" <> Text.pack ( show port ) ) )
       Sub.subscribe sub ""
       forever do
-        message <- Sub.recv sub
+        message <- Sub.receive sub
         for_ message \frame ->
           Text.putStrLn ( decodeUtf8 frame )
         Text.putStrLn ""

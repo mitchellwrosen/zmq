@@ -5,13 +5,16 @@ module Libzmq.Frame
   , initializeFrame
   , getFrameProperty
   , getFrameData
+  , getFrameSize
+  , copyFrame
+  , moveFrame
   , closeFrame
   ) where
 
 #include <zmq.h>
 
 import Data.Coerce (coerce)
-import Foreign.C (CChar, CInt(..))
+import Foreign.C (CChar, CInt(..), CSize(..))
 import Foreign.Ptr (Ptr)
 import Foreign.Storable (Storable(..))
 
@@ -42,8 +45,17 @@ foreign import ccall unsafe "zmq_msg_init"
 foreign import ccall unsafe "zmq_msg_data"
   getFrameData :: Ptr Frame -> IO ( Ptr CChar )
 
+foreign import ccall unsafe "zmq_msg_size"
+  getFrameSize :: Ptr Frame -> IO CSize
+
 foreign import ccall unsafe "zmq_msg_get"
   getFrameProperty :: Ptr Frame -> CInt -> IO CInt
+
+foreign import ccall unsafe "zmq_msg_copy"
+  copyFrame :: Ptr Frame -> Ptr Frame -> IO CInt
+
+foreign import ccall unsafe "zmq_msg_move"
+  moveFrame :: Ptr Frame -> Ptr Frame -> IO CInt
 
 foreign import ccall unsafe "zmq_msg_close"
   closeFrame :: Ptr Frame -> IO CInt

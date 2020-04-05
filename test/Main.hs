@@ -57,7 +57,7 @@ spec = do
         Sub.connect sub endpoint
         Sub.subscribe sub ""
         putMVar readyVar ()
-        replicateM_ 20000 ( Sub.recv sub )
+        replicateM_ 20000 ( Sub.receive sub )
 
 basicSocketSpec :: [ SomeSocket ] -> SpecWith Zmq.Context
 basicSocketSpec sockets = do
@@ -128,9 +128,9 @@ xpublisherSpec =
         XPub.bind xpub endpoint
         Sub.connect sub endpoint
         Sub.subscribe sub "hi"
-        XPub.recv xpub `shouldReturn` Zmq.Subscribe "hi"
+        XPub.receive xpub `shouldReturn` Zmq.Subscribe "hi"
         Sub.unsubscribe sub "hi"
-        XPub.recv xpub `shouldReturn` Zmq.Unsubscribe "hi"
+        XPub.receive xpub `shouldReturn` Zmq.Unsubscribe "hi"
 
 xsubscriberSpec :: SpecWith Zmq.Context
 xsubscriberSpec =
@@ -143,7 +143,7 @@ xsubscriberSpec =
         XSub.subscribe xsub ""
         ( void . forkIO . void . tryAny . forever ) do
           Pub.send pub ( "hi" :| [] )
-        XSub.recv xsub `shouldReturn` "hi" :| []
+        XSub.receive xsub `shouldReturn` "hi" :| []
 
 
 data SomeSocket

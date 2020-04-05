@@ -15,14 +15,21 @@ module Zmqhs.Socket
   , getSocketFd
   , setSocketSubscribe
   , setSocketUnsubscribe
+
+  , receive
   ) where
 
+import Control.Concurrent (threadWaitRead)
+import Control.Monad (unless)
+import Data.Bits ((.&.))
 import Data.ByteString (ByteString)
 import Data.Function (fix)
-import Foreign.C (CInt)
+import Data.List.NonEmpty (NonEmpty((:|)))
+import Foreign.C (CInt, CSize)
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (Ptr, nullPtr)
-import Foreign.Storable (peek, poke, sizeOf)
+import Foreign.Storable (Storable, peek, poke, sizeOf)
+import System.Posix.Types (Fd(..))
 import UnliftIO
 import qualified Data.ByteString.Unsafe as ByteString
 
@@ -30,6 +37,7 @@ import qualified Libzmq
 
 import Zmqhs.Context (Context(..))
 import Zmqhs.Endpoint (Endpoint, withEndpoint)
+import Zmqhs.Frame (Frame(..), copyFrameBytes, isLastFrame, withTemporaryFrame)
 import Zmqhs.Internal.Error
 import Zmqhs.SocketType (SocketType(..))
 
@@ -135,23 +143,30 @@ disconnect sock endpoint = liftIO do
           ENOENT -> pure () -- The endpoint was not connected.
           errno -> throwError "zmq_disconnect" errno
 
-getSocketEvents :: Socket -> IO ( Either CInt CInt )
+getSocketEvents :: Socket -> IO CInt
 getSocketEvents =
   getIntSocketOption Libzmq.events
 
-getSocketFd :: Socket -> IO ( Either CInt CInt )
-getSocketFd =
-  getIntSocketOption Libzmq.fd
+getSocketFd :: Socket -> IO Fd
+getSocketFd socket =
+  Fd <$> getIntSocketOption Libzmq.fd socket
 
-getIntSocketOption :: CInt -> Socket -> IO ( Either CInt CInt )
-getIntSocketOption option sock =
+getIntSocketOption :: CInt -> Socket -> IO CInt
+getIntSocketOption option socket =
   alloca \intPtr ->
     alloca \sizePtr -> do
       poke sizePtr ( fromIntegral ( sizeOf ( undefined :: CInt ) ) )
+      getSocketOption socket option intPtr sizePtr
 
-      Libzmq.getSocketOption ( unSocket sock ) option intPtr sizePtr >>= \case
-        0 -> Right <$> peek intPtr
-        _ -> Left <$> Libzmq.errno
+getSocketOption :: Storable a => Socket -> CInt -> Ptr a -> Ptr CSize -> IO a
+getSocketOption socket option valPtr sizePtr =
+  fix \again ->
+    Libzmq.getSocketOption ( unSocket socket ) option valPtr sizePtr >>= \case
+      0 -> peek valPtr
+      _ ->
+        Libzmq.errno >>= \case
+          EINTR -> again
+          errno -> throwError "zmq_getsockopt" errno
 
 -- | <http://api.zeromq.org/4-3:zmq-setsockopt>
 --
@@ -188,3 +203,66 @@ setBinarySocketOption option sock bytes = liftIO do
             Libzmq.errno >>= \case
               EINTR -> again
               errno -> throwError "zmq_setsockopt" errno
+
+-- | <http://api.zeromq.org/4-3:zmq-msg-recv>
+-- TODO only works for non-threadsafe sockets with a FD
+receive :: MonadUnliftIO m => Socket -> m ( NonEmpty ByteString )
+receive socket =
+  withTemporaryFrame \frame ->
+    liftIO ( receive_ frame socket )
+
+receive_ :: Frame -> Socket -> IO ( NonEmpty ByteString )
+receive_ frame socket =
+  receiveFrame_ frame socket >>= loop []
+
+  where
+    loop :: [ ByteString ] -> ByteString -> IO ( NonEmpty ByteString )
+    loop acc1 acc0 =
+      isLastFrame frame >>= \case
+        False -> do
+          part <- receiveFrame_ frame socket
+          loop ( part : acc1 ) acc0
+
+        True ->
+          pure ( acc0 :| reverse acc1 )
+
+receiveFrame_ :: Frame -> Socket -> IO ByteString
+receiveFrame_ frame socket =
+  fix \again ->
+    doReceiveFrame >>= \case
+      -1 ->
+        Libzmq.errno >>= \case
+          EAGAIN -> do
+            waitUntilCanReceive socket
+            again
+          EINTR -> again
+          errno -> throwError "zmq_msg_recv" errno
+      _len -> copyFrameBytes frame
+  where
+    doReceiveFrame =
+      Libzmq.receiveFrame ( unFrame frame ) ( unSocket socket ) Libzmq.dontwait
+
+waitUntilCanReceive :: Socket -> IO ()
+waitUntilCanReceive =
+  waitUntilCan Libzmq.pollin
+
+-- waitUntilCanSend :: Socket -> IO ()
+-- waitUntilCanSend =
+--   waitUntilCan Libzmq.pollout
+
+waitUntilCan :: CInt -> Socket -> IO ()
+waitUntilCan events socket = do
+  fd <- getSocketFd socket
+
+  fix \again -> do
+    threadWaitRead fd -- "read" is not a typo
+    state <- getSocketEvents socket
+    -- http://api.zeromq.org/4-3:zmq-getsockopt
+    --
+    -- The combination of a file descriptor returned by
+    -- the ZMQ_FD option being ready for reading but no
+    -- actual events returned by a subsequent retrieval of
+    -- the ZMQ_EVENTS option is valid; applications should
+    -- simply ignore this case and restart their polling
+    -- operation/event loop.
+    unless ( state .&. events /= 0 ) again

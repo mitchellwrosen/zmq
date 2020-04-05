@@ -19,6 +19,7 @@ module Zmqhs
   , getSocketFd
   , setSocketSubscribe
   , setSocketUnsubscribe
+  , receive
 
   , SocketType(..)
 

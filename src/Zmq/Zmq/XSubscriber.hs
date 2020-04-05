@@ -14,7 +14,7 @@ module Zmq.XSubscriber
   , subscribe
   , unsubscribe
 
-  , recv
+  , receive
   ) where
 
 import Data.List.NonEmpty (NonEmpty((:|)))
@@ -27,7 +27,6 @@ import Zmq.Endpoint
 import Zmq.Internal (renderEndpoint)
 import Zmq.Prelude
 import Zmq.SubscriptionMessage (SubscriptionMessage(..))
-import qualified Zmq.API.Recv as API
 import qualified Zmq.API.Send as API
 import qualified Zmq.SubscriptionMessage as SubscriptionMessage
 
@@ -38,9 +37,9 @@ newtype XSubscriber
 
 open :: MonadIO m => Context -> m XSubscriber
 open context = do
-  sock <- Zmqhs.open context Zmqhs.XSub
-  sockVar <- UnliftIO.newMVar sock
-  pure ( XSubscriber sockVar )
+  socket <- Zmqhs.open context Zmqhs.XSub
+  socketVar <- UnliftIO.newMVar socket
+  pure ( XSubscriber socketVar )
 
 close :: MonadUnliftIO m => XSubscriber -> m ()
 close subscriber =
@@ -52,23 +51,23 @@ with context =
 
 bind :: MonadUnliftIO m => XSubscriber -> Endpoint transport -> m ()
 bind subscriber endpoint =
-  UnliftIO.withMVar ( unXSubscriber subscriber ) \sock ->
-    Zmqhs.bind sock ( renderEndpoint endpoint )
+  UnliftIO.withMVar ( unXSubscriber subscriber ) \socket ->
+    Zmqhs.bind socket ( renderEndpoint endpoint )
 
 unbind :: MonadUnliftIO m => XSubscriber -> Endpoint transport -> m ()
 unbind subscriber endpoint =
-  UnliftIO.withMVar ( unXSubscriber subscriber ) \sock ->
-    Zmqhs.unbind sock ( renderEndpoint endpoint )
+  UnliftIO.withMVar ( unXSubscriber subscriber ) \socket ->
+    Zmqhs.unbind socket ( renderEndpoint endpoint )
 
 connect :: MonadUnliftIO m => XSubscriber -> Endpoint transport -> m ()
 connect subscriber endpoint =
-  UnliftIO.withMVar ( unXSubscriber subscriber ) \sock ->
-    Zmqhs.connect sock ( renderEndpoint endpoint )
+  UnliftIO.withMVar ( unXSubscriber subscriber ) \socket ->
+    Zmqhs.connect socket ( renderEndpoint endpoint )
 
 disconnect :: MonadUnliftIO m => XSubscriber -> Endpoint transport -> m ()
 disconnect subscriber endpoint =
-  UnliftIO.withMVar ( unXSubscriber subscriber ) \sock ->
-    Zmqhs.disconnect sock ( renderEndpoint endpoint )
+  UnliftIO.withMVar ( unXSubscriber subscriber ) \socket ->
+    Zmqhs.disconnect socket ( renderEndpoint endpoint )
 
 subscribe :: MonadUnliftIO m => XSubscriber -> ByteString -> m ()
 subscribe subscriber prefix =
@@ -80,13 +79,13 @@ unsubscribe subscriber prefix =
 
 send :: MonadUnliftIO m => XSubscriber -> SubscriptionMessage -> m ()
 send subscriber message =
-  UnliftIO.withMVar ( unXSubscriber subscriber ) \sock ->
+  UnliftIO.withMVar ( unXSubscriber subscriber ) \socket ->
     liftIO do
       API.sendThatNeverBlocks
-        sock
+        socket
         ( SubscriptionMessage.serialize message :| [] )
 
-recv :: MonadUnliftIO m => XSubscriber -> m ( NonEmpty ByteString )
-recv subscriber =
-  UnliftIO.withMVar ( unXSubscriber subscriber ) \sock ->
-    liftIO ( API.nonThreadsafeRecv sock )
+receive :: MonadUnliftIO m => XSubscriber -> m ( NonEmpty ByteString )
+receive subscriber =
+  UnliftIO.withMVar ( unXSubscriber subscriber ) \socket ->
+    Zmqhs.receive socket
