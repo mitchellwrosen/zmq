@@ -77,7 +77,6 @@ library
     src/zmq
 
   other-modules:
-    Zmq.API.Send
     Zmq.Context
     Zmq.Endpoint
     Zmq.Internal

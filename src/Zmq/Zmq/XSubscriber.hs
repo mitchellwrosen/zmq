@@ -27,7 +27,6 @@ import Zmq.Endpoint
 import Zmq.Internal (renderEndpoint)
 import Zmq.Prelude
 import Zmq.SubscriptionMessage (SubscriptionMessage(..))
-import qualified Zmq.API.Send as API
 import qualified Zmq.SubscriptionMessage as SubscriptionMessage
 
 
@@ -80,10 +79,7 @@ unsubscribe subscriber prefix =
 send :: MonadUnliftIO m => XSubscriber -> SubscriptionMessage -> m ()
 send subscriber message =
   UnliftIO.withMVar ( unXSubscriber subscriber ) \socket ->
-    liftIO do
-      API.sendThatNeverBlocks
-        socket
-        ( SubscriptionMessage.serialize message :| [] )
+    Zmqhs.send socket ( SubscriptionMessage.serialize message :| [] )
 
 receive :: MonadUnliftIO m => XSubscriber -> m ( NonEmpty ByteString )
 receive subscriber =

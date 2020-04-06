@@ -16,13 +16,15 @@ module Zmqhs.Socket
   , setSocketSubscribe
   , setSocketUnsubscribe
 
+  , send
   , receive
   ) where
 
 import Control.Concurrent (threadWaitRead)
-import Control.Monad (unless)
-import Data.Bits ((.&.))
+import Control.Monad (when)
+import Data.Bits ((.|.), (.&.))
 import Data.ByteString (ByteString)
+import Data.Foldable (toList)
 import Data.Function (fix)
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Foreign.C (CInt, CSize)
@@ -204,6 +206,43 @@ setBinarySocketOption option sock bytes = liftIO do
               EINTR -> again
               errno -> throwError "zmq_setsockopt" errno
 
+-- | <http://api.zeromq.org/4-3:zmq-send>
+--
+-- May throw:
+--   * @EFSM@ if the socket is not in the appropriate state.
+--   * @EHOSTUNREACH@ if the message cannot be routed.
+--   * @EINVAL@ if the socket doesn't support multipart data.
+--   * @ENOTSUP@ if the socket doesn't support sending.
+--   * @ETERM@ if the context was terminated.
+--
+-- TODO only works for non-threadsafe sockets with a FD
+send :: MonadIO m => Socket -> NonEmpty ByteString -> m ()
+send socket ( toList -> messages0 ) = liftIO do
+  flip fix messages0 \loop -> \case
+    [ message ] ->
+      sendFrame socket message 0
+
+    message : messages -> do
+      sendFrame socket message ( Libzmq.dontwait .|. Libzmq.sndmore )
+      loop messages
+
+    [] ->
+      error "send: []"
+
+sendFrame :: Socket -> ByteString -> CInt -> IO ()
+sendFrame socket message flags =
+  ByteString.unsafeUseAsCStringLen message \( ptr, fromIntegral -> len ) ->
+    fix \again ->
+      Libzmq.send ( unSocket socket ) ptr len flags >>= \case
+        -1 ->
+          Libzmq.errno >>= \case
+            EAGAIN -> do
+              waitUntilCanSend socket
+              again
+            EINTR -> again
+            errno -> throwError "zmq_send" errno
+        _ -> pure () -- Ignore number of bytes sent; why is this interesting?
+
 -- | <http://api.zeromq.org/4-3:zmq-msg-recv>
 -- TODO only works for non-threadsafe sockets with a FD
 receive :: MonadUnliftIO m => Socket -> m ( NonEmpty ByteString )
@@ -246,9 +285,9 @@ waitUntilCanReceive :: Socket -> IO ()
 waitUntilCanReceive =
   waitUntilCan Libzmq.pollin
 
--- waitUntilCanSend :: Socket -> IO ()
--- waitUntilCanSend =
---   waitUntilCan Libzmq.pollout
+waitUntilCanSend :: Socket -> IO ()
+waitUntilCanSend =
+  waitUntilCan Libzmq.pollout
 
 waitUntilCan :: CInt -> Socket -> IO ()
 waitUntilCan events socket = do
@@ -265,4 +304,4 @@ waitUntilCan events socket = do
     -- the ZMQ_EVENTS option is valid; applications should
     -- simply ignore this case and restart their polling
     -- operation/event loop.
-    unless ( state .&. events /= 0 ) again
+    when ( state .&. events == 0 ) again

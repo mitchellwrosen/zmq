@@ -24,7 +24,6 @@ import Zmq.Endpoint
 import Zmq.Internal (renderEndpoint)
 import Zmq.Prelude
 import Zmq.SubscriptionMessage
-import qualified Zmq.API.Send as API
 
 
 newtype XPublisher
@@ -68,7 +67,7 @@ disconnect publisher endpoint =
 send :: MonadUnliftIO m => XPublisher -> NonEmpty ByteString -> m ()
 send publisher message =
   UnliftIO.withMVar ( unXPublisher publisher ) \socket ->
-    liftIO ( API.sendThatNeverBlocks socket message )
+    Zmqhs.send socket message
 
 receive :: MonadUnliftIO m => XPublisher -> m SubscriptionMessage
 receive publisher =
