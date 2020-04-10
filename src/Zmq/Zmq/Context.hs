@@ -7,14 +7,14 @@ module Zmq.Context
   , defaultOptions
   ) where
 
-import qualified UnliftIO
+import Foreign.C.Types (CInt)
+import Numeric.Natural (Natural)
+import UnliftIO
 
 import qualified Libzmq
 
 import Zmqhs (Context(..))
 import qualified Zmqhs
-
-import Zmq.Prelude
 
 
 data Options
@@ -43,4 +43,4 @@ newContext options = do
 
 withContext :: MonadUnliftIO m => Options -> ( Context -> m a ) -> m a
 withContext options =
-  UnliftIO.bracket ( newContext options ) Zmqhs.terminateContext
+  bracket ( newContext options ) Zmqhs.terminateContext

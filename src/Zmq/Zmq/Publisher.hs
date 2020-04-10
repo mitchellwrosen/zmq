@@ -14,14 +14,15 @@ module Zmq.Publisher
   , send
   ) where
 
-import qualified UnliftIO
+import Data.ByteString (ByteString)
+import Data.List.NonEmpty (NonEmpty)
+import UnliftIO
 
 import qualified Zmqhs
 
 import Zmq.Context
 import Zmq.Endpoint
 import Zmq.Internal (renderEndpoint)
-import Zmq.Prelude
 
 
 newtype Publisher
@@ -31,38 +32,38 @@ newtype Publisher
 open :: MonadIO m => Context -> m Publisher
 open context = do
   sock <- Zmqhs.open context Zmqhs.Pub
-  sockVar <- UnliftIO.newMVar sock
+  sockVar <- newMVar sock
   pure ( Publisher sockVar )
 
 close :: MonadUnliftIO m => Publisher -> m ()
 close publisher =
-  UnliftIO.withMVar ( unPublisher publisher ) Zmqhs.close
+  withMVar ( unPublisher publisher ) Zmqhs.close
 
 with :: MonadUnliftIO m => Context -> ( Publisher -> m a ) -> m a
 with context =
-  UnliftIO.bracket ( open context ) close
+  bracket ( open context ) close
 
 bind :: MonadUnliftIO m => Publisher -> Endpoint transport -> m ()
 bind publisher endpoint =
-  UnliftIO.withMVar ( unPublisher publisher ) \sock ->
+  withMVar ( unPublisher publisher ) \sock ->
     Zmqhs.bind sock ( renderEndpoint endpoint )
 
 unbind :: MonadUnliftIO m => Publisher -> Endpoint transport -> m ()
 unbind publisher endpoint =
-  UnliftIO.withMVar ( unPublisher publisher ) \sock ->
+  withMVar ( unPublisher publisher ) \sock ->
     Zmqhs.unbind sock ( renderEndpoint endpoint )
 
 connect :: MonadUnliftIO m => Publisher -> Endpoint transport -> m ()
 connect publisher endpoint = liftIO do
-  UnliftIO.withMVar ( unPublisher publisher ) \sock ->
+  withMVar ( unPublisher publisher ) \sock ->
     Zmqhs.connect sock ( renderEndpoint endpoint )
 
 disconnect :: MonadUnliftIO m => Publisher -> Endpoint transport -> m ()
 disconnect publisher endpoint =
-  UnliftIO.withMVar ( unPublisher publisher ) \sock ->
+  withMVar ( unPublisher publisher ) \sock ->
     Zmqhs.disconnect sock ( renderEndpoint endpoint )
 
 send :: MonadUnliftIO m => Publisher -> NonEmpty ByteString -> m ()
 send publisher message =
-  UnliftIO.withMVar ( unPublisher publisher ) \sock ->
+  withMVar ( unPublisher publisher ) \sock ->
     Zmqhs.send sock message

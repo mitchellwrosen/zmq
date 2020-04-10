@@ -17,14 +17,15 @@ module Zmq.Subscriber
   , receive
   ) where
 
-import qualified UnliftIO
+import Data.ByteString (ByteString)
+import Data.List.NonEmpty (NonEmpty)
+import UnliftIO
 
 import qualified Zmqhs
 
 import Zmq.Context
 import Zmq.Endpoint
 import Zmq.Internal (renderEndpoint)
-import Zmq.Prelude
 
 
 newtype Subscriber
@@ -34,35 +35,35 @@ newtype Subscriber
 open :: MonadIO m => Context -> m Subscriber
 open context = do
   sock <- Zmqhs.open context Zmqhs.Sub
-  sockVar <- UnliftIO.newMVar sock
+  sockVar <- newMVar sock
   pure ( Subscriber sockVar )
 
 close :: MonadUnliftIO m => Subscriber -> m ()
 close subscriber =
-  UnliftIO.withMVar ( unSubscriber subscriber ) Zmqhs.close
+  withMVar ( unSubscriber subscriber ) Zmqhs.close
 
 with :: MonadUnliftIO m => Context -> ( Subscriber -> m a ) -> m a
 with context =
-  UnliftIO.bracket ( open context ) close
+  bracket ( open context ) close
 
 bind :: MonadUnliftIO m => Subscriber -> Endpoint transport -> m ()
 bind subscriber endpoint =
-  UnliftIO.withMVar ( unSubscriber subscriber ) \sock ->
+  withMVar ( unSubscriber subscriber ) \sock ->
     Zmqhs.bind sock ( renderEndpoint endpoint )
 
 unbind :: MonadUnliftIO m => Subscriber -> Endpoint transport -> m ()
 unbind subscriber endpoint =
-  UnliftIO.withMVar ( unSubscriber subscriber ) \sock ->
+  withMVar ( unSubscriber subscriber ) \sock ->
     Zmqhs.unbind sock ( renderEndpoint endpoint )
 
 connect :: MonadUnliftIO m => Subscriber -> Endpoint transport -> m ()
 connect subscriber endpoint =
-  UnliftIO.withMVar ( unSubscriber subscriber ) \sock ->
+  withMVar ( unSubscriber subscriber ) \sock ->
     Zmqhs.connect sock ( renderEndpoint endpoint )
 
 disconnect :: MonadUnliftIO m => Subscriber -> Endpoint transport -> m ()
 disconnect subscriber endpoint =
-  UnliftIO.withMVar ( unSubscriber subscriber ) \sock ->
+  withMVar ( unSubscriber subscriber ) \sock ->
     Zmqhs.disconnect sock ( renderEndpoint endpoint )
 
 -- | <http://api.zeromq.org/4-3:zmq-setsockopt>
@@ -72,7 +73,7 @@ disconnect subscriber endpoint =
 --   * @ENOTSOCK@ if the socket is invalid.
 subscribe :: MonadUnliftIO m => Subscriber -> ByteString -> m ()
 subscribe subscriber prefix =
-  UnliftIO.withMVar ( unSubscriber subscriber ) \sock ->
+  withMVar ( unSubscriber subscriber ) \sock ->
     Zmqhs.setSocketSubscribe sock prefix
 
 -- | <http://api.zeromq.org/4-3:zmq-setsockopt>
@@ -82,10 +83,10 @@ subscribe subscriber prefix =
 --   * @ENOTSOCK@ if the socket is invalid.
 unsubscribe :: MonadUnliftIO m => Subscriber -> ByteString -> m ()
 unsubscribe subscriber prefix =
-  UnliftIO.withMVar ( unSubscriber subscriber ) \sock ->
+  withMVar ( unSubscriber subscriber ) \sock ->
     Zmqhs.setSocketUnsubscribe sock prefix
 
 receive :: MonadUnliftIO m => Subscriber -> m ( NonEmpty ByteString )
 receive subscriber =
-  UnliftIO.withMVar ( unSubscriber subscriber ) \sock ->
+  withMVar ( unSubscriber subscriber ) \sock ->
     Zmqhs.receive sock

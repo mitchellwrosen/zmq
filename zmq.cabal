@@ -80,7 +80,6 @@ library
     Zmq.Context
     Zmq.Endpoint
     Zmq.Internal
-    Zmq.Prelude
     Zmq.SubscriptionMessage
 
 library zmqhs

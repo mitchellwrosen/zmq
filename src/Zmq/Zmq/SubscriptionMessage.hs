@@ -6,9 +6,10 @@ module Zmq.SubscriptionMessage
   ) where
 
 import Data.List.NonEmpty (NonEmpty((:|)))
+import Data.ByteString (ByteString)
+import Data.Word
 import qualified Data.ByteString as ByteString
 
-import Zmq.Prelude
 
 
 data SubscriptionMessage

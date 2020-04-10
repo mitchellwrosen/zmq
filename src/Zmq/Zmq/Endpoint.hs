@@ -3,10 +3,11 @@ module Zmq.Endpoint
   , inproc
   ) where
 
+import Control.Monad
+import Data.Text (Text)
 import qualified Data.Text as Text
 
 import Zmq.Internal
-import Zmq.Prelude
 
 
 inproc :: Text -> Maybe ( Endpoint 'TransportInproc )
