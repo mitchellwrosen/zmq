@@ -107,27 +107,6 @@ library zmqhs
     src/zmqhs
 
 
-library libzmq
-  import:
-    component
-
-  build-tool-depends:
-    hsc2hs:hsc2hs ^>= 0.68,
-
-  exposed-modules:
-    Libzmq
-    Libzmq.Constants
-    Libzmq.Context
-    Libzmq.Error
-    Libzmq.Frame
-    Libzmq.Socket
-
-  hs-source-dirs:
-    src/libzmq
-
-  pkgconfig-depends:
-    libzmq == 4.3.4
-
 executable zmq
   import:
     executable-component
