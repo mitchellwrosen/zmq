@@ -36,11 +36,11 @@ module Libzmq
     zmq_unbind,
     zmq_disconnect,
     zmq_send,
-    zmq_send__unsafe,
+    zmq_send_dontwait,
     zmq_send_const,
-    zmq_send_const__unsafe,
+    zmq_send_const_dontwait,
     zmq_recv,
-    zmq_recv__unsafe,
+    zmq_recv_dontwait,
     zmq_socket_monitor,
 
     -- * Types
@@ -89,6 +89,21 @@ module Libzmq
       ),
     Zmq_msg_t,
     Zmq_socket_t,
+    Zmq_socket_type
+      ( Zmq_socket_type,
+        ZMQ_DEALER,
+        ZMQ_PAIR,
+        ZMQ_PUB,
+        ZMQ_PULL,
+        ZMQ_PUSH,
+        ZMQ_REP,
+        ZMQ_REQ,
+        ZMQ_ROUTER,
+        ZMQ_STREAM,
+        ZMQ_SUB,
+        ZMQ_XPUB,
+        ZMQ_XSUB
+      ),
   )
 where
 

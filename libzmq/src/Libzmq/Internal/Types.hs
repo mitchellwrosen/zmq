@@ -4,6 +4,7 @@ import Foreign.C.Types (CInt)
 import Foreign.Ptr (Ptr)
 import Libzmq.Bindings qualified
 
+-- | A ØMQ context option.
 newtype Zmq_ctx_option
   = Zmq_ctx_option CInt
   deriving stock (Eq, Ord)
@@ -86,10 +87,12 @@ pattern ZMQ_THREAD_SCHED_POLICY <-
   ZMQ_THREAD_SCHED_POLICY
   #-}
 
+-- | A ØMQ context.
 newtype Zmq_ctx_t
   = Zmq_ctx_t (Ptr ())
   deriving stock (Eq, Ord, Show)
 
+-- | A ØMQ error.
 newtype Zmq_error
   = Zmq_error CInt
   deriving stock (Eq, Ord)
@@ -251,6 +254,8 @@ pattern ETIMEDOUT <-
   where
     ETIMEDOUT = Zmq_error Libzmq.Bindings._ETIMEDOUT
 
+-- FIXME are these all the errors possible?
+
 {-# COMPLETE
   EADDRINUSE,
   EADDRNOTAVAIL,
@@ -276,6 +281,7 @@ pattern ETIMEDOUT <-
   ETIMEDOUT
   #-}
 
+-- | A ØMQ message option.
 newtype Zmq_msg_option
   = Zmq_msg_option CInt
   deriving stock (Eq, Ord)
@@ -289,23 +295,132 @@ pattern ZMQ_MORE :: Zmq_msg_option
 pattern ZMQ_MORE <-
   ((== Zmq_msg_option Libzmq.Bindings._ZMQ_MORE) -> True)
   where
-    ZMQ_MORE = Zmq_msg_option Libzmq.Bindings._ZMQ_BLOCKY
+    ZMQ_MORE = Zmq_msg_option Libzmq.Bindings._ZMQ_MORE
 
 pattern ZMQ_SHARED :: Zmq_msg_option
 pattern ZMQ_SHARED <-
   ((== Zmq_msg_option Libzmq.Bindings._ZMQ_SHARED) -> True)
   where
-    ZMQ_SHARED = Zmq_msg_option Libzmq.Bindings._ZMQ_BLOCKY
+    ZMQ_SHARED = Zmq_msg_option Libzmq.Bindings._ZMQ_SHARED
 
 {-# COMPLETE
   ZMQ_MORE,
   ZMQ_SHARED
   #-}
 
+-- | A ØMQ message.
 newtype Zmq_msg_t
   = Zmq_msg_t (Ptr Libzmq.Bindings.Zmq_msg_t)
   deriving stock (Eq, Ord, Show)
 
+-- | A ØMQ socket.
 data Zmq_socket_t
   = Zmq_socket_t (Ptr ())
   deriving stock (Eq, Ord, Show)
+
+-- | A ØMQ socket type.
+newtype Zmq_socket_type
+  = Zmq_socket_type CInt
+  deriving stock (Eq, Ord)
+
+instance Show Zmq_socket_type where
+  show = \case
+    ZMQ_DEALER -> "ZMQ_DEALER"
+    ZMQ_PAIR -> "ZMQ_PAIR"
+    ZMQ_PUB -> "ZMQ_PUB"
+    ZMQ_PULL -> "ZMQ_PULL"
+    ZMQ_PUSH -> "ZMQ_PUSH"
+    ZMQ_REP -> "ZMQ_REP"
+    ZMQ_REQ -> "ZMQ_REQ"
+    ZMQ_ROUTER -> "ZMQ_ROUTER"
+    ZMQ_STREAM -> "ZMQ_STREAM"
+    ZMQ_SUB -> "ZMQ_SUB"
+    ZMQ_XPUB -> "ZMQ_XPUB"
+    ZMQ_XSUB -> "ZMQ_XSUB"
+
+pattern ZMQ_DEALER :: Zmq_socket_type
+pattern ZMQ_DEALER <-
+  ((== Zmq_socket_type Libzmq.Bindings._ZMQ_DEALER) -> True)
+  where
+    ZMQ_DEALER = Zmq_socket_type Libzmq.Bindings._ZMQ_DEALER
+
+pattern ZMQ_PAIR :: Zmq_socket_type
+pattern ZMQ_PAIR <-
+  ((== Zmq_socket_type Libzmq.Bindings._ZMQ_PAIR) -> True)
+  where
+    ZMQ_PAIR = Zmq_socket_type Libzmq.Bindings._ZMQ_PAIR
+
+pattern ZMQ_PUB :: Zmq_socket_type
+pattern ZMQ_PUB <-
+  ((== Zmq_socket_type Libzmq.Bindings._ZMQ_PUB) -> True)
+  where
+    ZMQ_PUB = Zmq_socket_type Libzmq.Bindings._ZMQ_PUB
+
+pattern ZMQ_PULL :: Zmq_socket_type
+pattern ZMQ_PULL <-
+  ((== Zmq_socket_type Libzmq.Bindings._ZMQ_PULL) -> True)
+  where
+    ZMQ_PULL = Zmq_socket_type Libzmq.Bindings._ZMQ_PULL
+
+pattern ZMQ_PUSH :: Zmq_socket_type
+pattern ZMQ_PUSH <-
+  ((== Zmq_socket_type Libzmq.Bindings._ZMQ_PUSH) -> True)
+  where
+    ZMQ_PUSH = Zmq_socket_type Libzmq.Bindings._ZMQ_PUSH
+
+pattern ZMQ_REP :: Zmq_socket_type
+pattern ZMQ_REP <-
+  ((== Zmq_socket_type Libzmq.Bindings._ZMQ_REP) -> True)
+  where
+    ZMQ_REP = Zmq_socket_type Libzmq.Bindings._ZMQ_REP
+
+pattern ZMQ_REQ :: Zmq_socket_type
+pattern ZMQ_REQ <-
+  ((== Zmq_socket_type Libzmq.Bindings._ZMQ_REQ) -> True)
+  where
+    ZMQ_REQ = Zmq_socket_type Libzmq.Bindings._ZMQ_REQ
+
+pattern ZMQ_ROUTER :: Zmq_socket_type
+pattern ZMQ_ROUTER <-
+  ((== Zmq_socket_type Libzmq.Bindings._ZMQ_ROUTER) -> True)
+  where
+    ZMQ_ROUTER = Zmq_socket_type Libzmq.Bindings._ZMQ_ROUTER
+
+pattern ZMQ_STREAM :: Zmq_socket_type
+pattern ZMQ_STREAM <-
+  ((== Zmq_socket_type Libzmq.Bindings._ZMQ_STREAM) -> True)
+  where
+    ZMQ_STREAM = Zmq_socket_type Libzmq.Bindings._ZMQ_STREAM
+
+pattern ZMQ_SUB :: Zmq_socket_type
+pattern ZMQ_SUB <-
+  ((== Zmq_socket_type Libzmq.Bindings._ZMQ_SUB) -> True)
+  where
+    ZMQ_SUB = Zmq_socket_type Libzmq.Bindings._ZMQ_SUB
+
+pattern ZMQ_XPUB :: Zmq_socket_type
+pattern ZMQ_XPUB <-
+  ((== Zmq_socket_type Libzmq.Bindings._ZMQ_XPUB) -> True)
+  where
+    ZMQ_XPUB = Zmq_socket_type Libzmq.Bindings._ZMQ_XPUB
+
+pattern ZMQ_XSUB :: Zmq_socket_type
+pattern ZMQ_XSUB <-
+  ((== Zmq_socket_type Libzmq.Bindings._ZMQ_XSUB) -> True)
+  where
+    ZMQ_XSUB = Zmq_socket_type Libzmq.Bindings._ZMQ_XSUB
+
+{-# COMPLETE
+  ZMQ_DEALER,
+  ZMQ_PAIR,
+  ZMQ_PUB,
+  ZMQ_PULL,
+  ZMQ_PUSH,
+  ZMQ_REP,
+  ZMQ_REQ,
+  ZMQ_ROUTER,
+  ZMQ_STREAM,
+  ZMQ_SUB,
+  ZMQ_XPUB,
+  ZMQ_XSUB
+  #-}
