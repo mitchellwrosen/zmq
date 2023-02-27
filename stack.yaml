@@ -1,3 +1,0 @@
-resolver: lts-15.6
-extra-deps:
-  - slave-thread-1.1@sha256:a5f299c8ca6e08392c59292142aee9549656fe632cece2552b5700b8291cd35a,4107
