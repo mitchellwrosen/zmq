@@ -126,7 +126,7 @@ library libzmq
     src/libzmq
 
   pkgconfig-depends:
-    libzmq == 4.3.2
+    libzmq == 4.3.4
 
 executable zmq
   import:
