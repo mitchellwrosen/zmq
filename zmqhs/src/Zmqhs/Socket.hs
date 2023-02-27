@@ -1,53 +1,45 @@
 module Zmqhs.Socket
-  ( Socket(..)
-
-  , open
-  , close
-  , with
-
-  , bind
-  , unbind
-
-  , connect
-  , disconnect
-
-  , getSocketEvents
-  , getSocketFd
-  , setSocketSubscribe
-  , setSocketUnsubscribe
-
-  , send
-  , receive
-  ) where
+  ( Socket (..),
+    open,
+    close,
+    with,
+    bind,
+    unbind,
+    connect,
+    disconnect,
+    getSocketEvents,
+    getSocketFd,
+    setSocketSubscribe,
+    setSocketUnsubscribe,
+    send,
+    receive,
+  )
+where
 
 import Control.Concurrent (threadWaitRead)
 import Control.Monad (when)
-import Data.Bits ((.|.), (.&.))
+import Data.Bits ((.&.), (.|.))
 import Data.ByteString (ByteString)
+import Data.ByteString.Unsafe qualified as ByteString
 import Data.Foldable (toList)
 import Data.Function (fix)
-import Data.List.NonEmpty (NonEmpty((:|)))
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Foreign.C (CInt, CSize)
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (Ptr, nullPtr)
 import Foreign.Storable (Storable, peek, poke, sizeOf)
-import System.Posix.Types (Fd(..))
+import Libzmq qualified
+import System.Posix.Types (Fd (..))
 import UnliftIO
-import qualified Data.ByteString.Unsafe as ByteString
-
-import qualified Libzmq
-
-import Zmqhs.Context (Context(..))
+import Zmqhs.Context (Context (..))
 import Zmqhs.Endpoint (Endpoint, withEndpoint)
-import Zmqhs.Frame (Frame(..), copyFrameBytes, isLastFrame, withTemporaryFrame)
+import Zmqhs.Frame (Frame (..), copyFrameBytes, isLastFrame, withTemporaryFrame)
 import Zmqhs.Internal.Error
-import Zmqhs.SocketType (SocketType(..))
+import Zmqhs.SocketType (SocketType (..))
 
-
-newtype Socket
-  = Socket
-  { unSocket :: Ptr Libzmq.Socket }
-  deriving stock ( Eq, Ord, Show )
+newtype Socket = Socket
+  {unSocket :: Ptr Libzmq.Socket}
+  deriving stock (Eq, Ord, Show)
 
 -- | <http://api.zeromq.org/4-3:zmq-socket>
 --
@@ -56,11 +48,10 @@ newtype Socket
 --   * @ETERM@ if the context was terminated.
 open :: MonadIO m => Context -> SocketType -> m Socket
 open context socketType = liftIO do
-  sock <- Libzmq.socket ( unContext context ) ( socketTypeToCInt socketType )
+  sock <- Libzmq.socket (unContext context) (socketTypeToCInt socketType)
   if sock /= nullPtr
-    then pure ( Socket sock )
+    then pure (Socket sock)
     else Libzmq.errno >>= throwError "zmq_socket"
-
   where
     socketTypeToCInt :: SocketType -> CInt
     socketTypeToCInt = \case
@@ -72,11 +63,11 @@ open context socketType = liftIO do
 -- | <http://api.zeromq.org/4-3:zmq-close>
 close :: MonadIO m => Socket -> m ()
 close sock = liftIO do
-  Libzmq.close ( unSocket sock )
+  Libzmq.close (unSocket sock)
 
-with :: MonadUnliftIO m => Context -> SocketType -> ( Socket -> m a ) -> m a
+with :: MonadUnliftIO m => Context -> SocketType -> (Socket -> m a) -> m a
 with context socketType =
-  bracket ( open context socketType ) close
+  bracket (open context socketType) close
 
 -- | <http://api.zeromq.org/4-3:zmq-bind>
 --
@@ -93,7 +84,7 @@ with context socketType =
 bind :: MonadIO m => Socket -> Endpoint -> m ()
 bind sock endpoint = liftIO do
   withEndpoint endpoint \endpoint' ->
-    Libzmq.bind ( unSocket sock ) endpoint' >>= \case
+    Libzmq.bind (unSocket sock) endpoint' >>= \case
       0 -> pure ()
       _ -> Libzmq.errno >>= throwError "zmq_bind"
 
@@ -106,7 +97,7 @@ bind sock endpoint = liftIO do
 unbind :: MonadIO m => Socket -> Endpoint -> m ()
 unbind sock endpoint = liftIO do
   withEndpoint endpoint \endpoint' ->
-    Libzmq.unbind ( unSocket sock ) endpoint' >>= \case
+    Libzmq.unbind (unSocket sock) endpoint' >>= \case
       0 -> pure ()
       _ ->
         Libzmq.errno >>= \case
@@ -125,7 +116,7 @@ unbind sock endpoint = liftIO do
 connect :: MonadIO m => Socket -> Endpoint -> m ()
 connect sock endpoint = liftIO do
   withEndpoint endpoint \endpoint' ->
-    Libzmq.connect ( unSocket sock ) endpoint' >>= \case
+    Libzmq.connect (unSocket sock) endpoint' >>= \case
       0 -> pure ()
       _ -> Libzmq.errno >>= throwError "zmq_connect"
 
@@ -138,7 +129,7 @@ connect sock endpoint = liftIO do
 disconnect :: MonadIO m => Socket -> Endpoint -> m ()
 disconnect sock endpoint = liftIO do
   withEndpoint endpoint \endpoint' ->
-    Libzmq.disconnect ( unSocket sock ) endpoint' >>= \case
+    Libzmq.disconnect (unSocket sock) endpoint' >>= \case
       0 -> pure ()
       _ ->
         Libzmq.errno >>= \case
@@ -157,13 +148,13 @@ getIntSocketOption :: CInt -> Socket -> IO CInt
 getIntSocketOption option socket =
   alloca \intPtr ->
     alloca \sizePtr -> do
-      poke sizePtr ( fromIntegral ( sizeOf ( undefined :: CInt ) ) )
+      poke sizePtr (fromIntegral (sizeOf (undefined :: CInt)))
       getSocketOption socket option intPtr sizePtr
 
 getSocketOption :: Storable a => Socket -> CInt -> Ptr a -> Ptr CSize -> IO a
 getSocketOption socket option valPtr sizePtr =
   fix \again ->
-    Libzmq.getSocketOption ( unSocket socket ) option valPtr sizePtr >>= \case
+    Libzmq.getSocketOption (unSocket socket) option valPtr sizePtr >>= \case
       0 -> peek valPtr
       _ ->
         Libzmq.errno >>= \case
@@ -192,19 +183,20 @@ setSocketUnsubscribe =
 
 setBinarySocketOption :: MonadIO m => CInt -> Socket -> ByteString -> m ()
 setBinarySocketOption option sock bytes = liftIO do
-  ByteString.unsafeUseAsCStringLen bytes \( bytes', len ) ->
-    let
-      set =
-        Libzmq.setSocketOption
-          ( unSocket sock ) option bytes' ( fromIntegral len )
-    in
-      fix \again ->
-        set >>= \case
-          0 -> pure ()
-          _ ->
-            Libzmq.errno >>= \case
-              EINTR -> again
-              errno -> throwError "zmq_setsockopt" errno
+  ByteString.unsafeUseAsCStringLen bytes \(bytes', len) ->
+    let set =
+          Libzmq.setSocketOption
+            (unSocket sock)
+            option
+            bytes'
+            (fromIntegral len)
+     in fix \again ->
+          set >>= \case
+            0 -> pure ()
+            _ ->
+              Libzmq.errno >>= \case
+                EINTR -> again
+                errno -> throwError "zmq_setsockopt" errno
 
 -- | <http://api.zeromq.org/4-3:zmq-send>
 --
@@ -217,23 +209,21 @@ setBinarySocketOption option sock bytes = liftIO do
 --
 -- TODO only works for non-threadsafe sockets with a FD
 send :: MonadIO m => Socket -> NonEmpty ByteString -> m ()
-send socket ( toList -> messages0 ) = liftIO do
+send socket (toList -> messages0) = liftIO do
   flip fix messages0 \loop -> \case
-    [ message ] ->
+    [message] ->
       sendFrame socket message 0
-
     message : messages -> do
-      sendFrame socket message ( Libzmq.zMQ_DONTWAIT .|. Libzmq.zMQ_SNDMORE )
+      sendFrame socket message (Libzmq.zMQ_DONTWAIT .|. Libzmq.zMQ_SNDMORE)
       loop messages
-
     [] ->
       error "send: []"
 
 sendFrame :: Socket -> ByteString -> CInt -> IO ()
 sendFrame socket message flags =
-  ByteString.unsafeUseAsCStringLen message \( ptr, fromIntegral -> len ) ->
+  ByteString.unsafeUseAsCStringLen message \(ptr, fromIntegral -> len) ->
     fix \again ->
-      Libzmq.send ( unSocket socket ) ptr len flags >>= \case
+      Libzmq.send (unSocket socket) ptr len flags >>= \case
         -1 ->
           Libzmq.errno >>= \case
             EAGAIN -> do
@@ -245,25 +235,23 @@ sendFrame socket message flags =
 
 -- | <http://api.zeromq.org/4-3:zmq-msg-recv>
 -- TODO only works for non-threadsafe sockets with a FD
-receive :: MonadUnliftIO m => Socket -> m ( NonEmpty ByteString )
+receive :: MonadUnliftIO m => Socket -> m (NonEmpty ByteString)
 receive socket =
   withTemporaryFrame \frame ->
-    liftIO ( receive_ frame socket )
+    liftIO (receive_ frame socket)
 
-receive_ :: Frame -> Socket -> IO ( NonEmpty ByteString )
+receive_ :: Frame -> Socket -> IO (NonEmpty ByteString)
 receive_ frame socket =
   receiveFrame_ frame socket >>= loop []
-
   where
-    loop :: [ ByteString ] -> ByteString -> IO ( NonEmpty ByteString )
+    loop :: [ByteString] -> ByteString -> IO (NonEmpty ByteString)
     loop acc1 acc0 =
       isLastFrame frame >>= \case
         False -> do
           part <- receiveFrame_ frame socket
-          loop ( part : acc1 ) acc0
-
+          loop (part : acc1) acc0
         True ->
-          pure ( acc0 :| reverse acc1 )
+          pure (acc0 :| reverse acc1)
 
 receiveFrame_ :: Frame -> Socket -> IO ByteString
 receiveFrame_ frame socket =
@@ -279,7 +267,7 @@ receiveFrame_ frame socket =
       _len -> copyFrameBytes frame
   where
     doReceiveFrame =
-      Libzmq.receiveFrame ( unFrame frame ) ( unSocket socket ) Libzmq.zMQ_DONTWAIT
+      Libzmq.receiveFrame (unFrame frame) (unSocket socket) Libzmq.zMQ_DONTWAIT
 
 waitUntilCanReceive :: Socket -> IO ()
 waitUntilCanReceive =
@@ -304,4 +292,4 @@ waitUntilCan events socket = do
     -- the ZMQ_EVENTS option is valid; applications should
     -- simply ignore this case and restart their polling
     -- operation/event loop.
-    when ( state .&. events == 0 ) again
+    when (state .&. events == 0) again

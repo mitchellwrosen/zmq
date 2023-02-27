@@ -1,13 +1,13 @@
 module Zmqhs.SocketType
-  ( SocketType(..)
-  ) where
+  ( SocketType (..),
+  )
+where
 
 import GHC.Generics (Generic)
-
 
 data SocketType
   = Pub
   | Sub
   | XPub
   | XSub
-  deriving stock ( Eq, Generic, Show )
+  deriving stock (Eq, Generic, Show)

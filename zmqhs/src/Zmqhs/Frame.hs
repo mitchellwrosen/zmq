@@ -1,45 +1,43 @@
 module Zmqhs.Frame
-  ( Frame(..)
-  , withTemporaryFrame
-  , isLastFrame
-  , copyFrameBytes
-  ) where
+  ( Frame (..),
+    withTemporaryFrame,
+    isLastFrame,
+    copyFrameBytes,
+  )
+where
 
 import Data.ByteString (ByteString)
+import Data.ByteString qualified as ByteString
 import Foreign.Marshal.Alloc (alloca)
-import Foreign.Storable (Storable)
 import Foreign.Ptr (Ptr)
+import Foreign.Storable (Storable)
+import Libzmq qualified
 import UnliftIO
-import qualified Data.ByteString as ByteString
 
-import qualified Libzmq
+newtype Frame = Frame {unFrame :: Ptr Libzmq.Frame}
 
-
-newtype Frame
-  = Frame { unFrame :: Ptr Libzmq.Frame }
-
-withTemporaryFrame :: MonadUnliftIO m => ( Frame -> m a ) -> m a
+withTemporaryFrame :: MonadUnliftIO m => (Frame -> m a) -> m a
 withTemporaryFrame f =
   unliftedAlloca \frame ->
     bracket_
-      ( liftIO ( Libzmq.initializeFrame frame ) )
-      ( liftIO ( Libzmq.closeFrame frame ) )
-      ( f ( Frame frame ) )
+      (liftIO (Libzmq.initializeFrame frame))
+      (liftIO (Libzmq.closeFrame frame))
+      (f (Frame frame))
 
 -- | Returns whether this is the last frame in the message.
 isLastFrame :: MonadIO m => Frame -> m Bool
 isLastFrame frame = liftIO do
-  ( /= 1 ) <$> Libzmq.getFrameProperty ( unFrame frame ) Libzmq.zMQ_MORE
+  (/= 1) <$> Libzmq.getFrameProperty (unFrame frame) Libzmq.zMQ_MORE
 
 -- | Copy the bytes out of a frame
 copyFrameBytes :: MonadIO m => Frame -> m ByteString
 copyFrameBytes frame = liftIO do
-  bytes <- Libzmq.getFrameData ( unFrame frame )
-  size <- Libzmq.getFrameSize ( unFrame frame )
-  ByteString.packCStringLen ( bytes, fromIntegral size )
+  bytes <- Libzmq.getFrameData (unFrame frame)
+  size <- Libzmq.getFrameSize (unFrame frame)
+  ByteString.packCStringLen (bytes, fromIntegral size)
 
-unliftedAlloca :: ( MonadUnliftIO m, Storable a ) => ( Ptr a -> m b ) -> m b
+unliftedAlloca :: (MonadUnliftIO m, Storable a) => (Ptr a -> m b) -> m b
 unliftedAlloca f =
   withRunInIO \unlift ->
     alloca \ptr ->
-      unlift ( f ptr )
+      unlift (f ptr)

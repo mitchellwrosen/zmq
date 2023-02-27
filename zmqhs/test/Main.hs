@@ -1,16 +1,14 @@
 module Main (main) where
 
 import Test.Hspec
-
-import qualified Zmqhs
-
+import Zmqhs qualified
 
 main :: IO ()
 main =
   hspec do
     around
       Zmqhs.withContext
-      ( describe "zmqhs" spec )
+      (describe "zmqhs" spec)
 
 spec :: SpecWith Zmqhs.Context
 spec = do
@@ -27,8 +25,8 @@ spec = do
 
     it "fails on non-sub socket" \ctx ->
       Zmqhs.with ctx Zmqhs.Pub \pub ->
-        Zmqhs.setSocketSubscribe pub "" `shouldThrow`
-          ( == Zmqhs.Error "zmq_setsockopt" Zmqhs.EINVAL "Invalid argument" )
+        Zmqhs.setSocketSubscribe pub ""
+          `shouldThrow` (== Zmqhs.Error "zmq_setsockopt" Zmqhs.EINVAL "Invalid argument")
 
   describe "setSocketUnsubscribe" do
     it "allows bogus unsubscribe" \ctx ->

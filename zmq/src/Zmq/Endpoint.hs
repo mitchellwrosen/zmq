@@ -1,16 +1,15 @@
 module Zmq.Endpoint
-  ( Endpoint(..)
-  , inproc
-  ) where
+  ( Endpoint (..),
+    inproc,
+  )
+where
 
 import Control.Monad
 import Data.Text (Text)
-import qualified Data.Text as Text
-
+import Data.Text qualified as Text
 import Zmq.Internal
 
-
-inproc :: Text -> Maybe ( Endpoint 'TransportInproc )
+inproc :: Text -> Maybe (Endpoint 'TransportInproc)
 inproc name = do
-  guard ( not ( Text.null name ) )
-  pure ( Inproc name )
+  guard (not (Text.null name))
+  pure (Inproc name)
