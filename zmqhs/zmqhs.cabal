@@ -55,6 +55,7 @@ test-suite tests
     base,
     hspec,
     zmqhs,
+  ghc-options: -threaded -with-rtsopts=-N2
   hs-source-dirs: test
   main-is: Main.hs
   type: exitcode-stdio-1.0

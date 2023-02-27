@@ -4,56 +4,40 @@ name: zmq
 version: 0
 
 common component
-  build-depends:
-    base,
-
   default-extensions:
-    AllowAmbiguousTypes
     BlockArguments
     DataKinds
-    DeriveAnyClass
-    DeriveGeneric
     DerivingStrategies
-    DuplicateRecordFields
-    FlexibleContexts
-    FlexibleInstances
-    GADTs
-    GeneralizedNewtypeDeriving
-    InstanceSigs
     LambdaCase
-    NamedFieldPuns
-    NumericUnderscores
     OverloadedStrings
     PatternSynonyms
-    RankNTypes
-    RecordWildCards
-    ScopedTypeVariables
-    StandaloneDeriving
-    TypeApplications
     TypeFamilies
-    TypeOperators
     ViewPatterns
-
-  default-language:
-    Haskell2010
-
+  default-language: GHC2021
   ghc-options:
-    -Wall
+    -Weverything
+    -Wno-all-missed-specialisations
+    -Wno-implicit-prelude
+    -Wno-missed-specialisations
+    -Wno-missing-import-lists
+    -Wno-safe
+    -Wno-unsafe
+  if impl(ghc >= 8.10)
+    ghc-options:
+      -Wno-missing-safe-haskell-mode
+      -Wno-prepositive-qualified-module
+  if impl(ghc >= 9.2)
+    ghc-options:
+      -Wno-missing-kind-signatures
 
 common executable-component
   import:
     component
 
-  ghc-options:
-    -O
-    -threaded
-    -with-rtsopts=-N
-
 library
-  import:
-    component
-
+  import: component
   build-depends:
+    base,
     bytestring,
     libzmq,
     say,
@@ -62,20 +46,14 @@ library
     text,
     unliftio,
     zmqhs,
-
-  build-tool-depends:
-    hsc2hs:hsc2hs ^>= 0.68,
-
+  build-tool-depends: hsc2hs:hsc2hs ^>= 0.68,
   exposed-modules:
     Zmq
     Zmq.Publisher
     Zmq.Subscriber
     Zmq.XPublisher
     Zmq.XSubscriber
-
-  hs-source-dirs:
-    src/zmq
-
+  hs-source-dirs: src
   other-modules:
     Zmq.Context
     Zmq.Endpoint
@@ -83,36 +61,27 @@ library
     Zmq.SubscriptionMessage
 
 executable zmq
-  import:
-    executable-component
-
+  import: component
   build-depends:
+    base,
     text,
     zmq,
-
   hs-source-dirs:
     app
-
-  main-is:
-    Main.hs
+  ghc-options: -O -threaded -with-rtsopts=-N2
+  main-is: Main.hs
 
 test-suite tests
-  import:
-    executable-component
-
+  import: component
   build-depends:
+    base,
     hedgehog,
     hspec,
     say,
     text,
     unliftio,
     zmq,
-
-  hs-source-dirs:
-    test
-
-  main-is:
-    Main.hs
-
-  type:
-    exitcode-stdio-1.0
+  ghc-options: -threaded -with-rtsopts=-N2
+  hs-source-dirs: test
+  main-is: Main.hs
+  type: exitcode-stdio-1.0
