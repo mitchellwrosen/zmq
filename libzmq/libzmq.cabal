@@ -32,3 +32,4 @@ library
       -Wno-missing-kind-signatures
   hs-source-dirs: src
   pkgconfig-depends: libzmq == 4.3.4
+

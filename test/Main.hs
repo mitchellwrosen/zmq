@@ -21,17 +21,12 @@ import qualified Zmq.Subscriber as Sub
 import qualified Zmq.XPublisher as XPub
 import qualified Zmq.XSubscriber as XSub
 
-import qualified ZmqhsSpec
-
 main :: IO ()
 main =
   hspec do
     around
       ( Zmq.withContext Zmq.defaultOptions )
-      ( do
-          describe "zmqhs" ZmqhsSpec.spec
-          describe "zmq" spec
-      )
+      ( describe "zmq" spec )
 
 spec :: SpecWith Zmq.Context
 spec = do

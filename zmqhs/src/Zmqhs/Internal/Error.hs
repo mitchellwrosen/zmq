@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Zmqhs.Internal.Error
   ( Error(..)
   , throwError

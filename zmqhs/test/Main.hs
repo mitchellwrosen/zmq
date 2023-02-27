@@ -1,10 +1,16 @@
-module ZmqhsSpec
-  ( spec
-  ) where
+module Main (main) where
 
 import Test.Hspec
 
 import qualified Zmqhs
+
+
+main :: IO ()
+main =
+  hspec do
+    around
+      Zmqhs.withContext
+      ( describe "zmqhs" spec )
 
 spec :: SpecWith Zmqhs.Context
 spec = do

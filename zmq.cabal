@@ -82,31 +82,6 @@ library
     Zmq.Internal
     Zmq.SubscriptionMessage
 
-library zmqhs
-  import:
-    component
-
-  build-depends:
-    bytestring,
-    libzmq,
-    text,
-    unliftio,
-
-  exposed-modules:
-    Zmqhs
-    Zmqhs.Context
-    Zmqhs.Endpoint
-    Zmqhs.Error
-    Zmqhs.Frame
-    -- TODO make this internal
-    Zmqhs.Internal.Error
-    Zmqhs.Socket
-    Zmqhs.SocketType
-
-  hs-source-dirs:
-    src/zmqhs
-
-
 executable zmq
   import:
     executable-component
@@ -132,16 +107,12 @@ test-suite tests
     text,
     unliftio,
     zmq,
-    zmq:zmqhs,
 
   hs-source-dirs:
     test
 
   main-is:
     Main.hs
-
-  other-modules:
-    ZmqhsSpec
 
   type:
     exitcode-stdio-1.0
