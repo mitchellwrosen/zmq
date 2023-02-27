@@ -8,14 +8,17 @@ library
   build-depends:
     base,
   build-tool-depends: hsc2hs:hsc2hs ^>= 0.68
+  default-extensions:
+    CApiFFI
   default-language: GHC2021
   exposed-modules:
     Libzmq
     Libzmq.Constants
-    Libzmq.Context
     Libzmq.Error
+    Libzmq.Functions
     Libzmq.Frame
     Libzmq.Socket
+    Libzmq.Types
   ghc-options:
     -Weverything
     -Wno-all-missed-specialisations

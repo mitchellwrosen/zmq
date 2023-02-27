@@ -20,12 +20,12 @@ import UnliftIO (MonadUnliftIO, bracket)
 import Zmqhs.Internal.Error
 
 newtype Context = Context
-  {unContext :: Ptr Libzmq.Context}
+  {unContext :: Ptr Libzmq.Zmq_ctx}
   deriving stock (Eq, Ord, Show)
 
 newContext :: MonadIO m => m Context
 newContext = liftIO do
-  coerce Libzmq.newContext
+  coerce Libzmq.zmq_ctx_new
 
 -- | <http://api.zeromq.org/4-3:zmq-ctx-term>
 --
@@ -34,7 +34,7 @@ newContext = liftIO do
 terminateContext :: MonadIO m => Context -> m ()
 terminateContext context = liftIO do
   fix \again ->
-    Libzmq.terminateContext (unContext context) >>= \case
+    Libzmq.zmq_ctx_term (unContext context) >>= \case
       0 -> pure ()
       _ ->
         Libzmq.errno >>= \case
@@ -65,6 +65,6 @@ setContextMaxSockets context n =
 
 setContextOption :: MonadIO m => Context -> CInt -> CInt -> m ()
 setContextOption context option value = liftIO do
-  Libzmq.setContextOption (unContext context) option value >>= \case
+  Libzmq.zmq_ctx_set (unContext context) option value >>= \case
     0 -> pure ()
     _ -> Libzmq.errno >>= throwError "zmq_ctx_set"

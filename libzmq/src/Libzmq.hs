@@ -1,5 +1,17 @@
 module Libzmq
-  ( -- * Constants
+  ( -- * Functions
+
+    -- ** Context
+    zmq_ctx_new,
+    zmq_ctx_term,
+    zmq_ctx_shutdown,
+    zmq_ctx_set,
+    zmq_ctx_get,
+
+    -- * Types
+    Zmq_ctx,
+
+    -- * Constants
 
     -- ** Errors
     eADDRINUSE,
@@ -201,9 +213,6 @@ module Libzmq
     -- ** Probe library capabilities
     zMQ_HAS_CAPABILITIES,
 
-    -- * Context
-    module Libzmq.Context,
-
     -- * Error
     module Libzmq.Error,
 
@@ -216,7 +225,8 @@ module Libzmq
 where
 
 import Libzmq.Constants
-import Libzmq.Context
 import Libzmq.Error
 import Libzmq.Frame
+import Libzmq.Functions
 import Libzmq.Socket
+import Libzmq.Types

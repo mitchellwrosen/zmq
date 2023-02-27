@@ -15,13 +15,13 @@ where
 
 import Foreign.C
 import Foreign.Ptr
-import Libzmq.Context (Context)
+import Libzmq.Types (Zmq_ctx)
 import Libzmq.Frame (Frame)
 
 data Socket
 
 foreign import ccall unsafe "zmq_socket"
-  socket :: Ptr Context -> CInt -> IO (Ptr Socket)
+  socket :: Ptr Zmq_ctx -> CInt -> IO (Ptr Socket)
 
 foreign import ccall unsafe "zmq_close"
   close :: Ptr Socket -> IO ()
