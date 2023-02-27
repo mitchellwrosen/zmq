@@ -55,10 +55,10 @@ open context socketType = liftIO do
   where
     socketTypeToCInt :: SocketType -> CInt
     socketTypeToCInt = \case
-      Pub -> Libzmq.zMQ_PUB
-      Sub -> Libzmq.zMQ_SUB
-      XPub -> Libzmq.zMQ_XPUB
-      XSub -> Libzmq.zMQ_XSUB
+      Pub -> Libzmq._ZMQ_PUB
+      Sub -> Libzmq._ZMQ_SUB
+      XPub -> Libzmq._ZMQ_XPUB
+      XSub -> Libzmq._ZMQ_XSUB
 
 -- | <http://api.zeromq.org/4-3:zmq-close>
 close :: MonadIO m => Socket -> m ()
@@ -140,11 +140,11 @@ disconnect sock endpoint = liftIO do
 
 getSocketEvents :: Socket -> IO CInt
 getSocketEvents =
-  getIntSocketOption Libzmq.zMQ_EVENTS
+  getIntSocketOption Libzmq._ZMQ_EVENTS
 
 getSocketFd :: Socket -> IO Fd
 getSocketFd socket =
-  Fd <$> getIntSocketOption Libzmq.zMQ_FD socket
+  Fd <$> getIntSocketOption Libzmq._ZMQ_FD socket
 
 getIntSocketOption :: CInt -> Socket -> IO CInt
 getIntSocketOption option socket =
@@ -171,7 +171,7 @@ getSocketOption socket option valPtr sizePtr =
 --   * @ENOTSOCK@ if the socket is invalid.
 setSocketSubscribe :: MonadIO m => Socket -> ByteString -> m ()
 setSocketSubscribe =
-  setBinarySocketOption Libzmq.zMQ_SUBSCRIBE
+  setBinarySocketOption Libzmq._ZMQ_SUBSCRIBE
 
 -- | <http://api.zeromq.org/4-3:zmq-setsockopt>
 --
@@ -181,7 +181,7 @@ setSocketSubscribe =
 --   * @ENOTSOCK@ if the socket is invalid.
 setSocketUnsubscribe :: MonadIO m => Socket -> ByteString -> m ()
 setSocketUnsubscribe =
-  setBinarySocketOption Libzmq.zMQ_UNSUBSCRIBE
+  setBinarySocketOption Libzmq._ZMQ_UNSUBSCRIBE
 
 setBinarySocketOption :: MonadIO m => CInt -> Socket -> ByteString -> m ()
 setBinarySocketOption option sock bytes = liftIO do
@@ -214,9 +214,9 @@ send :: MonadIO m => Socket -> NonEmpty ByteString -> m ()
 send socket (toList -> messages0) = liftIO do
   flip fix messages0 \loop -> \case
     [message] ->
-      sendFrame socket message Libzmq.zMQ_DONTWAIT
+      sendFrame socket message Libzmq._ZMQ_DONTWAIT
     message : messages -> do
-      sendFrame socket message (Libzmq.zMQ_DONTWAIT .|. Libzmq.zMQ_SNDMORE)
+      sendFrame socket message (Libzmq._ZMQ_DONTWAIT .|. Libzmq._ZMQ_SNDMORE)
       loop messages
     [] ->
       error "send: []"
@@ -269,7 +269,7 @@ receiveFrame_ frame socket =
       _len -> copyFrameBytes frame
   where
     doReceiveFrame =
-      Libzmq.zmq_msg_recv__unsafe (unFrame frame) (unSocket socket) Libzmq.zMQ_DONTWAIT
+      Libzmq.zmq_msg_recv__unsafe (unFrame frame) (unSocket socket) Libzmq._ZMQ_DONTWAIT
 
 waitUntilCanReceive :: Socket -> IO ()
 waitUntilCanReceive =

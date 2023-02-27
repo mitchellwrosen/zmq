@@ -24,9 +24,9 @@ data Options = Options
 defaultOptions :: Options
 defaultOptions =
   Options
-    { ioThreads = fromIntegral Libzmq.zMQ_IO_THREADS_DFLT,
+    { ioThreads = fromIntegral Libzmq._ZMQ_IO_THREADS_DFLT,
       maxMessageSize = fromIntegral @CInt maxBound,
-      maxSockets = fromIntegral Libzmq.zMQ_MAX_SOCKETS_DFLT
+      maxSockets = fromIntegral Libzmq._ZMQ_MAX_SOCKETS_DFLT
     }
 
 -- | Create a new ZMQ context.

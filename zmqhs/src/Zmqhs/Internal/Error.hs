@@ -50,16 +50,16 @@ zmq_texterror =
   fmap decodeUtf8 . ByteString.unsafePackCString . Libzmq.strerror
 
 pattern EADDRINUSE :: CInt
-pattern EADDRINUSE <- ((== Libzmq.eADDRINUSE) -> True)
+pattern EADDRINUSE <- ((== Libzmq._EADDRINUSE) -> True)
 
 pattern EADDRNOTAVAIL :: CInt
-pattern EADDRNOTAVAIL <- ((== Libzmq.eADDRNOTAVAIL) -> True)
+pattern EADDRNOTAVAIL <- ((== Libzmq._EADDRNOTAVAIL) -> True)
 
 pattern EAGAIN :: CInt
 pattern EAGAIN <- ((== coerce eAGAIN) -> True)
 
 pattern EHOSTUNREACH :: CInt
-pattern EHOSTUNREACH <- ((== Libzmq.eHOSTUNREACH) -> True)
+pattern EHOSTUNREACH <- ((== Libzmq._EHOSTUNREACH) -> True)
 
 pattern EINTR :: CInt
 pattern EINTR <- ((== coerce eINTR) -> True)
@@ -80,7 +80,7 @@ pattern EMFILE :: CInt
 pattern EMFILE <- ((== coerce eMFILE) -> True)
 
 pattern EMTHREAD :: CInt
-pattern EMTHREAD <- ((== Libzmq.eMTHREAD) -> True)
+pattern EMTHREAD <- ((== Libzmq._EMTHREAD) -> True)
 
 pattern ENODEV :: CInt
 pattern ENODEV <- ((== coerce eNODEV) -> True)
@@ -90,12 +90,12 @@ pattern ENOENT <- ((== coerce eNOENT) -> True)
 
 pattern ENOTSOCK :: CInt
 pattern ENOTSOCK <-
-  ((== Libzmq.eNOTSOCK) -> True)
+  ((== Libzmq._ENOTSOCK) -> True)
   where
-    ENOTSOCK = Libzmq.eNOTSOCK
+    ENOTSOCK = Libzmq._ENOTSOCK
 
 pattern ETERM :: CInt
 pattern ETERM <-
-  ((== Libzmq.eTERM) -> True)
+  ((== Libzmq._ETERM) -> True)
   where
-    ETERM = Libzmq.eTERM
+    ETERM = Libzmq._ETERM
