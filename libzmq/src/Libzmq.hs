@@ -13,9 +13,9 @@ module Libzmq
     zmq_msg_init_size,
     -- zmq_msg_init_data,
     zmq_msg_send,
-    zmq_msg_send__unsafe,
+    zmq_msg_send_dontwait,
     zmq_msg_recv,
-    zmq_msg_recv__unsafe,
+    zmq_msg_recv_dontwait,
     zmq_msg_close,
     zmq_msg_move,
     zmq_msg_copy,
@@ -81,6 +81,11 @@ module Libzmq
         EPROTONOSUPPORT,
         ETERM,
         ETIMEDOUT
+      ),
+    Zmq_msg_option
+      ( Zmq_msg_option,
+        ZMQ_MORE,
+        ZMQ_SHARED
       ),
     Zmq_msg_t,
     Zmq_socket_t,

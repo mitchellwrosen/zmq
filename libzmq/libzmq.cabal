@@ -7,7 +7,9 @@ description: libzmq 4.3.4 bindings
 library
   build-depends:
     base,
+    -- bytestring ^>= 0.11.0,
     libzmq-bindings,
+    text ^>= 2.0,
   default-extensions:
     BlockArguments
     DerivingStrategies

@@ -68,7 +68,7 @@ foreign import capi unsafe "zmq.h zmq_msg_data"
 foreign import capi unsafe "zmq.h zmq_msg_gets"
   zmq_msg_gets :: Ptr Zmq_msg_t -> Ptr CChar -> IO (Ptr CChar)
 
--- | Get a ØMQ message property.
+-- | Get a ØMQ message option.
 --
 -- http://api.zeromq.org/master:zmq-msg-get
 foreign import capi unsafe "zmq.h zmq_msg_get"
@@ -122,7 +122,7 @@ foreign import capi safe "zmq.h zmq_msg_send"
 foreign import capi unsafe "zmq.h zmq_msg_send"
   zmq_msg_send__unsafe :: Ptr Zmq_msg_t -> Ptr socket -> CInt -> IO CInt
 
--- | Set a ØMQ message property.
+-- | Set a ØMQ message option.
 --
 -- http://api.zeromq.org/master:zmq-msg-set
 foreign import capi unsafe "zmq.h zmq_msg_set"

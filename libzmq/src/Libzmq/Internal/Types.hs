@@ -276,6 +276,32 @@ pattern ETIMEDOUT <-
   ETIMEDOUT
   #-}
 
+newtype Zmq_msg_option
+  = Zmq_msg_option CInt
+  deriving stock (Eq, Ord)
+
+instance Show Zmq_msg_option where
+  show = \case
+    ZMQ_MORE -> "ZMQ_MORE"
+    ZMQ_SHARED -> "ZMQ_SHARED"
+
+pattern ZMQ_MORE :: Zmq_msg_option
+pattern ZMQ_MORE <-
+  ((== Zmq_msg_option Libzmq.Bindings._ZMQ_MORE) -> True)
+  where
+    ZMQ_MORE = Zmq_msg_option Libzmq.Bindings._ZMQ_BLOCKY
+
+pattern ZMQ_SHARED :: Zmq_msg_option
+pattern ZMQ_SHARED <-
+  ((== Zmq_msg_option Libzmq.Bindings._ZMQ_SHARED) -> True)
+  where
+    ZMQ_SHARED = Zmq_msg_option Libzmq.Bindings._ZMQ_BLOCKY
+
+{-# COMPLETE
+  ZMQ_MORE,
+  ZMQ_SHARED
+  #-}
+
 newtype Zmq_msg_t
   = Zmq_msg_t (Ptr Libzmq.Bindings.Zmq_msg_t)
   deriving stock (Eq, Ord, Show)

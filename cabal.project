@@ -1,2 +1,1 @@
 packages: libzmq-bindings, libzmq, zmqhs, zmq
-tests: True
