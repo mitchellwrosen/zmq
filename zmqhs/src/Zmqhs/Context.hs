@@ -20,7 +20,7 @@ import UnliftIO (MonadUnliftIO, bracket)
 import Zmqhs.Internal.Error
 
 newtype Context = Context
-  {unContext :: Ptr Libzmq.Zmq_ctx}
+  {unContext :: Ptr Libzmq.Zmq_ctx_t}
   deriving stock (Eq, Ord, Show)
 
 newContext :: MonadIO m => m Context

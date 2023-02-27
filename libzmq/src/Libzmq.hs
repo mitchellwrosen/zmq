@@ -8,8 +8,27 @@ module Libzmq
     zmq_ctx_set,
     zmq_ctx_get,
 
+    -- ** Message
+    zmq_msg_init,
+    zmq_msg_init_size,
+    -- zmq_msg_init_data,
+    zmq_msg_send,
+    zmq_msg_send__unsafe,
+    zmq_msg_recv,
+    zmq_msg_recv__unsafe,
+    zmq_msg_close,
+    zmq_msg_move,
+    zmq_msg_copy,
+    zmq_msg_data,
+    zmq_msg_size,
+    zmq_msg_more,
+    zmq_msg_get,
+    zmq_msg_set,
+    zmq_msg_gets,
+
     -- * Types
-    Zmq_ctx,
+    Zmq_ctx_t,
+    Zmq_msg_t,
 
     -- * Constants
 
@@ -216,9 +235,6 @@ module Libzmq
     -- * Error
     module Libzmq.Error,
 
-    -- * Frame
-    module Libzmq.Frame,
-
     -- * Socket
     module Libzmq.Socket,
   )
@@ -226,7 +242,6 @@ where
 
 import Libzmq.Constants
 import Libzmq.Error
-import Libzmq.Frame
 import Libzmq.Functions
 import Libzmq.Socket
 import Libzmq.Types

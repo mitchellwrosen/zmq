@@ -15,13 +15,12 @@ where
 
 import Foreign.C
 import Foreign.Ptr
-import Libzmq.Types (Zmq_ctx)
-import Libzmq.Frame (Frame)
+import Libzmq.Types (Zmq_ctx_t, Zmq_msg_t)
 
 data Socket
 
 foreign import ccall unsafe "zmq_socket"
-  socket :: Ptr Zmq_ctx -> CInt -> IO (Ptr Socket)
+  socket :: Ptr Zmq_ctx_t -> CInt -> IO (Ptr Socket)
 
 foreign import ccall unsafe "zmq_close"
   close :: Ptr Socket -> IO ()
@@ -42,7 +41,7 @@ foreign import ccall safe "zmq_send"
   send :: Ptr Socket -> Ptr a -> CSize -> CInt -> IO CInt
 
 foreign import ccall unsafe "zmq_msg_recv"
-  receiveFrame :: Ptr Frame -> Ptr Socket -> CInt -> IO CInt
+  receiveFrame :: Ptr Zmq_msg_t -> Ptr Socket -> CInt -> IO CInt
 
 foreign import ccall unsafe "zmq_getsockopt"
   getSocketOption :: Ptr Socket -> CInt -> Ptr a -> Ptr CSize -> IO CInt
