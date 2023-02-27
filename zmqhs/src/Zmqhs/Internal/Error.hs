@@ -24,7 +24,7 @@ import Data.Coerce (coerce)
 import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
 import Foreign.C
-import Libzmq qualified
+import Libzmq.Bindings qualified as Libzmq
 
 data Error = Error
   { function :: Text,

@@ -9,7 +9,7 @@ module Zmq.Context
 where
 
 import Foreign.C.Types (CInt)
-import Libzmq qualified
+import Libzmq.Bindings qualified as Libzmq
 import Numeric.Natural (Natural)
 import UnliftIO
 import Zmqhs (Context (..))

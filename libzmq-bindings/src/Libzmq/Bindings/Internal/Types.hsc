@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
 
-module Libzmq.Types (module Libzmq.Types) where
+module Libzmq.Bindings.Internal.Types (module Libzmq.Bindings.Internal.Types) where
 
 #include <zmq.h>
 

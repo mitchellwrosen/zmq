@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
 
-module Libzmq.Constants where
+module Libzmq.Bindings.Internal.Constants (module Libzmq.Bindings.Internal.Constants) where
 
 #include <zmq.h>
 

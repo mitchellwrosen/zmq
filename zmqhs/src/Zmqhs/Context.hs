@@ -14,7 +14,7 @@ import Data.Coerce (coerce)
 import Data.Function (fix)
 import Foreign.C (CInt)
 import Foreign.Ptr (Ptr)
-import Libzmq qualified
+import Libzmq.Bindings qualified as Libzmq
 import Numeric.Natural (Natural)
 import UnliftIO (MonadUnliftIO, bracket)
 import Zmqhs.Internal.Error

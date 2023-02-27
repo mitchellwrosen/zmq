@@ -39,7 +39,7 @@ spec = do
     Pub.with @IO ctx \pub -> do
       Pub.bind pub endpoint
 
-      let threads = 200
+      let threads = 200 :: Int
       readyVar <- newEmptyMVar
       replicateM_ threads do
         (forkIO . void . tryAny) do
@@ -61,8 +61,8 @@ basicSocketSpec sockets = do
           pure ()
 
       it "open-close-close" \ctx ->
-        with ctx \sock ->
-          close sock
+        with ctx close
+          `shouldThrow` (== Zmq.Error "zmq_close" Zmq.ENOTSOCK "Socket operation on non-socket")
 
       it "bind" \ctx ->
         with ctx \sock -> do

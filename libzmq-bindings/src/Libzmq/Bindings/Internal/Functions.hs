@@ -1,8 +1,8 @@
-module Libzmq.Functions (module Libzmq.Functions) where
+module Libzmq.Bindings.Internal.Functions (module Libzmq.Bindings.Internal.Functions) where
 
 import Foreign.C.Types (CChar (..), CInt (..), CSize (..))
 import Foreign.Ptr (Ptr)
-import Libzmq.Types (Zmq_msg_t)
+import Libzmq.Bindings.Internal.Types (Zmq_msg_t)
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Context

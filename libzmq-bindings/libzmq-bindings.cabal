@@ -1,8 +1,8 @@
 cabal-version: 3.0
 
-name: libzmq
+name: libzmq-bindings
 version: 0
-description: zeromq 4.3.4 bindings
+description: libzmq 4.3.4 bindings
 
 library
   build-depends:
@@ -12,11 +12,7 @@ library
     CApiFFI
   default-language: GHC2021
   exposed-modules:
-    Libzmq
-    Libzmq.Constants
-    Libzmq.Error
-    Libzmq.Functions
-    Libzmq.Types
+    Libzmq.Bindings
   ghc-options:
     -Weverything
     -Wno-all-missed-specialisations
@@ -33,5 +29,9 @@ library
     ghc-options:
       -Wno-missing-kind-signatures
   hs-source-dirs: src
+  other-modules:
+    Libzmq.Bindings.Internal.Constants
+    Libzmq.Bindings.Internal.Error
+    Libzmq.Bindings.Internal.Functions
+    Libzmq.Bindings.Internal.Types
   pkgconfig-depends: libzmq == 4.3.4
-

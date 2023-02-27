@@ -34,7 +34,7 @@ library
   build-depends:
     base,
     bytestring,
-    libzmq,
+    libzmq-bindings,
     text,
     unliftio,
   exposed-modules:

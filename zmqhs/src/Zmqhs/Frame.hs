@@ -11,7 +11,7 @@ import Data.ByteString qualified as ByteString
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (Ptr)
 import Foreign.Storable (Storable)
-import Libzmq qualified
+import Libzmq.Bindings qualified as Libzmq
 import UnliftIO
 
 newtype Frame = Frame {unFrame :: Ptr Libzmq.Zmq_msg_t}

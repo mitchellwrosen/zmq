@@ -1,4 +1,4 @@
-module Libzmq
+module Libzmq.Bindings
   ( -- * Functions
 
     -- ** Context
@@ -249,11 +249,11 @@ module Libzmq
     zMQ_HAS_CAPABILITIES,
 
     -- * Error
-    module Libzmq.Error,
+    module Libzmq.Bindings.Internal.Error,
   )
 where
 
-import Libzmq.Constants
-import Libzmq.Error
-import Libzmq.Functions
-import Libzmq.Types
+import Libzmq.Bindings.Internal.Constants
+import Libzmq.Bindings.Internal.Error
+import Libzmq.Bindings.Internal.Functions
+import Libzmq.Bindings.Internal.Types

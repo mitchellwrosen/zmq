@@ -28,7 +28,7 @@ import Foreign.C (CInt, CSize)
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (Ptr, nullPtr)
 import Foreign.Storable (Storable, peek, poke, sizeOf)
-import Libzmq qualified
+import Libzmq.Bindings qualified as Libzmq
 import System.Posix.Types (Fd (..))
 import UnliftIO
 import Zmqhs.Context (Context (..))

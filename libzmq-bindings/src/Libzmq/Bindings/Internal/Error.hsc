@@ -1,4 +1,4 @@
-module Libzmq.Error where
+module Libzmq.Bindings.Internal.Error where
 
 import Foreign.C (CInt (..))
 import Foreign.C.String (CString)
