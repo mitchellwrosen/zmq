@@ -86,6 +86,10 @@ pattern ZMQ_THREAD_SCHED_POLICY <-
   ZMQ_THREAD_SCHED_POLICY
   #-}
 
+newtype Zmq_ctx_t
+  = Zmq_ctx_t (Ptr ())
+  deriving stock (Eq, Ord, Show)
+
 newtype Zmq_error
   = Zmq_error CInt
   deriving stock (Eq, Ord)
@@ -271,10 +275,6 @@ pattern ETIMEDOUT <-
   ETERM,
   ETIMEDOUT
   #-}
-
-newtype Zmq_ctx_t
-  = Zmq_ctx_t (Ptr ())
-  deriving stock (Eq, Ord, Show)
 
 newtype Zmq_msg_t
   = Zmq_msg_t (Ptr Libzmq.Bindings.Zmq_msg_t)

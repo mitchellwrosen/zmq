@@ -44,7 +44,46 @@ module Libzmq
     zmq_socket_monitor,
 
     -- * Types
-    Zmq_ctx_t (..),
+    Zmq_ctx_option
+      ( Zmq_ctx_option,
+        ZMQ_BLOCKY,
+        ZMQ_IO_THREADS,
+        ZMQ_IPV6,
+        ZMQ_MAX_MSGSZ,
+        ZMQ_MAX_SOCKETS,
+        ZMQ_MSG_T_SIZE,
+        ZMQ_SOCKET_LIMIT,
+        ZMQ_THREAD_NAME_PREFIX,
+        ZMQ_THREAD_SCHED_POLICY
+      ),
+    Zmq_ctx_t,
+    Zmq_error
+      ( Zmq_error,
+        EADDRINUSE,
+        EADDRNOTAVAIL,
+        EAFNOSUPPORT,
+        ECONNABORTED,
+        ECONNREFUSED,
+        ECONNRESET,
+        EFSM,
+        EHOSTUNREACH,
+        EINPROGRESS,
+        EMSGSIZE,
+        EMTHREAD,
+        ENETDOWN,
+        ENETRESET,
+        ENETUNREACH,
+        ENOBUFS,
+        ENOCOMPATPROTO,
+        ENOTCONN,
+        ENOTSOCK,
+        ENOTSUP,
+        EPROTONOSUPPORT,
+        ETERM,
+        ETIMEDOUT
+      ),
+    Zmq_msg_t,
+    Zmq_socket_t,
   )
 where
 
