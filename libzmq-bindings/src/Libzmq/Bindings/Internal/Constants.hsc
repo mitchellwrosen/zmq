@@ -562,6 +562,21 @@ _ZMQ_PROTOCOL_ERROR_ZMTP_UNSPECIFIED :: CInt
 _ZMQ_PROTOCOL_ERROR_ZMTP_UNSPECIFIED = #const ZMQ_PROTOCOL_ERROR_ZMTP_UNSPECIFIED
 
 ------------------------------------------------------------------------------------------------------------------------
+-- Protocol errors
+
+_ZMQ_POLLIN :: CInt
+_ZMQ_POLLIN = #const ZMQ_POLLIN
+
+_ZMQ_POLLOUT :: CInt
+_ZMQ_POLLOUT = #const ZMQ_POLLOUT
+
+_ZMQ_POLLERR :: CInt
+_ZMQ_POLLERR = #const ZMQ_POLLERR
+
+_ZMQ_POLLPRI :: CInt
+_ZMQ_POLLPRI = #const ZMQ_POLLPRI
+
+------------------------------------------------------------------------------------------------------------------------
 -- Probe library capabilities
 
 _ZMQ_HAS_CAPABILITIES :: CInt

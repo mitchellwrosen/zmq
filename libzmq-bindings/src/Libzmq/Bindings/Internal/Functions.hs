@@ -1,8 +1,8 @@
 module Libzmq.Bindings.Internal.Functions (module Libzmq.Bindings.Internal.Functions) where
 
-import Foreign.C.Types (CChar (..), CInt (..), CSize (..))
+import Foreign.C.Types (CChar (..), CInt (..), CLong (..), CSize (..))
 import Foreign.Ptr (Ptr)
-import Libzmq.Bindings.Internal.Types (Zmq_msg_t)
+import Libzmq.Bindings.Internal.Types (Zmq_msg_t, Zmq_pollitem_t)
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Context
@@ -228,3 +228,18 @@ foreign import capi unsafe "zmq.h zmq_socket"
 -- http://api.zeromq.org/master:zmq-unbind
 foreign import capi unsafe "zmq.h zmq_unbind"
   zmq_unbind :: Ptr socket -> Ptr CChar -> IO CInt
+
+------------------------------------------------------------------------------------------------------------------------
+-- I/O multiplexing
+
+-- | Input/output multiplexing.
+--
+-- http://api.zeromq.org/master:zmq-poll
+foreign import capi safe "zmq.h zmq_poll"
+  zmq_poll :: Ptr Zmq_pollitem_t -> CInt -> CLong -> IO CInt
+
+-- | Input/output multiplexing (unsafe FFI).
+--
+-- http://api.zeromq.org/master:zmq-poll
+foreign import capi safe "zmq.h zmq_poll"
+  zmq_poll__unsafe :: Ptr Zmq_pollitem_t -> CInt -> CLong -> IO CInt

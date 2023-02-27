@@ -43,8 +43,14 @@ module Libzmq.Bindings
     zmq_recv__unsafe,
     zmq_socket_monitor,
 
+    -- ** Input/output multiplexing
+    zmq_poll,
+    zmq_poll__unsafe,
+
     -- * Types
+    Zmq_fd_t,
     Zmq_msg_t,
+    Zmq_pollitem_t,
 
     -- * Constants
 
@@ -244,6 +250,12 @@ module Libzmq.Bindings
     _ZMQ_PROTOCOL_ERROR_ZMTP_MECHANISM_MISMATCH,
     _ZMQ_PROTOCOL_ERROR_ZMTP_UNEXPECTED_COMMAND,
     _ZMQ_PROTOCOL_ERROR_ZMTP_UNSPECIFIED,
+
+    -- ** I/O multiplexing
+    _ZMQ_POLLIN,
+    _ZMQ_POLLOUT,
+    _ZMQ_POLLERR,
+    _ZMQ_POLLPRI,
 
     -- ** Probe library capabilities
     _ZMQ_HAS_CAPABILITIES,
