@@ -2,7 +2,7 @@ module Libzmq.Functions (module Libzmq.Functions) where
 
 import Foreign.C.Types (CChar (..), CInt (..), CSize (..))
 import Foreign.Ptr (Ptr)
-import Libzmq.Types (Zmq_ctx_t, Zmq_msg_t, Zmq_socket_t)
+import Libzmq.Types (Zmq_msg_t)
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Context
@@ -11,31 +11,31 @@ import Libzmq.Types (Zmq_ctx_t, Zmq_msg_t, Zmq_socket_t)
 --
 -- http://api.zeromq.org/master:zmq-ctx-get
 foreign import capi unsafe "zmq.h zmq_ctx_get"
-  zmq_ctx_get :: Ptr Zmq_ctx_t -> CInt -> IO CInt
+  zmq_ctx_get :: Ptr context -> CInt -> IO CInt
 
 -- | Create a new ØMQ context.
 --
 -- http://api.zeromq.org/master:zmq-ctx-new
 foreign import capi unsafe "zmq.h zmq_ctx_new"
-  zmq_ctx_new :: IO (Ptr Zmq_ctx_t)
+  zmq_ctx_new :: IO (Ptr context)
 
 -- | Set a ØMQ context option.
 --
 -- http://api.zeromq.org/master:zmq-ctx-set
 foreign import capi unsafe "zmq.h zmq_ctx_set"
-  zmq_ctx_set :: Ptr Zmq_ctx_t -> CInt -> CInt -> IO CInt
+  zmq_ctx_set :: Ptr context -> CInt -> CInt -> IO CInt
 
 -- | Shutdown a ØMQ context.
 --
 -- http://api.zeromq.org/master:zmq-ctx-shutdown
 foreign import capi unsafe "zmq.h zmq_ctx_shutdown"
-  zmq_ctx_shutdown :: Ptr Zmq_ctx_t -> IO CInt
+  zmq_ctx_shutdown :: Ptr context -> IO CInt
 
 -- | Terminate a ØMQ context.
 --
 -- http://api.zeromq.org/master:zmq-ctx-term
 foreign import capi safe "zmq.h zmq_ctx_term"
-  zmq_ctx_term :: Ptr Zmq_ctx_t -> IO CInt
+  zmq_ctx_term :: Ptr context -> IO CInt
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Message
@@ -102,25 +102,25 @@ foreign import capi unsafe "zmq.h zmq_msg_move"
 --
 -- http://api.zeromq.org/master:zmq-msg-recv
 foreign import capi safe "zmq.h zmq_msg_recv"
-  zmq_msg_recv :: Ptr Zmq_msg_t -> Ptr Zmq_socket_t -> CInt -> IO CInt
+  zmq_msg_recv :: Ptr Zmq_msg_t -> Ptr socket -> CInt -> IO CInt
 
 -- | Receive a ØMQ message from a ØMQ socket (unsafe FFI).
 --
 -- http://api.zeromq.org/master:zmq-msg-recv
 foreign import capi unsafe "zmq.h zmq_msg_recv"
-  zmq_msg_recv__unsafe :: Ptr Zmq_msg_t -> Ptr Zmq_socket_t -> CInt -> IO CInt
+  zmq_msg_recv__unsafe :: Ptr Zmq_msg_t -> Ptr socket -> CInt -> IO CInt
 
 -- | Send a ØMQ message on a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-msg-send
 foreign import capi safe "zmq.h zmq_msg_send"
-  zmq_msg_send :: Ptr Zmq_msg_t -> Ptr Zmq_socket_t -> CInt -> IO CInt
+  zmq_msg_send :: Ptr Zmq_msg_t -> Ptr socket -> CInt -> IO CInt
 
 -- | Send a ØMQ message on a ØMQ socket (unsafe FFI).
 --
 -- http://api.zeromq.org/master:zmq-msg-send
 foreign import capi unsafe "zmq.h zmq_msg_send"
-  zmq_msg_send__unsafe :: Ptr Zmq_msg_t -> Ptr Zmq_socket_t -> CInt -> IO CInt
+  zmq_msg_send__unsafe :: Ptr Zmq_msg_t -> Ptr socket -> CInt -> IO CInt
 
 -- | Set a ØMQ message property.
 --
@@ -133,3 +133,98 @@ foreign import capi unsafe "zmq.h zmq_msg_set"
 -- http://api.zeromq.org/master:zmq-msg-size
 foreign import capi unsafe "zmq.h zmq_msg_size"
   zmq_msg_size :: Ptr Zmq_msg_t -> IO CSize
+
+------------------------------------------------------------------------------------------------------------------------
+-- Socket
+
+-- | Accept incoming connections on a ØMQ socket.
+--
+-- http://api.zeromq.org/master:zmq-bind
+foreign import capi unsafe "zmq.h zmq_bind"
+  zmq_bind :: Ptr socket -> Ptr CChar -> IO CInt
+
+-- | Close a ØMQ socket.
+--
+-- http://api.zeromq.org/master:zmq-close
+foreign import capi unsafe "zmq.h zmq_close"
+  zmq_close :: Ptr socket -> IO CInt
+
+-- | Create an outgoing connection from a ØMQ socket.
+--
+-- http://api.zeromq.org/master:zmq-connect
+foreign import capi safe "zmq.h zmq_connect"
+  -- N.B. use safe FFI because it's not totally clear if some transports or socket types block
+  zmq_connect :: Ptr socket -> Ptr CChar -> IO CInt
+
+-- | Disconnect a ØMQ socket.
+--
+-- http://api.zeromq.org/master:zmq-disconnect
+foreign import capi unsafe "zmq.h zmq_disconnect"
+  zmq_disconnect :: Ptr socket -> Ptr CChar -> IO CInt
+
+-- | Get a ØMQ socket option.
+--
+-- http://api.zeromq.org/master:zmq-getsockopt
+foreign import capi unsafe "zmq.h zmq_getsockopt"
+  zmq_getsockopt :: Ptr socket -> CInt -> Ptr value -> Ptr CSize -> IO CInt
+
+-- | Monitor a ØMQ socket's events.
+--
+-- http://api.zeromq.org/master:zmq-socket-monitor
+foreign import capi safe "zmq.h zmq_socket_monitor"
+  -- N.B. use safe FFI because it's unclear how much work this function does
+  zmq_socket_monitor :: Ptr socket -> Ptr CChar -> CInt -> IO CInt
+
+-- | Receive a message from a ØMQ socket.
+--
+-- http://api.zeromq.org/master:zmq-recv
+foreign import capi safe "zmq.h zmq_recv"
+  zmq_recv :: Ptr socket -> Ptr buffer -> CSize -> CInt -> IO CInt
+
+-- | Receive a message from a ØMQ socket (unsafe FFI).
+--
+-- http://api.zeromq.org/master:zmq-recv
+foreign import capi unsafe "zmq.h zmq_recv"
+  zmq_recv__unsafe :: Ptr socket -> Ptr buffer -> CSize -> CInt -> IO CInt
+
+-- | Send a message on a ØMQ socket.
+--
+-- http://api.zeromq.org/master:zmq-send
+foreign import capi safe "zmq.h zmq_send"
+  zmq_send :: Ptr socket -> Ptr buffer -> CSize -> CInt -> IO CInt
+
+-- | Send a message on a ØMQ socket (unsafe FFI).
+--
+-- http://api.zeromq.org/master:zmq-send
+foreign import capi safe "zmq.h zmq_send"
+  zmq_send__unsafe :: Ptr socket -> Ptr buffer -> CSize -> CInt -> IO CInt
+
+-- | Send a constant-memory message on a ØMQ socket.
+--
+-- http://api.zeromq.org/master:zmq-send-const
+foreign import capi safe "zmq.h zmq_send_const"
+  zmq_send_const :: Ptr socket -> Ptr buffer -> CSize -> CInt -> IO CInt
+
+-- | Send a constant-memory message on a ØMQ socket (unsafe FFI).
+--
+-- http://api.zeromq.org/master:zmq-send-const
+foreign import capi safe "zmq.h zmq_send_const"
+  zmq_send_const__unsafe :: Ptr socket -> Ptr buffer -> CSize -> CInt -> IO CInt
+
+-- | Set a ØMQ socket option.
+--
+-- http://api.zeromq.org/master:zmq-setsockopt
+foreign import capi unsafe "zmq.h zmq_setsockopt"
+  zmq_setsockopt :: Ptr socket -> CInt -> Ptr value -> CSize -> IO CInt
+
+-- | Create a ØMQ socket.
+--
+-- http://api.zeromq.org/master:zmq-socket
+foreign import capi unsafe "zmq.h zmq_socket"
+  zmq_socket :: Ptr context -> CInt -> IO (Ptr socket)
+
+-- | Stop accepting connections on a ØMQ socket.
+--
+-- http://api.zeromq.org/master:zmq-unbind
+foreign import capi unsafe "zmq.h zmq_unbind"
+  zmq_unbind :: Ptr socket -> Ptr CChar -> IO CInt

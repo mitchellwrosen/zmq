@@ -26,8 +26,24 @@ module Libzmq
     zmq_msg_set,
     zmq_msg_gets,
 
+    -- ** Socket
+    zmq_socket,
+    zmq_close,
+    zmq_setsockopt,
+    zmq_getsockopt,
+    zmq_bind,
+    zmq_connect,
+    zmq_unbind,
+    zmq_disconnect,
+    zmq_send,
+    zmq_send__unsafe,
+    zmq_send_const,
+    zmq_send_const__unsafe,
+    zmq_recv,
+    zmq_recv__unsafe,
+    zmq_socket_monitor,
+
     -- * Types
-    Zmq_ctx_t,
     Zmq_msg_t,
 
     -- * Constants
@@ -234,14 +250,10 @@ module Libzmq
 
     -- * Error
     module Libzmq.Error,
-
-    -- * Socket
-    module Libzmq.Socket,
   )
 where
 
 import Libzmq.Constants
 import Libzmq.Error
 import Libzmq.Functions
-import Libzmq.Socket
 import Libzmq.Types

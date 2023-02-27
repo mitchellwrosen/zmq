@@ -16,7 +16,6 @@ library
     Libzmq.Constants
     Libzmq.Error
     Libzmq.Functions
-    Libzmq.Socket
     Libzmq.Types
   ghc-options:
     -Weverything
