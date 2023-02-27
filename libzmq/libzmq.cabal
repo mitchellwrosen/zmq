@@ -2,6 +2,7 @@ cabal-version: 3.0
 
 name: libzmq
 version: 0
+description: zeromq 4.3.4 bindings
 
 library
   build-depends:

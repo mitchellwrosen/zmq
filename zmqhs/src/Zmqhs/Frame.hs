@@ -29,7 +29,7 @@ withTemporaryFrame f =
 -- | Returns whether this is the last frame in the message.
 isLastFrame :: MonadIO m => Frame -> m Bool
 isLastFrame frame = liftIO do
-  ( /= 1 ) <$> Libzmq.getFrameProperty ( unFrame frame ) Libzmq.more
+  ( /= 1 ) <$> Libzmq.getFrameProperty ( unFrame frame ) Libzmq.zMQ_MORE
 
 -- | Copy the bytes out of a frame
 copyFrameBytes :: MonadIO m => Frame -> m ByteString

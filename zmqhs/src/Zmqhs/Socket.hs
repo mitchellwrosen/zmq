@@ -64,10 +64,10 @@ open context socketType = liftIO do
   where
     socketTypeToCInt :: SocketType -> CInt
     socketTypeToCInt = \case
-      Pub -> Libzmq.pub
-      Sub -> Libzmq.sub
-      XPub -> Libzmq.xpub
-      XSub -> Libzmq.xsub
+      Pub -> Libzmq.zMQ_PUB
+      Sub -> Libzmq.zMQ_SUB
+      XPub -> Libzmq.zMQ_XPUB
+      XSub -> Libzmq.zMQ_XSUB
 
 -- | <http://api.zeromq.org/4-3:zmq-close>
 close :: MonadIO m => Socket -> m ()
@@ -147,11 +147,11 @@ disconnect sock endpoint = liftIO do
 
 getSocketEvents :: Socket -> IO CInt
 getSocketEvents =
-  getIntSocketOption Libzmq.events
+  getIntSocketOption Libzmq.zMQ_EVENTS
 
 getSocketFd :: Socket -> IO Fd
 getSocketFd socket =
-  Fd <$> getIntSocketOption Libzmq.fd socket
+  Fd <$> getIntSocketOption Libzmq.zMQ_FD socket
 
 getIntSocketOption :: CInt -> Socket -> IO CInt
 getIntSocketOption option socket =
@@ -178,7 +178,7 @@ getSocketOption socket option valPtr sizePtr =
 --   * @ENOTSOCK@ if the socket is invalid.
 setSocketSubscribe :: MonadIO m => Socket -> ByteString -> m ()
 setSocketSubscribe =
-  setBinarySocketOption Libzmq.subscribe
+  setBinarySocketOption Libzmq.zMQ_SUBSCRIBE
 
 -- | <http://api.zeromq.org/4-3:zmq-setsockopt>
 --
@@ -188,7 +188,7 @@ setSocketSubscribe =
 --   * @ENOTSOCK@ if the socket is invalid.
 setSocketUnsubscribe :: MonadIO m => Socket -> ByteString -> m ()
 setSocketUnsubscribe =
-  setBinarySocketOption Libzmq.unsubscribe
+  setBinarySocketOption Libzmq.zMQ_UNSUBSCRIBE
 
 setBinarySocketOption :: MonadIO m => CInt -> Socket -> ByteString -> m ()
 setBinarySocketOption option sock bytes = liftIO do
@@ -223,7 +223,7 @@ send socket ( toList -> messages0 ) = liftIO do
       sendFrame socket message 0
 
     message : messages -> do
-      sendFrame socket message ( Libzmq.dontwait .|. Libzmq.sndmore )
+      sendFrame socket message ( Libzmq.zMQ_DONTWAIT .|. Libzmq.zMQ_SNDMORE )
       loop messages
 
     [] ->
@@ -279,15 +279,15 @@ receiveFrame_ frame socket =
       _len -> copyFrameBytes frame
   where
     doReceiveFrame =
-      Libzmq.receiveFrame ( unFrame frame ) ( unSocket socket ) Libzmq.dontwait
+      Libzmq.receiveFrame ( unFrame frame ) ( unSocket socket ) Libzmq.zMQ_DONTWAIT
 
 waitUntilCanReceive :: Socket -> IO ()
 waitUntilCanReceive =
-  waitUntilCan Libzmq.pollin
+  waitUntilCan 1 -- FIXME use zmq_poller api, not deprecated ZMQ_POLLIN
 
 waitUntilCanSend :: Socket -> IO ()
 waitUntilCanSend =
-  waitUntilCan Libzmq.pollout
+  waitUntilCan 2 -- FIXME use zmq_poller api, not deprecated ZMQ_POLLOUT
 
 waitUntilCan :: CInt -> Socket -> IO ()
 waitUntilCan events socket = do

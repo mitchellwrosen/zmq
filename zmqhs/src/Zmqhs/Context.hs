@@ -52,20 +52,20 @@ withContext =
 -- | <http://api.zeromq.org/4-3:zmq-ctx-set>
 setContextIoThreads :: MonadIO m => Context -> Natural -> m ()
 setContextIoThreads context n =
-  setContextOption context Libzmq.ioThreads ( fromIntegral n )
+  setContextOption context Libzmq.zMQ_IO_THREADS ( fromIntegral n )
 
 -- | <http://api.zeromq.org/4-3:zmq-ctx-set>
 setContextMaxMessageSize :: MonadIO m => Context -> Natural -> m ()
 setContextMaxMessageSize context n =
   setContextOption
     context
-    Libzmq.maxMsgsz
+    Libzmq.zMQ_MAX_MSGSZ
     ( fromIntegral ( min n ( fromIntegral ( maxBound :: CInt ) ) ) )
 
 -- | <http://api.zeromq.org/4-3:zmq-ctx-set>
 setContextMaxSockets :: MonadIO m => Context -> Natural -> m ()
 setContextMaxSockets context n =
-  setContextOption context Libzmq.maxSockets ( fromIntegral n )
+  setContextOption context Libzmq.zMQ_MAX_SOCKETS ( fromIntegral n )
 
 setContextOption :: MonadIO m => Context -> CInt -> CInt -> m ()
 setContextOption context option value = liftIO do

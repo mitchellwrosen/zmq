@@ -1,32 +1,27 @@
 module Libzmq.Socket
-  ( Socket
-  , socket
-  , close
-
-  , bind
-  , unbind
-
-  , connect
-  , disconnect
-
-  , send
-  , receiveFrame
-
-  , getSocketOption
-  , setSocketOption
-  ) where
+  ( Socket,
+    socket,
+    close,
+    bind,
+    unbind,
+    connect,
+    disconnect,
+    send,
+    receiveFrame,
+    getSocketOption,
+    setSocketOption,
+  )
+where
 
 import Foreign.C
 import Foreign.Ptr
-
 import Libzmq.Context (Context)
 import Libzmq.Frame (Frame)
-
 
 data Socket
 
 foreign import ccall unsafe "zmq_socket"
-  socket :: Ptr Context -> CInt -> IO ( Ptr Socket )
+  socket :: Ptr Context -> CInt -> IO (Ptr Socket)
 
 foreign import ccall unsafe "zmq_close"
   close :: Ptr Socket -> IO ()
