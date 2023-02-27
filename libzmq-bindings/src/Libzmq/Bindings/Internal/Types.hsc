@@ -12,6 +12,7 @@ import Foreign.Storable (Storable (..))
 -- | A ØMQ message.
 newtype Zmq_msg_t
   = Zmq_msg_t (Ptr CChar)
+  deriving stock (Eq, Ord, Show)
 
 instance Storable Zmq_msg_t where
   alignment _ = #{alignment zmq_msg_t}

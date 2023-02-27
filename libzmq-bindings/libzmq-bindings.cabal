@@ -10,6 +10,8 @@ library
   build-tool-depends: hsc2hs:hsc2hs ^>= 0.68
   default-extensions:
     CApiFFI
+  default-extensions:
+    DerivingStrategies
   default-language: GHC2021
   exposed-modules:
     Libzmq.Bindings

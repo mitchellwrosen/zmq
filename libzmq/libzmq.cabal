@@ -8,6 +8,12 @@ library
   build-depends:
     base,
     libzmq-bindings,
+  default-extensions:
+    BlockArguments
+    DerivingStrategies
+    LambdaCase
+    PatternSynonyms
+    ViewPatterns
   default-language: GHC2021
   exposed-modules:
     Libzmq

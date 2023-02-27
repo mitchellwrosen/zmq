@@ -42,6 +42,9 @@ module Libzmq
     zmq_recv,
     zmq_recv__unsafe,
     zmq_socket_monitor,
+
+    -- * Types
+    Zmq_ctx_t (..),
   )
 where
 
