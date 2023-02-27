@@ -1,5 +1,7 @@
 module Libzmq.Internal.Types (module Libzmq.Internal.Types) where
 
+import Data.Coerce
+import Foreign.C.Error
 import Foreign.C.Types (CInt)
 import Foreign.Ptr (Ptr)
 import Libzmq.Bindings qualified
@@ -102,12 +104,18 @@ instance Show Zmq_error where
     EADDRINUSE -> "EADDRINUSE"
     EADDRNOTAVAIL -> "EADDRNOTAVAIL"
     EAFNOSUPPORT -> "EAFNOSUPPORT"
+    EAGAIN -> "EAGAIN"
+    EBADF -> "EBADF"
     ECONNABORTED -> "ECONNABORTED"
     ECONNREFUSED -> "ECONNREFUSED"
     ECONNRESET -> "ECONNRESET"
+    EFAULT -> "EFAULT"
     EFSM -> "EFSM"
     EHOSTUNREACH -> "EHOSTUNREACH"
     EINPROGRESS -> "EINPROGRESS"
+    EINTR -> "EINTR"
+    EINVAL -> "EINVAL"
+    EMFILE -> "EMFILE"
     EMSGSIZE -> "EMSGSIZE"
     EMTHREAD -> "EMTHREAD"
     ENETDOWN -> "ENETDOWN"
@@ -115,6 +123,9 @@ instance Show Zmq_error where
     ENETUNREACH -> "ENETUNREACH"
     ENOBUFS -> "ENOBUFS"
     ENOCOMPATPROTO -> "ENOCOMPATPROTO"
+    ENODEV -> "ENODEV"
+    ENOENT -> "ENOENT"
+    ENOMEM -> "ENOMEM"
     ENOTCONN -> "ENOTCONN"
     ENOTSOCK -> "ENOTSOCK"
     ENOTSUP -> "ENOTSUP"
@@ -140,6 +151,18 @@ pattern EAFNOSUPPORT <-
   where
     EAFNOSUPPORT = Zmq_error Libzmq.Bindings._EAFNOSUPPORT
 
+pattern EAGAIN :: Zmq_error
+pattern EAGAIN <-
+  ((== Zmq_error (coerce @Errno @CInt eAGAIN)) -> True)
+  where
+    EAGAIN = Zmq_error (coerce @Errno @CInt eAGAIN)
+
+pattern EBADF :: Zmq_error
+pattern EBADF <-
+  ((== Zmq_error (coerce @Errno @CInt eBADF)) -> True)
+  where
+    EBADF = Zmq_error (coerce @Errno @CInt eBADF)
+
 pattern ECONNABORTED :: Zmq_error
 pattern ECONNABORTED <-
   ((== Zmq_error Libzmq.Bindings._ECONNABORTED) -> True)
@@ -158,6 +181,12 @@ pattern ECONNRESET <-
   where
     ECONNRESET = Zmq_error Libzmq.Bindings._ECONNRESET
 
+pattern EFAULT :: Zmq_error
+pattern EFAULT <-
+  ((== Zmq_error (coerce @Errno @CInt eFAULT)) -> True)
+  where
+    EFAULT = Zmq_error (coerce @Errno @CInt eFAULT)
+
 pattern EFSM :: Zmq_error
 pattern EFSM <-
   ((== Zmq_error Libzmq.Bindings._EFSM) -> True)
@@ -175,6 +204,24 @@ pattern EINPROGRESS <-
   ((== Zmq_error Libzmq.Bindings._EINPROGRESS) -> True)
   where
     EINPROGRESS = Zmq_error Libzmq.Bindings._EINPROGRESS
+
+pattern EINTR :: Zmq_error
+pattern EINTR <-
+  ((== Zmq_error (coerce @Errno @CInt eINTR)) -> True)
+  where
+    EINTR = Zmq_error (coerce @Errno @CInt eINTR)
+
+pattern EINVAL :: Zmq_error
+pattern EINVAL <-
+  ((== Zmq_error (coerce @Errno @CInt eINVAL)) -> True)
+  where
+    EINVAL = Zmq_error (coerce @Errno @CInt eINVAL)
+
+pattern EMFILE :: Zmq_error
+pattern EMFILE <-
+  ((== Zmq_error (coerce @Errno @CInt eMFILE)) -> True)
+  where
+    EMFILE = Zmq_error (coerce @Errno @CInt eMFILE)
 
 pattern EMSGSIZE :: Zmq_error
 pattern EMSGSIZE <-
@@ -218,6 +265,24 @@ pattern ENOCOMPATPROTO <-
   where
     ENOCOMPATPROTO = Zmq_error Libzmq.Bindings._ENOCOMPATPROTO
 
+pattern ENODEV :: Zmq_error
+pattern ENODEV <-
+  ((== Zmq_error (coerce @Errno @CInt eNODEV)) -> True)
+  where
+    ENODEV = Zmq_error (coerce @Errno @CInt eNODEV)
+
+pattern ENOENT :: Zmq_error
+pattern ENOENT <-
+  ((== Zmq_error (coerce @Errno @CInt eNOENT)) -> True)
+  where
+    ENOENT = Zmq_error (coerce @Errno @CInt eNOENT)
+
+pattern ENOMEM :: Zmq_error
+pattern ENOMEM <-
+  ((== Zmq_error (coerce @Errno @CInt eNOMEM)) -> True)
+  where
+    ENOMEM = Zmq_error (coerce @Errno @CInt eNOMEM)
+
 pattern ENOTCONN :: Zmq_error
 pattern ENOTCONN <-
   ((== Zmq_error Libzmq.Bindings._ENOTCONN) -> True)
@@ -254,18 +319,22 @@ pattern ETIMEDOUT <-
   where
     ETIMEDOUT = Zmq_error Libzmq.Bindings._ETIMEDOUT
 
--- FIXME are these all the errors possible?
-
 {-# COMPLETE
   EADDRINUSE,
   EADDRNOTAVAIL,
   EAFNOSUPPORT,
+  EAGAIN,
+  EBADF,
   ECONNABORTED,
   ECONNREFUSED,
   ECONNRESET,
+  EFAULT,
   EFSM,
   EHOSTUNREACH,
   EINPROGRESS,
+  EINTR,
+  EINVAL,
+  EMFILE,
   EMSGSIZE,
   EMTHREAD,
   ENETDOWN,
@@ -273,6 +342,9 @@ pattern ETIMEDOUT <-
   ENETUNREACH,
   ENOBUFS,
   ENOCOMPATPROTO,
+  ENODEV,
+  ENOENT,
+  ENOMEM,
   ENOTCONN,
   ENOTSOCK,
   ENOTSUP,
