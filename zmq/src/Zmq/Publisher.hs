@@ -1,7 +1,5 @@
 module Zmq.Publisher
   ( Publisher,
-    open,
-    close,
     with,
     bind,
     unbind,
@@ -12,51 +10,39 @@ module Zmq.Publisher
 where
 
 import Data.ByteString (ByteString)
+import Data.Coerce (coerce)
 import Data.List.NonEmpty (NonEmpty)
+import Libzmq qualified
 import UnliftIO
 import Zmq.Context
 import Zmq.Endpoint
-import Zmq.Internal (renderEndpoint)
-import Zmqhs qualified
+import Zmq.Error (Error)
+import Zmq.Internal.Socket qualified
 
-newtype Publisher = Publisher {unPublisher :: MVar Zmqhs.Socket}
+newtype Publisher
+  = Publisher (MVar Libzmq.Zmq_socket_t)
   deriving stock (Eq)
 
-open :: MonadIO m => Context -> m Publisher
-open context = do
-  sock <- Zmqhs.open context Zmqhs.Pub
-  sockVar <- newMVar sock
-  pure (Publisher sockVar)
+with :: forall a. Context -> (Publisher -> IO (Either Error a)) -> IO (Either Error a)
+with =
+  coerce @(Context -> (MVar Libzmq.Zmq_socket_t -> IO (Either Error a)) -> IO (Either Error a)) Zmq.Internal.Socket.with
 
-close :: MonadUnliftIO m => Publisher -> m ()
-close publisher =
-  withMVar (unPublisher publisher) Zmqhs.close
+bind :: Publisher -> Endpoint transport -> IO (Either Error ())
+bind =
+  coerce Zmq.Internal.Socket.bind
 
-with :: MonadUnliftIO m => Context -> (Publisher -> m a) -> m a
-with context =
-  bracket (open context) close
+unbind :: Publisher -> Endpoint transport -> IO (Either Error ())
+unbind =
+  coerce Zmq.Internal.Socket.unbind
 
-bind :: MonadUnliftIO m => Publisher -> Endpoint transport -> m ()
-bind publisher endpoint =
-  withMVar (unPublisher publisher) \sock ->
-    Zmqhs.bind sock (renderEndpoint endpoint)
+connect :: Publisher -> Endpoint transport -> IO (Either Error ())
+connect =
+  coerce Zmq.Internal.Socket.connect
 
-unbind :: MonadUnliftIO m => Publisher -> Endpoint transport -> m ()
-unbind publisher endpoint =
-  withMVar (unPublisher publisher) \sock ->
-    Zmqhs.unbind sock (renderEndpoint endpoint)
+disconnect :: Publisher -> Endpoint transport -> IO (Either Error ())
+disconnect =
+  coerce Zmq.Internal.Socket.disconnect
 
-connect :: MonadUnliftIO m => Publisher -> Endpoint transport -> m ()
-connect publisher endpoint = liftIO do
-  withMVar (unPublisher publisher) \sock ->
-    Zmqhs.connect sock (renderEndpoint endpoint)
-
-disconnect :: MonadUnliftIO m => Publisher -> Endpoint transport -> m ()
-disconnect publisher endpoint =
-  withMVar (unPublisher publisher) \sock ->
-    Zmqhs.disconnect sock (renderEndpoint endpoint)
-
-send :: MonadUnliftIO m => Publisher -> NonEmpty ByteString -> m ()
-send publisher message =
-  withMVar (unPublisher publisher) \sock ->
-    Zmqhs.send sock message
+send :: Publisher -> NonEmpty ByteString -> IO ()
+send =
+  coerce Zmq.Internal.Socket.send

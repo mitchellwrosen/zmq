@@ -34,13 +34,12 @@ library
   build-depends:
     base,
     bytestring,
+    libzmq,
     libzmq-bindings,
     text,
     unliftio,
   exposed-modules:
     Zmqhs
-    Zmqhs.Context
-    Zmqhs.Endpoint
     Zmqhs.Error
     Zmqhs.Frame
     -- TODO make this internal

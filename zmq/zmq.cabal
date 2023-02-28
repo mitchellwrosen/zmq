@@ -7,6 +7,7 @@ common component
   default-extensions:
     BlockArguments
     DataKinds
+    DeriveAnyClass
     DerivingStrategies
     LambdaCase
     OverloadedStrings
@@ -39,8 +40,10 @@ library
   build-depends:
     base,
     bytestring,
+    libzmq,
     libzmq-bindings,
     text,
+    transformers ^>= 0.6,
     unliftio,
     zmqhs,
   build-tool-depends: hsc2hs:hsc2hs ^>= 0.68,
@@ -54,7 +57,9 @@ library
   other-modules:
     Zmq.Context
     Zmq.Endpoint
+    Zmq.Error
     Zmq.Internal
+    Zmq.Internal.Socket
     Zmq.SubscriptionMessage
 
 executable zmq

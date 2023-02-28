@@ -1,7 +1,5 @@
 module Zmq.XSubscriber
   ( XSubscriber,
-    open,
-    close,
     with,
     bind,
     unbind,
@@ -14,66 +12,54 @@ module Zmq.XSubscriber
 where
 
 import Data.ByteString (ByteString)
+import Data.Coerce (coerce)
 import Data.List.NonEmpty (NonEmpty ((:|)))
+import Libzmq qualified
 import UnliftIO
 import Zmq.Context
 import Zmq.Endpoint
-import Zmq.Internal (renderEndpoint)
+import Zmq.Error (Error)
+import Zmq.Internal.Socket qualified
 import Zmq.SubscriptionMessage (SubscriptionMessage (..))
 import Zmq.SubscriptionMessage qualified as SubscriptionMessage
 import Zmqhs qualified
 
-newtype XSubscriber = XSubscriber {unXSubscriber :: MVar Zmqhs.Socket}
+newtype XSubscriber
+  = XSubscriber (MVar Libzmq.Zmq_socket_t)
   deriving stock (Eq)
 
-open :: MonadIO m => Context -> m XSubscriber
-open context = do
-  socket <- Zmqhs.open context Zmqhs.XSub
-  socketVar <- newMVar socket
-  pure (XSubscriber socketVar)
+with :: forall a. Context -> (XSubscriber -> IO (Either Error a)) -> IO (Either Error a)
+with =
+  coerce @(Context -> (MVar Libzmq.Zmq_socket_t -> IO (Either Error a)) -> IO (Either Error a)) Zmq.Internal.Socket.with
 
-close :: MonadUnliftIO m => XSubscriber -> m ()
-close subscriber =
-  withMVar (unXSubscriber subscriber) Zmqhs.close
+bind :: XSubscriber -> Endpoint transport -> IO (Either Error ())
+bind =
+  coerce Zmq.Internal.Socket.bind
 
-with :: MonadUnliftIO m => Context -> (XSubscriber -> m a) -> m a
-with context =
-  bracket (open context) close
+unbind :: XSubscriber -> Endpoint transport -> IO (Either Error ())
+unbind =
+  coerce Zmq.Internal.Socket.unbind
 
-bind :: MonadUnliftIO m => XSubscriber -> Endpoint transport -> m ()
-bind subscriber endpoint =
-  withMVar (unXSubscriber subscriber) \socket ->
-    Zmqhs.bind socket (renderEndpoint endpoint)
+connect :: XSubscriber -> Endpoint transport -> IO (Either Error ())
+connect =
+  coerce Zmq.Internal.Socket.connect
 
-unbind :: MonadUnliftIO m => XSubscriber -> Endpoint transport -> m ()
-unbind subscriber endpoint =
-  withMVar (unXSubscriber subscriber) \socket ->
-    Zmqhs.unbind socket (renderEndpoint endpoint)
+disconnect :: XSubscriber -> Endpoint transport -> IO (Either Error ())
+disconnect =
+  coerce Zmq.Internal.Socket.disconnect
 
-connect :: MonadUnliftIO m => XSubscriber -> Endpoint transport -> m ()
-connect subscriber endpoint =
-  withMVar (unXSubscriber subscriber) \socket ->
-    Zmqhs.connect socket (renderEndpoint endpoint)
+subscribe :: XSubscriber -> ByteString -> IO ()
+subscribe xsubscriber prefix =
+  send xsubscriber (Subscribe prefix)
 
-disconnect :: MonadUnliftIO m => XSubscriber -> Endpoint transport -> m ()
-disconnect subscriber endpoint =
-  withMVar (unXSubscriber subscriber) \socket ->
-    Zmqhs.disconnect socket (renderEndpoint endpoint)
+unsubscribe :: XSubscriber -> ByteString -> IO ()
+unsubscribe xsubscriber prefix =
+  send xsubscriber (Unsubscribe prefix)
 
-subscribe :: MonadUnliftIO m => XSubscriber -> ByteString -> m ()
-subscribe subscriber prefix =
-  send subscriber (Subscribe prefix)
+send :: XSubscriber -> SubscriptionMessage -> IO ()
+send (XSubscriber socketVar) message =
+  Zmq.Internal.Socket.send socketVar (SubscriptionMessage.serialize message :| [])
 
-unsubscribe :: MonadUnliftIO m => XSubscriber -> ByteString -> m ()
-unsubscribe subscriber prefix =
-  send subscriber (Unsubscribe prefix)
-
-send :: MonadUnliftIO m => XSubscriber -> SubscriptionMessage -> m ()
-send subscriber message =
-  withMVar (unXSubscriber subscriber) \socket ->
-    Zmqhs.send socket (SubscriptionMessage.serialize message :| [])
-
-receive :: MonadUnliftIO m => XSubscriber -> m (NonEmpty ByteString)
-receive subscriber =
-  withMVar (unXSubscriber subscriber) \socket ->
-    Zmqhs.receive socket
+receive :: XSubscriber -> IO (NonEmpty ByteString)
+receive =
+  coerce Zmq.Internal.Socket.receive

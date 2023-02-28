@@ -17,8 +17,6 @@ import Data.Text (Text)
 import qualified GHC.TypeLits as TypeLits
 #endif
 
-import qualified Zmqhs
-
 --------------------------------------------------------------------------------
 -- Compatible transport
 --------------------------------------------------------------------------------
@@ -76,21 +74,21 @@ deriving stock instance Show ( Endpoint transport )
 
 renderEndpoint
   :: Endpoint transport
-  -> Zmqhs.Endpoint
+  -> Text
 renderEndpoint = \case
 #if defined ZMQ_HAVE_OPENPGM
-  Epgm address -> Zmqhs.Endpoint ( "epgm://" <> address )
+  Epgm address -> "epgm://" <> address
 #endif
-  Inproc address -> Zmqhs.Endpoint ( "inproc://" <> address )
+  Inproc address -> "inproc://" <> address
 #if !defined ZMQ_HAVE_WINDOWS && !defined ZMQ_HAVE_OPENVMS && !defined ZMQ_HAVE_VXWORKS
-  Ipc address -> Zmqhs.Endpoint ( "ipc://" <> address )
+  Ipc address -> "ipc://" <> address
 #endif
 #if defined ZMQ_HAVE_OPENPGM
-  Pgm address -> Zmqhs.Endpoint ( "pgm://" <> address )
+  Pgm address -> "pgm://" <> address
 #endif
-  Tcp address -> Zmqhs.Endpoint ( "tcp://" <> address )
+  Tcp address -> "tcp://" <> address
 #if defined ZMQ_HAVE_VMCI
-  Vmci address -> Zmqhs.Endpoint ( "vmci://" <> address )
+  Vmci address -> "vmci://" <> address
 #endif
 
 

@@ -1,6 +1,10 @@
 module Libzmq
   ( -- * Functions
 
+    -- ** Error
+    zmq_errno,
+    zmq_strerror,
+
     -- ** Context
     zmq_ctx_new,
     zmq_ctx_term,
@@ -96,7 +100,7 @@ module Libzmq
         ZMQ_MORE,
         ZMQ_SHARED
       ),
-    Zmq_msg_t,
+    Zmq_msg_t (..),
     Zmq_socket_t,
     Zmq_socket_type
       ( Zmq_socket_type,

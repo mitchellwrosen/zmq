@@ -6,17 +6,25 @@ import Data.ByteString.Unsafe qualified as ByteString.Unsafe
 import Data.Coerce (coerce)
 import Data.Functor (void)
 import Data.Text (Text)
+import Data.Text.Encoding qualified as Text
 import Data.Text.Foreign qualified as Text
 import Data.Word (Word8)
 import Foreign.C.Types (CChar (..), CInt (..), CSize (..))
 import Foreign.Ptr (Ptr, castPtr, nullPtr)
 import Libzmq.Bindings qualified
 import Libzmq.Internal.Types (Zmq_ctx_option (..), Zmq_ctx_t (..), Zmq_error (..), Zmq_msg_option (..), Zmq_msg_t (..), Zmq_socket_t (..), Zmq_socket_type (..))
+import System.IO.Unsafe (unsafeDupablePerformIO)
 
--- FIXME place this somewhere
+------------------------------------------------------------------------------------------------------------------------
+-- Error
+
 zmq_errno :: IO Zmq_error
 zmq_errno =
   coerce Libzmq.Bindings.errno
+
+zmq_strerror :: Zmq_error -> Text
+zmq_strerror (Zmq_error err) =
+  Text.decodeUtf8 (unsafeDupablePerformIO (ByteString.Unsafe.unsafePackCString (Libzmq.Bindings.strerror err)))
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Context

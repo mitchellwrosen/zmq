@@ -1,43 +1,26 @@
 module Zmqhs.Frame
-  ( Frame (..),
-    withTemporaryFrame,
-    isLastFrame,
+  ( withTemporaryFrame,
     copyFrameBytes,
   )
 where
 
+import Control.Exception (bracket_)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as ByteString
 import Foreign.Marshal.Alloc (alloca)
-import Foreign.Ptr (Ptr)
-import Foreign.Storable (Storable)
-import Libzmq.Bindings qualified as Libzmq
-import UnliftIO
+import Libzmq qualified as Libzmq
 
-newtype Frame = Frame {unFrame :: Ptr Libzmq.Zmq_msg_t}
-
-withTemporaryFrame :: MonadUnliftIO m => (Frame -> m a) -> m a
+withTemporaryFrame :: (Libzmq.Zmq_msg_t -> IO a) -> IO a
 withTemporaryFrame f =
-  unliftedAlloca \frame ->
+  alloca \(Libzmq.Zmq_msg_t -> message) ->
     bracket_
-      (liftIO (Libzmq.zmq_msg_init frame))
-      (liftIO (Libzmq.zmq_msg_close frame))
-      (f (Frame frame))
-
--- | Returns whether this is the last frame in the message.
-isLastFrame :: MonadIO m => Frame -> m Bool
-isLastFrame frame = liftIO do
-  (/= 1) <$> Libzmq.zmq_msg_get (unFrame frame) Libzmq._ZMQ_MORE
+      (Libzmq.zmq_msg_init message)
+      (Libzmq.zmq_msg_close message)
+      (f message)
 
 -- | Copy the bytes out of a frame
-copyFrameBytes :: MonadIO m => Frame -> m ByteString
-copyFrameBytes frame = liftIO do
-  bytes <- Libzmq.zmq_msg_data (unFrame frame)
-  size <- Libzmq.zmq_msg_size (unFrame frame)
-  ByteString.packCStringLen (bytes, fromIntegral size)
-
-unliftedAlloca :: (MonadUnliftIO m, Storable a) => (Ptr a -> m b) -> m b
-unliftedAlloca f =
-  withRunInIO \unlift ->
-    alloca \ptr ->
-      unlift (f ptr)
+copyFrameBytes :: Libzmq.Zmq_msg_t -> IO ByteString
+copyFrameBytes message = do
+  bytes <- Libzmq.zmq_msg_data message
+  size <- Libzmq.zmq_msg_size message
+  ByteString.packCStringLen (bytes, size)
