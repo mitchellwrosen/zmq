@@ -9,6 +9,7 @@ import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
 import Data.Text.Foreign qualified as Text
 import Data.Word (Word8)
+import Foreign (Storable (peek), alloca)
 import Foreign.C.Types (CChar (..), CInt (..), CSize (..))
 import Foreign.Ptr (Ptr, castPtr, nullPtr)
 import Libzmq.Bindings qualified
@@ -18,13 +19,41 @@ import System.IO.Unsafe (unsafeDupablePerformIO)
 ------------------------------------------------------------------------------------------------------------------------
 -- Error
 
+-- | Get the ØMQ error number for the calling thread.
+--
+-- http://api.zeromq.org/master:zmq-errno
 zmq_errno :: IO Zmq_error
 zmq_errno =
-  coerce Libzmq.Bindings.errno
+  coerce Libzmq.Bindings.zmq_errno
 
+-- | Get the string of a ØMQ error number.
+--
+-- http://api.zeromq.org/master:zmq-strerror
 zmq_strerror :: Zmq_error -> Text
 zmq_strerror (Zmq_error err) =
-  Text.decodeUtf8 (unsafeDupablePerformIO (ByteString.Unsafe.unsafePackCString (Libzmq.Bindings.strerror err)))
+  Text.decodeUtf8 (unsafeDupablePerformIO (ByteString.Unsafe.unsafePackCString (Libzmq.Bindings.zmq_strerror err)))
+
+------------------------------------------------------------------------------------------------------------------------
+-- Version
+
+-- | The ØMQ library version.
+--
+-- http://api.zeromq.org/master:zmq-version
+zmq_version :: (Int, Int, Int)
+zmq_version =
+  unsafeDupablePerformIO do
+    alloca \px ->
+      alloca \py ->
+        alloca \pz -> do
+          Libzmq.Bindings.zmq_version px py pz
+          x <- peek px
+          y <- peek py
+          z <- peek pz
+          pure
+            ( fromIntegral @CInt @Int x,
+              fromIntegral @CInt @Int y,
+              fromIntegral @CInt @Int z
+            )
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Context

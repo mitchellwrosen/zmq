@@ -5,6 +5,9 @@ module Libzmq
     zmq_errno,
     zmq_strerror,
 
+    -- ** Version
+    zmq_version,
+
     -- ** Context
     zmq_ctx_new,
     zmq_ctx_term,

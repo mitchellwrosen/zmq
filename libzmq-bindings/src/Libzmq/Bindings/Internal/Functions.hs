@@ -1,8 +1,33 @@
 module Libzmq.Bindings.Internal.Functions (module Libzmq.Bindings.Internal.Functions) where
 
+import Foreign.C.String (CString)
 import Foreign.C.Types (CChar (..), CInt (..), CLong (..), CSize (..))
 import Foreign.Ptr (Ptr)
 import Libzmq.Bindings.Internal.Types (Zmq_msg_t, Zmq_pollitem_t)
+
+------------------------------------------------------------------------------------------------------------------------
+-- Error
+
+-- | Get the ØMQ error number for the calling thread.
+--
+-- http://api.zeromq.org/master:zmq-errno
+foreign import capi unsafe "zmq.h zmq_errno"
+  zmq_errno :: IO CInt
+
+-- | Get the string of a ØMQ error number.
+--
+-- http://api.zeromq.org/master:zmq-strerror
+foreign import capi unsafe "zmq.h zmq_strerror"
+  zmq_strerror :: CInt -> Ptr CChar
+
+------------------------------------------------------------------------------------------------------------------------
+-- Version
+
+-- | Get the ØMQ library version.
+--
+-- http://api.zeromq.org/master:zmq-version
+foreign import capi unsafe "zmq.h zmq_version"
+  zmq_version :: Ptr CInt -> Ptr CInt -> Ptr CInt -> IO ()
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Context
@@ -66,7 +91,7 @@ foreign import capi unsafe "zmq.h zmq_msg_data"
 --
 -- http://api.zeromq.org/master:zmq-msg-gets
 foreign import capi unsafe "zmq.h zmq_msg_gets"
-  zmq_msg_gets :: Ptr Zmq_msg_t -> Ptr CChar -> IO (Ptr CChar)
+  zmq_msg_gets :: Ptr Zmq_msg_t -> CString -> IO CString
 
 -- | Get a ØMQ message option.
 --

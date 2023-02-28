@@ -1,6 +1,13 @@
 module Libzmq.Bindings
   ( -- * Functions
 
+    -- ** Error
+    zmq_errno,
+    zmq_strerror,
+
+    -- ** Version
+    zmq_version,
+
     -- ** Context
     zmq_ctx_new,
     zmq_ctx_term,
@@ -259,13 +266,9 @@ module Libzmq.Bindings
 
     -- ** Probe library capabilities
     _ZMQ_HAS_CAPABILITIES,
-
-    -- * Error
-    module Libzmq.Bindings.Internal.Error,
   )
 where
 
 import Libzmq.Bindings.Internal.Constants
-import Libzmq.Bindings.Internal.Error
 import Libzmq.Bindings.Internal.Functions
 import Libzmq.Bindings.Internal.Types
