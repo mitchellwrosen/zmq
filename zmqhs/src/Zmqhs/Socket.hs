@@ -184,11 +184,11 @@ receiveFrame_ message socket =
 
 waitUntilCanReceive :: Libzmq.Zmq_socket_t -> IO ()
 waitUntilCanReceive =
-  waitUntilCan 1 -- FIXME use zmq_poller api, not deprecated ZMQ_POLLIN
+  waitUntilCan Libzmq.Bindings._ZMQ_POLLIN
 
 waitUntilCanSend :: Libzmq.Zmq_socket_t -> IO ()
 waitUntilCanSend =
-  waitUntilCan 2 -- FIXME use zmq_poller api, not deprecated ZMQ_POLLOUT
+  waitUntilCan Libzmq.Bindings._ZMQ_POLLOUT
 
 waitUntilCan :: CInt -> Libzmq.Zmq_socket_t -> IO ()
 waitUntilCan events socket = do
