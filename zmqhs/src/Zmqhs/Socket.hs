@@ -156,7 +156,7 @@ sendFrame socket message more =
 -- FIXME this is busted; shouldn't reuse frame for all parts
 receive :: Zmq_socket_t -> IO (NonEmpty ByteString)
 receive socket =
-  zmq_msg_with \frame ->
+  bracket zmq_msg_init zmq_msg_close \frame ->
     receive_ frame socket `finally` zmq_msg_close frame
 
 receive_ :: Zmq_msg_t -> Zmq_socket_t -> IO (NonEmpty ByteString)
