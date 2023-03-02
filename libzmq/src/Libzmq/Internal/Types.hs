@@ -1,9 +1,15 @@
 module Libzmq.Internal.Types (module Libzmq.Internal.Types) where
 
+import Control.Monad (guard)
+import Data.Bits ((.&.), (.|.))
 import Data.Coerce
+import Data.Function ((&))
+import Data.List qualified as List
+import Data.Maybe (catMaybes)
 import Foreign.C.Error
-import Foreign.C.Types (CInt)
+import Foreign.C.Types (CInt, CShort)
 import Foreign.Ptr (Ptr)
+import Foreign.Storable (Storable)
 import Libzmq.Bindings qualified
 
 -- | A ØMQ context option.
@@ -353,6 +359,72 @@ pattern ETIMEDOUT <-
   ETIMEDOUT
   #-}
 
+-- | A set of ØMQ events.
+newtype Zmq_events
+  = Zmq_events CShort
+  deriving stock (Eq, Ord)
+
+instance Monoid Zmq_events where
+  mempty = Zmq_events 0
+  mappend = (<>)
+
+instance Semigroup Zmq_events where
+  Zmq_events x <> Zmq_events y =
+    Zmq_events (x .|. y)
+
+instance Show Zmq_events where
+  show event =
+    [ "ZMQ_POLLIN" <$ guard (hasPollin event),
+      "ZMQ_POLLOUT" <$ guard (hasPollout event),
+      "ZMQ_POLLERR" <$ guard (hasPollerr event),
+      "ZMQ_POLLPRI" <$ guard (hasPollpri event)
+    ]
+      & catMaybes
+      & List.intersperse "<>"
+      & \case
+        [] -> "mempty"
+        events -> unwords events
+
+pattern ZMQ_POLLIN :: Zmq_events
+pattern ZMQ_POLLIN <-
+  (hasPollin -> True)
+  where
+    ZMQ_POLLIN = Zmq_events Libzmq.Bindings._ZMQ_POLLIN
+
+pattern ZMQ_POLLOUT :: Zmq_events
+pattern ZMQ_POLLOUT <-
+  (hasPollout -> True)
+  where
+    ZMQ_POLLOUT = Zmq_events Libzmq.Bindings._ZMQ_POLLOUT
+
+pattern ZMQ_POLLERR :: Zmq_events
+pattern ZMQ_POLLERR <-
+  (hasPollerr -> True)
+  where
+    ZMQ_POLLERR = Zmq_events Libzmq.Bindings._ZMQ_POLLERR
+
+pattern ZMQ_POLLPRI :: Zmq_events
+pattern ZMQ_POLLPRI <-
+  (hasPollpri -> True)
+  where
+    ZMQ_POLLPRI = Zmq_events Libzmq.Bindings._ZMQ_POLLPRI
+
+hasPollin :: Zmq_events -> Bool
+hasPollin (Zmq_events n) =
+  n .&. Libzmq.Bindings._ZMQ_POLLIN /= 0
+
+hasPollout :: Zmq_events -> Bool
+hasPollout (Zmq_events n) =
+  n .&. Libzmq.Bindings._ZMQ_POLLOUT /= 0
+
+hasPollerr :: Zmq_events -> Bool
+hasPollerr (Zmq_events n) =
+  n .&. Libzmq.Bindings._ZMQ_POLLERR /= 0
+
+hasPollpri :: Zmq_events -> Bool
+hasPollpri (Zmq_events n) =
+  n .&. Libzmq.Bindings._ZMQ_POLLPRI /= 0
+
 -- | A ØMQ message option.
 newtype Zmq_msg_option
   = Zmq_msg_option CInt
@@ -384,6 +456,16 @@ pattern ZMQ_SHARED <-
 newtype Zmq_msg_t
   = Zmq_msg_t (Ptr Libzmq.Bindings.Zmq_msg_t)
   deriving stock (Eq, Ord, Show)
+  deriving newtype (Storable)
+
+-- | A ØMQ pollitem.
+data Zmq_pollitem_t
+  = Zmq_pollitem_socket !Zmq_socket_t !Zmq_events
+  | Zmq_pollitem_fd !Libzmq.Bindings.Zmq_fd_t !Zmq_events
+
+-- | A set of ØMQ pollitems.
+data Zmq_pollitems_t
+  = Zmq_pollitems_t !(Ptr Libzmq.Bindings.Zmq_pollitem_t) !Int
 
 -- | A ØMQ socket.
 data Zmq_socket_t

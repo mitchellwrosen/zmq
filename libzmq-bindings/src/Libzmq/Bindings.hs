@@ -57,7 +57,7 @@ module Libzmq.Bindings
     -- * Types
     Zmq_fd_t,
     Zmq_msg_t,
-    Zmq_pollitem_t,
+    Zmq_pollitem_t (..),
 
     -- * Constants
 

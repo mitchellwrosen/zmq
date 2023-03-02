@@ -4,7 +4,7 @@ module Libzmq.Bindings.Internal.Constants (module Libzmq.Bindings.Internal.Const
 
 #include <zmq.h>
 
-import Foreign.C (CInt)
+import Foreign.C (CInt, CShort)
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Errors
@@ -562,18 +562,18 @@ _ZMQ_PROTOCOL_ERROR_ZMTP_UNSPECIFIED :: CInt
 _ZMQ_PROTOCOL_ERROR_ZMTP_UNSPECIFIED = #const ZMQ_PROTOCOL_ERROR_ZMTP_UNSPECIFIED
 
 ------------------------------------------------------------------------------------------------------------------------
--- Protocol errors
+-- I/O multiplexint
 
-_ZMQ_POLLIN :: CInt
+_ZMQ_POLLIN :: CShort
 _ZMQ_POLLIN = #const ZMQ_POLLIN
 
-_ZMQ_POLLOUT :: CInt
+_ZMQ_POLLOUT :: CShort
 _ZMQ_POLLOUT = #const ZMQ_POLLOUT
 
-_ZMQ_POLLERR :: CInt
+_ZMQ_POLLERR :: CShort
 _ZMQ_POLLERR = #const ZMQ_POLLERR
 
-_ZMQ_POLLPRI :: CInt
+_ZMQ_POLLPRI :: CShort
 _ZMQ_POLLPRI = #const ZMQ_POLLPRI
 
 ------------------------------------------------------------------------------------------------------------------------

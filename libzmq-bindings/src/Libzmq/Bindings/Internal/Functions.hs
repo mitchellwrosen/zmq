@@ -59,7 +59,7 @@ foreign import capi unsafe "zmq.h zmq_ctx_shutdown"
 -- | Terminate a ØMQ context.
 --
 -- http://api.zeromq.org/master:zmq-ctx-term
-foreign import capi safe "zmq.h zmq_ctx_term"
+foreign import capi interruptible "zmq.h zmq_ctx_term"
   zmq_ctx_term :: Ptr context -> IO CInt
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -126,7 +126,7 @@ foreign import capi unsafe "zmq.h zmq_msg_move"
 -- | Receive a ØMQ message from a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-msg-recv
-foreign import capi safe "zmq.h zmq_msg_recv"
+foreign import capi interruptible "zmq.h zmq_msg_recv"
   zmq_msg_recv :: Ptr Zmq_msg_t -> Ptr socket -> CInt -> IO CInt
 
 -- | Receive a ØMQ message from a ØMQ socket (unsafe FFI).
@@ -138,7 +138,7 @@ foreign import capi unsafe "zmq.h zmq_msg_recv"
 -- | Send a ØMQ message on a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-msg-send
-foreign import capi safe "zmq.h zmq_msg_send"
+foreign import capi interruptible "zmq.h zmq_msg_send"
   zmq_msg_send :: Ptr Zmq_msg_t -> Ptr socket -> CInt -> IO CInt
 
 -- | Send a ØMQ message on a ØMQ socket (unsafe FFI).
@@ -177,7 +177,7 @@ foreign import capi unsafe "zmq.h zmq_close"
 -- | Create an outgoing connection from a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-connect
-foreign import capi safe "zmq.h zmq_connect"
+foreign import capi interruptible "zmq.h zmq_connect"
   -- N.B. use safe FFI because it's not totally clear if some transports or socket types block
   zmq_connect :: Ptr socket -> Ptr CChar -> IO CInt
 
@@ -196,14 +196,14 @@ foreign import capi unsafe "zmq.h zmq_getsockopt"
 -- | Monitor a ØMQ socket's events.
 --
 -- http://api.zeromq.org/master:zmq-socket-monitor
-foreign import capi safe "zmq.h zmq_socket_monitor"
+foreign import capi interruptible "zmq.h zmq_socket_monitor"
   -- N.B. use safe FFI because it's unclear how much work this function does
   zmq_socket_monitor :: Ptr socket -> Ptr CChar -> CInt -> IO CInt
 
 -- | Receive a message from a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-recv
-foreign import capi safe "zmq.h zmq_recv"
+foreign import capi interruptible "zmq.h zmq_recv"
   zmq_recv :: Ptr socket -> Ptr buffer -> CSize -> CInt -> IO CInt
 
 -- | Receive a message from a ØMQ socket (unsafe FFI).
@@ -215,25 +215,25 @@ foreign import capi unsafe "zmq.h zmq_recv"
 -- | Send a message on a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-send
-foreign import capi safe "zmq.h zmq_send"
+foreign import capi interruptible "zmq.h zmq_send"
   zmq_send :: Ptr socket -> Ptr buffer -> CSize -> CInt -> IO CInt
 
 -- | Send a message on a ØMQ socket (unsafe FFI).
 --
 -- http://api.zeromq.org/master:zmq-send
-foreign import capi safe "zmq.h zmq_send"
+foreign import capi unsafe "zmq.h zmq_send"
   zmq_send__unsafe :: Ptr socket -> Ptr buffer -> CSize -> CInt -> IO CInt
 
 -- | Send a constant-memory message on a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-send-const
-foreign import capi safe "zmq.h zmq_send_const"
+foreign import capi interruptible "zmq.h zmq_send_const"
   zmq_send_const :: Ptr socket -> Ptr buffer -> CSize -> CInt -> IO CInt
 
 -- | Send a constant-memory message on a ØMQ socket (unsafe FFI).
 --
 -- http://api.zeromq.org/master:zmq-send-const
-foreign import capi safe "zmq.h zmq_send_const"
+foreign import capi unsafe "zmq.h zmq_send_const"
   zmq_send_const__unsafe :: Ptr socket -> Ptr buffer -> CSize -> CInt -> IO CInt
 
 -- | Set a ØMQ socket option.
@@ -260,11 +260,11 @@ foreign import capi unsafe "zmq.h zmq_unbind"
 -- | Input/output multiplexing.
 --
 -- http://api.zeromq.org/master:zmq-poll
-foreign import capi safe "zmq.h zmq_poll"
+foreign import capi interruptible "zmq.h zmq_poll"
   zmq_poll :: Ptr Zmq_pollitem_t -> CInt -> CLong -> IO CInt
 
 -- | Input/output multiplexing (unsafe FFI).
 --
 -- http://api.zeromq.org/master:zmq-poll
-foreign import capi safe "zmq.h zmq_poll"
+foreign import capi unsafe "zmq.h zmq_poll"
   zmq_poll__unsafe :: Ptr Zmq_pollitem_t -> CInt -> CLong -> IO CInt

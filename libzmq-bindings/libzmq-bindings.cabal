@@ -12,6 +12,7 @@ library
     CApiFFI
   default-extensions:
     DerivingStrategies
+    InterruptibleFFI
   default-language: GHC2021
   exposed-modules:
     Libzmq.Bindings

@@ -38,3 +38,8 @@ library
   other-modules:
     Libzmq.Internal.Functions
     Libzmq.Internal.Types
+
+executable libzmq
+  build-depends: base, bytestring, libzmq, text
+  ghc-options: -threaded -with-rtsopts=-N4
+  main-is: Main.hs

@@ -9,6 +9,7 @@ module Libzmq
     zmq_version,
 
     -- ** Context
+    zmq_ctx_with,
     zmq_ctx_new,
     zmq_ctx_term,
     zmq_ctx_shutdown,
@@ -16,6 +17,8 @@ module Libzmq
     zmq_ctx_get,
 
     -- ** Message
+    zmq_msg_with,
+    zmq_msg_with_size,
     zmq_msg_init,
     zmq_msg_init_size,
     -- zmq_msg_init_data,
@@ -49,6 +52,11 @@ module Libzmq
     zmq_recv,
     zmq_recv_dontwait,
     zmq_socket_monitor,
+
+    -- ** I/O multiplexing
+    zmq_pollitems,
+    zmq_poll,
+    zmq_poll_dontwait,
 
     -- * Types
     Zmq_ctx_option
@@ -98,12 +106,20 @@ module Libzmq
         ETERM,
         ETIMEDOUT
       ),
+    Zmq_events,
+    pattern ZMQ_POLLIN,
+    pattern ZMQ_POLLOUT,
+    pattern ZMQ_POLLERR,
+    pattern ZMQ_POLLPRI,
+    Libzmq.Bindings.Zmq_fd_t,
     Zmq_msg_option
       ( Zmq_msg_option,
         ZMQ_MORE,
         ZMQ_SHARED
       ),
-    Zmq_msg_t (..),
+    Zmq_msg_t,
+    Zmq_pollitem_t (..),
+    Zmq_pollitems_t,
     Zmq_socket_t,
     Zmq_socket_type
       ( Zmq_socket_type,
@@ -123,5 +139,6 @@ module Libzmq
   )
 where
 
+import Libzmq.Bindings qualified
 import Libzmq.Internal.Functions
 import Libzmq.Internal.Types
