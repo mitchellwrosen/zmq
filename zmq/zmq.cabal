@@ -46,7 +46,6 @@ library
     transformers ^>= 0.6,
     unliftio,
     zmqhs,
-  build-tool-depends: hsc2hs:hsc2hs ^>= 0.68,
   exposed-modules:
     Zmq
     Zmq.Publisher
