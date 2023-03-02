@@ -9,7 +9,6 @@ module Libzmq
     zmq_version,
 
     -- ** Context
-    zmq_ctx_with,
     zmq_ctx_new,
     zmq_ctx_term,
     zmq_ctx_shutdown,
@@ -17,8 +16,6 @@ module Libzmq
     zmq_ctx_get,
 
     -- ** Message
-    zmq_msg_with,
-    zmq_msg_with_size,
     zmq_msg_init,
     zmq_msg_init_size,
     -- zmq_msg_init_data,

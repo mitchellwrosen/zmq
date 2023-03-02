@@ -117,21 +117,6 @@ zmq_ctx_term (Zmq_ctx_t context) =
     0 -> pure (Right ())
     _ -> Left <$> zmq_errno
 
--- | Perform an action with a new ØMQ context.
---
--- http://api.zeromq.org/master:zmq-ctx-new
--- http://api.zeromq.org/master:zmq-ctx-term
-zmq_ctx_with :: (Zmq_ctx_t -> IO (Either Zmq_error a)) -> IO (Either Zmq_error a)
-zmq_ctx_with action =
-  mask \restore -> do
-    context <- zmq_ctx_new
-    actionResult <- try @SomeException (restore (action context))
-    termResult <- uninterruptibleMask_ (zmq_ctx_term context)
-    case actionResult of
-      Left exception -> throwIO exception
-      Right (Left err) -> pure (Left err)
-      Right (Right val) -> pure (val <$ termResult)
-
 ------------------------------------------------------------------------------------------------------------------------
 -- Message
 
@@ -277,28 +262,6 @@ zmq_msg_set (Zmq_msg_t message) (Zmq_msg_option option) value =
 zmq_msg_size :: Zmq_msg_t -> IO Int
 zmq_msg_size (Zmq_msg_t message) =
   fromIntegral @CSize @Int <$> Libzmq.Bindings.zmq_msg_size message
-
--- | Perform an action with an empty ØMQ message.
---
--- http://api.zeromq.org/master:zmq-msg-init
-zmq_msg_with :: (Zmq_msg_t -> IO a) -> IO a
-zmq_msg_with =
-  bracket zmq_msg_init zmq_msg_free
-
--- | Perform an action with an empty ØMQ message of a specified size.
---
--- http://api.zeromq.org/master:zmq-msg-init-size
-zmq_msg_with_size :: Int -> (Zmq_msg_t -> IO (Either Zmq_error a)) -> IO (Either Zmq_error a)
-zmq_msg_with_size size action =
-  mask \restore ->
-    zmq_msg_init_size size >>= \case
-      Left err -> pure (Left err)
-      Right message -> do
-        result <- try @SomeException (restore (action message))
-        zmq_msg_free message
-        case result of
-          Left exception -> throwIO exception
-          Right value -> pure value
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Socket
