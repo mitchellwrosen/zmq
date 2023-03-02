@@ -44,7 +44,6 @@ library
     -- TODO make this internal
     Zmqhs.Internal.Error
     Zmqhs.Socket
-    Zmqhs.SocketType
   hs-source-dirs: src
 
 test-suite tests

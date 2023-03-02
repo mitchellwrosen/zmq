@@ -11,9 +11,9 @@ import Data.Text (Text)
 import Libzmq qualified
 
 data Error = Error
-  { function :: Text,
-    errno :: Libzmq.Zmq_error,
-    description :: Text
+  { function :: !Text,
+    errno :: !Libzmq.Zmq_error,
+    description :: !Text
   }
   deriving stock (Eq, Show)
   deriving anyclass (Exception)
