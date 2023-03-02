@@ -43,6 +43,6 @@ disconnect :: Publisher -> Endpoint transport -> IO (Either Error ())
 disconnect =
   coerce Zmq.Internal.Socket.disconnect
 
-send :: Publisher -> NonEmpty ByteString -> IO ()
+send :: Publisher -> NonEmpty ByteString -> IO (Either Error ())
 send =
   coerce Zmq.Internal.Socket.send

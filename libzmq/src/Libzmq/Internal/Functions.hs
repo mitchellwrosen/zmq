@@ -1,6 +1,5 @@
 module Libzmq.Internal.Functions (module Libzmq.Internal.Functions) where
 
-import Control.Exception
 import Data.Bits ((.|.))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as ByteString
@@ -12,6 +11,7 @@ import Data.Text.Encoding qualified as Text
 import Data.Text.Foreign qualified as Text
 import Data.Word (Word8)
 import Foreign (Storable (peek), alloca)
+import Foreign.C (CUInt)
 import Foreign.C.String (CString)
 import Foreign.C.Types (CChar (..), CInt (..), CLong (..), CSize (..))
 import Foreign.Marshal.Alloc (free, malloc)
@@ -302,13 +302,27 @@ zmq_disconnect (Zmq_socket_t socket) endpoint =
     0 -> pure (Right ())
     _ -> Left <$> zmq_errno
 
--- | Get a ØMQ socket option.
+-- | Get a ØMQ socket option of type 'Int'.
 --
 -- http://api.zeromq.org/master:zmq-getsockopt
+zmq_getsockopt_int :: Zmq_socket_t -> CInt -> IO (Either Zmq_error Int)
+zmq_getsockopt_int (Zmq_socket_t socket) option =
+  alloca \value ->
+    alloca \size ->
+      Libzmq.Bindings.zmq_getsockopt socket option value size >>= \case
+        0 -> Right . fromIntegral @CInt @Int <$> peek value
+        _ -> Left <$> zmq_errno
+
+-- | Get a ØMQ socket option of type 'Word64'.
 --
--- FIXME not implemented
-zmq_getsockopt :: Zmq_socket_t -> CInt -> Ptr value -> Ptr CSize -> IO CInt
-zmq_getsockopt = undefined
+-- http://api.zeromq.org/master:zmq-getsockopt
+zmq_getsockopt_word :: Zmq_socket_t -> CInt -> IO (Either Zmq_error Word)
+zmq_getsockopt_word (Zmq_socket_t socket) option =
+  alloca \value ->
+    alloca \size ->
+      Libzmq.Bindings.zmq_getsockopt socket option value size >>= \case
+        0 -> Right . fromIntegral @CUInt @Word <$> peek value
+        _ -> Left <$> zmq_errno
 
 -- | Monitor a ØMQ socket's events.
 --
@@ -393,13 +407,15 @@ sendwith send0 (Zmq_socket_t socket) message flags =
           (fromIntegral @Int @CSize len)
           flags
 
--- | Set a ØMQ socket option.
+-- | Set a ØMQ socket option of type 'ByteString'.
 --
 -- http://api.zeromq.org/master:zmq-setsockopt
---
--- FIXME not implemented
-zmq_setsockopt :: Zmq_socket_t -> CInt -> Ptr value -> CSize -> IO CInt
-zmq_setsockopt = undefined
+zmq_setsockopt_bytestring :: Zmq_socket_t -> CInt -> ByteString -> IO (Either Zmq_error ())
+zmq_setsockopt_bytestring (Zmq_socket_t socket) option bytes =
+  ByteString.Unsafe.unsafeUseAsCStringLen bytes \(cstring, len) ->
+    Libzmq.Bindings.zmq_setsockopt socket option cstring (fromIntegral @Int @CSize len) >>= \case
+      0 -> pure (Right ())
+      _ -> Left <$> zmq_errno
 
 -- | Create a ØMQ socket.
 --

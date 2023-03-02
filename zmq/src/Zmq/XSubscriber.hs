@@ -22,7 +22,6 @@ import Zmq.Error (Error)
 import Zmq.Internal.Socket qualified
 import Zmq.SubscriptionMessage (SubscriptionMessage (..))
 import Zmq.SubscriptionMessage qualified as SubscriptionMessage
-import Zmqhs qualified
 
 newtype XSubscriber
   = XSubscriber (MVar Libzmq.Zmq_socket_t)
@@ -48,15 +47,15 @@ disconnect :: XSubscriber -> Endpoint transport -> IO (Either Error ())
 disconnect =
   coerce Zmq.Internal.Socket.disconnect
 
-subscribe :: XSubscriber -> ByteString -> IO ()
+subscribe :: XSubscriber -> ByteString -> IO (Either Error ())
 subscribe xsubscriber prefix =
   send xsubscriber (Subscribe prefix)
 
-unsubscribe :: XSubscriber -> ByteString -> IO ()
+unsubscribe :: XSubscriber -> ByteString -> IO (Either Error ())
 unsubscribe xsubscriber prefix =
   send xsubscriber (Unsubscribe prefix)
 
-send :: XSubscriber -> SubscriptionMessage -> IO ()
+send :: XSubscriber -> SubscriptionMessage -> IO (Either Error ())
 send (XSubscriber socketVar) message =
   Zmq.Internal.Socket.send socketVar (SubscriptionMessage.serialize message :| [])
 

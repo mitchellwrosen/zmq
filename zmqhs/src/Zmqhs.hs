@@ -1,15 +1,15 @@
 module Zmqhs
   ( -- * Socket
-    getSocketEvents,
-    getSocketFd,
-    setSocketSubscribe,
-    setSocketUnsubscribe,
-    send,
-    receive,
+    -- getSocketEvents,
+    -- getSocketFd,
+    -- setSocketSubscribe,
+    -- setSocketUnsubscribe,
+    -- send,
+    -- receive,
 
     -- * Error
-    Error (..),
-    throwError, -- TODO don't export this
+    -- Error (..),
+    -- throwError, -- TODO don't export this
   )
 where
 

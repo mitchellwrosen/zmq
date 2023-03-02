@@ -48,7 +48,7 @@ disconnect :: XPublisher -> Endpoint transport -> IO (Either Error ())
 disconnect =
   coerce Zmq.Internal.Socket.disconnect
 
-send :: XPublisher -> NonEmpty ByteString -> IO ()
+send :: XPublisher -> NonEmpty ByteString -> IO (Either Error ())
 send =
   coerce Zmq.Internal.Socket.send
 
@@ -56,7 +56,8 @@ receive :: XPublisher -> IO SubscriptionMessage
 receive (XPublisher socketVar) =
   withMVar socketVar \socket ->
     fix \again ->
-      Zmqhs.receive socket >>= \case
+      -- Zmqhs.receive socket >>= \case
+      undefined socket >>= \case
         UnsubscribeMessage prefix -> pure (Unsubscribe prefix)
         SubscribeMessage prefix -> pure (Subscribe prefix)
         _ -> again
