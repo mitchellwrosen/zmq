@@ -37,7 +37,7 @@ import Data.List.NonEmpty qualified as List (NonEmpty)
 import Data.List.NonEmpty qualified as List.NonEmpty
 import Foreign.C.Types (CInt, CShort)
 import GHC.Base (mkWeak#)
-import GHC.Exts (keepAlive#)
+import GHC.Exts (TYPE, UnliftedRep, keepAlive#)
 import GHC.IO (IO (..), unIO)
 import GHC.IORef (IORef (..))
 import GHC.MVar (MVar (..))
@@ -137,10 +137,10 @@ run Options {ioThreads, maxMessageSize, maxSockets} action =
 
 -- Terminate a ØMQ context.
 terminateContext :: Context -> IO ()
-terminateContext (Context context socketsRef) = do
+terminateContext Context {context, socketClosesRef} = do
   -- FIXME we should disallow new sockets from being created here
-  sockets <- traverse deRefWeak =<< readIORef socketsRef
-  for_ sockets \case
+  closes <- traverse deRefWeak =<< readIORef socketClosesRef
+  for_ closes \case
     Nothing -> pure ()
     Just close -> runIdempotentSocketClose close
   let loop = do
@@ -189,27 +189,20 @@ openThreadUnsafeSocket :: Zmq_socket_type -> IO (Either Error ThreadUnsafeSocket
 openThreadUnsafeSocket =
   openSocket_ \socket -> do
     canary@(IORef (STRef canary#)) <- newIORef ()
-    close <- makeIdempotentSocketClose socket
-    weak <-
-      IO \s0 ->
-        case mkWeak# canary# close (unIO (runIdempotentSocketClose close)) s0 of
-          (# s1, weak #) -> (# s1, Weak weak #)
-    pure (ThreadUnsafeSocket socket canary, weak)
+    pure (ThingAndCanary (ThreadUnsafeSocket socket canary) canary#)
 
 openThreadSafeSocket :: Zmq_socket_type -> IO (Either Error (MVar Zmq_socket))
 openThreadSafeSocket =
   openSocket_ \socket -> do
     socketVar@(MVar canary#) <- newMVar socket
-    close <- makeIdempotentSocketClose socket
-    weak <-
-      IO \s0 ->
-        case mkWeak# canary# close (unIO (runIdempotentSocketClose close)) s0 of
-          (# s1, weak #) -> (# s1, Weak weak #)
-    pure (socketVar, weak)
+    pure (ThingAndCanary socketVar canary#)
 
--- FIXME share mkWeak code too?
-openSocket_ :: (Zmq_socket -> IO (a, Weak IdempotentSocketClose)) -> Zmq_socket_type -> IO (Either Error a)
-openSocket_ oink1 socketType = do
+data ThingAndCanary a
+  = forall (b# :: TYPE UnliftedRep).
+    ThingAndCanary !a b#
+
+openSocket_ :: (Zmq_socket -> IO (ThingAndCanary a)) -> Zmq_socket_type -> IO (Either Error a)
+openSocket_ wrap socketType = do
   Context context socketsRef <- readIORef globalContextRef
   mask_ do
     zmq_socket context socketType >>= \case
@@ -222,9 +215,14 @@ openSocket_ oink1 socketType = do
               ETERM -> pure (Left err)
               _ -> unexpectedError err
       Right socket -> do
-        (boo, weak) <- oink1 socket
-        atomicModifyIORef' socketsRef \weaks -> (weak : weaks, ())
-        pure (Right boo)
+        ThingAndCanary thing canary <- wrap socket
+        close <- makeIdempotentSocketClose socket
+        weakClose <-
+          IO \s0 ->
+            case mkWeak# canary close (unIO (runIdempotentSocketClose close)) s0 of
+              (# s1, weakClose #) -> (# s1, Weak weakClose #)
+        atomicModifyIORef' socketsRef \weakCloses -> (weakClose : weakCloses, ())
+        pure (Right thing)
 
 setByteStringOption :: Zmq_socket -> CInt -> ByteString -> IO (Either Error ())
 setByteStringOption socket option value =
