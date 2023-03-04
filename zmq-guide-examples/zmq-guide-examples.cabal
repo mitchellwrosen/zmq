@@ -16,6 +16,8 @@ common component
     ViewPatterns
   default-language: GHC2021
   ghc-options:
+    -threaded 
+    -with-rtsopts=-N2
     -Weverything
     -Wno-all-missed-specialisations
     -Wno-implicit-prelude
@@ -34,11 +36,14 @@ common component
 executable hwserver
   import: component
   build-depends: base, zmq
-  ghc-options: -threaded -with-rtsopts=-N2
   main-is: Hwserver.hs
 
 executable hwclient
   import: component
   build-depends: base, zmq
-  ghc-options: -threaded -with-rtsopts=-N2
   main-is: Hwclient.hs
+
+executable version
+  import: component
+  build-depends: base, zmq
+  main-is: Version.hs
