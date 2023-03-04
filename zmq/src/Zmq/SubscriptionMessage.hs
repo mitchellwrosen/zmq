@@ -8,7 +8,7 @@ where
 
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as ByteString
-import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.List.NonEmpty as List (NonEmpty ((:|)))
 import Data.Word
 
 data SubscriptionMessage
@@ -16,10 +16,10 @@ data SubscriptionMessage
   | Subscribe ByteString
   deriving stock (Eq, Ord, Show)
 
-pattern SubscribeMessage :: ByteString -> NonEmpty ByteString
+pattern SubscribeMessage :: ByteString -> List.NonEmpty ByteString
 pattern SubscribeMessage prefix <- Cons 1 prefix :| []
 
-pattern UnsubscribeMessage :: ByteString -> NonEmpty ByteString
+pattern UnsubscribeMessage :: ByteString -> List.NonEmpty ByteString
 pattern UnsubscribeMessage prefix <- Cons 0 prefix :| []
 
 pattern Cons :: Word8 -> ByteString -> ByteString

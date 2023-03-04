@@ -11,7 +11,8 @@ module Zmq.XPublisher
 where
 
 import Data.ByteString (ByteString)
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as List (NonEmpty)
+import Data.List.NonEmpty qualified as List.NonEmpty
 import Libzmq
 import UnliftIO
 import Zmq.Endpoint
@@ -45,9 +46,9 @@ disconnect :: XPublisher -> Endpoint transport -> IO (Either Error ())
 disconnect (XPublisher socketVar) endpoint =
   withMVar socketVar \socket -> Zmq.Internal.Socket.disconnect socket endpoint
 
-send :: XPublisher -> NonEmpty ByteString -> IO (Either Error ())
-send (XPublisher socketVar) message =
-  withMVar socketVar \socket -> Zmq.Internal.Socket.send socket message
+send :: XPublisher -> ByteString -> List.NonEmpty ByteString -> IO (Either Error ())
+send (XPublisher socketVar) topic message =
+  withMVar socketVar \socket -> Zmq.Internal.Socket.send socket (List.NonEmpty.cons topic message)
 
 receive :: XPublisher -> IO (Either Error SubscriptionMessage)
 receive (XPublisher socketVar) =

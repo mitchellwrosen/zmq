@@ -17,7 +17,7 @@ import Data.Bits ((.&.))
 import Data.ByteString (ByteString)
 import Data.Functor ((<&>))
 import Data.IORef
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as List (NonEmpty)
 import Data.List.NonEmpty qualified as List.NonEmpty
 import Foreign.C.Types (CInt, CShort)
 import Libzmq
@@ -118,7 +118,7 @@ disconnect :: Zmq_socket -> Endpoint transport -> IO (Either Error ())
 disconnect socket endpoint =
   enrichFunction "zmq_disconnect" (zmq_disconnect socket (renderEndpoint endpoint))
 
-send :: Zmq_socket -> NonEmpty ByteString -> IO (Either Error ())
+send :: Zmq_socket -> List.NonEmpty ByteString -> IO (Either Error ())
 send socket message =
   let loop = \case
         [frame] -> sendf socket frame False
@@ -155,7 +155,7 @@ sendf socket frame more = do
           Right _len -> pure (Right ())
   loop
 
-receive :: Zmq_socket -> IO (Either Error (NonEmpty ByteString))
+receive :: Zmq_socket -> IO (Either Error (List.NonEmpty ByteString))
 receive socket =
   receivef socket >>= \case
     Left err -> pure (Left err)

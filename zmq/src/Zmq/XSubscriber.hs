@@ -12,7 +12,7 @@ module Zmq.XSubscriber
 where
 
 import Data.ByteString (ByteString)
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty as List (NonEmpty)
 import Libzmq
 import UnliftIO
 import Zmq.Endpoint
@@ -60,6 +60,6 @@ send (XSubscriber socketVar) message =
   withMVar socketVar \socket ->
     Zmq.Internal.Socket.send1 socket (SubscriptionMessage.serialize message)
 
-receive :: XSubscriber -> IO (Either Error (NonEmpty ByteString))
+receive :: XSubscriber -> IO (Either Error (List.NonEmpty ByteString))
 receive (XSubscriber socketVar) =
   withMVar socketVar Zmq.Internal.Socket.receive

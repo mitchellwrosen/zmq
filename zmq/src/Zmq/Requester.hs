@@ -12,7 +12,7 @@ where
 
 import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty as List (NonEmpty)
 import Libzmq
 import Zmq.Endpoint
 import Zmq.Error (Error)
@@ -42,10 +42,10 @@ disconnect :: Requester -> Endpoint transport -> IO (Either Error ())
 disconnect =
   coerce Zmq.Internal.Socket.disconnect
 
-send :: Requester -> NonEmpty ByteString -> IO (Either Error ())
+send :: Requester -> List.NonEmpty ByteString -> IO (Either Error ())
 send =
   coerce Zmq.Internal.Socket.send
 
-receive :: Requester -> IO (Either Error (NonEmpty ByteString))
+receive :: Requester -> IO (Either Error (List.NonEmpty ByteString))
 receive =
   coerce Zmq.Internal.Socket.receive

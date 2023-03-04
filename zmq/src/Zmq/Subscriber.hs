@@ -13,7 +13,7 @@ where
 
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty as List (NonEmpty)
 import Libzmq
 import Libzmq.Bindings qualified
 import Zmq.Endpoint
@@ -66,6 +66,6 @@ unsubscribe (Subscriber socketVar) prefix =
   withMVar socketVar \socket ->
     Zmq.Internal.Socket.setByteStringOption socket Libzmq.Bindings._ZMQ_UNSUBSCRIBE prefix
 
-receive :: Subscriber -> IO (Either Error (NonEmpty ByteString))
+receive :: Subscriber -> IO (Either Error (List.NonEmpty ByteString))
 receive (Subscriber socketVar) =
   withMVar socketVar Zmq.Internal.Socket.receive
