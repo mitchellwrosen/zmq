@@ -73,3 +73,7 @@ executable taskwork
 executable tasksink
   import: component
   main-is: Tasksink.hs
+
+executable mspoller
+  import: component
+  main-is: Mspoller.hs
