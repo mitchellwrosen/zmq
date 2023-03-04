@@ -26,13 +26,14 @@ module Zmq
 
     -- * Errors
     Error (..),
+    Zmq_error (..),
 
     -- * Version
     version,
   )
 where
 
-import Libzmq (zmq_version)
+import Libzmq (Zmq_error (..), zmq_version)
 import Zmq.Error (Error (..))
 import Zmq.Internal.Context
 import Zmq.Internal.Options (Options (..), defaultOptions)

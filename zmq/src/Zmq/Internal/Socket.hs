@@ -43,6 +43,7 @@ import Zmq.Internal.SocketFinalizer (makeSocketFinalizer)
 
 class Socket socket where
   withSocket :: socket -> (Zmq_socket -> IO a) -> IO a
+  withSocket = undefined -- hide "minimal complete definition" haddock
 
 data ThreadUnsafeSocket = ThreadUnsafeSocket
   { socket :: !Zmq_socket,
@@ -127,6 +128,7 @@ getIntOption socket option = do
           Right val -> pure (Right val)
   loop
 
+-- | Bind a __socket__ to an __endpoint__.
 bind :: Socket socket => socket -> Text -> IO (Either Error ())
 bind socket0 endpoint =
   withSocket socket0 \socket -> bind_ socket endpoint
@@ -149,6 +151,7 @@ bind_ socket endpoint =
             _ -> unexpectedError err
     Right () -> pure (Right ())
 
+-- | Unbind a __socket__ from an __endpoint__.
 unbind :: Socket socket => socket -> Text -> IO ()
 unbind socket0 endpoint =
   withSocket socket0 \socket -> unbind_ socket endpoint
@@ -168,6 +171,7 @@ unbind_ socket endpoint =
             _ -> unexpectedError err
     Right () -> pure ()
 
+-- | Connect a __socket__ to an __endpoint__.
 connect :: Socket socket => socket -> Text -> IO (Either Error ())
 connect socket0 endpoint =
   withSocket socket0 \socket -> connect_ socket endpoint
@@ -187,6 +191,7 @@ connect_ socket endpoint =
             _ -> unexpectedError err
     Right () -> pure (Right ())
 
+-- | Disconnect a __socket__ from an __endpoint__.
 disconnect :: Socket socket => socket -> Text -> IO ()
 disconnect socket0 endpoint =
   withSocket socket0 \socket -> disconnect_ socket endpoint

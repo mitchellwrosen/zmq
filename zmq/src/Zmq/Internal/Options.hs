@@ -9,7 +9,13 @@ import Libzmq.Bindings qualified
 import Numeric.Natural (Natural)
 
 data Options = Options
-  { ioThreads :: !Natural,
+  { -- | The number of background IO threads that ØMQ uses.
+    --
+    -- As a rule of thumb, each thread can handle 1Gb/sec in or out. If your program performs no external socket IO, you
+    -- can set this value to 0.
+    --
+    -- /Default/: 1
+    ioThreads :: !Natural,
     maxMessageSize :: !Natural,
     maxSockets :: !Natural
   }
