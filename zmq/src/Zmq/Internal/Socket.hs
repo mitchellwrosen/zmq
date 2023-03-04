@@ -12,7 +12,6 @@ module Zmq.Internal.Socket
 where
 
 import Control.Concurrent (threadWaitRead)
-import Control.Concurrent.MVar
 import Control.Exception
 import Data.Bits ((.&.))
 import Data.ByteString (ByteString)
@@ -29,14 +28,13 @@ import Zmq.Error
 import Zmq.Internal (renderEndpoint)
 import Zmq.Internal.Context (globalContextRef)
 
-with :: (MVar Zmq_socket_t -> IO (Either Error a)) -> IO (Either Error a)
+with :: (Zmq_socket_t -> IO (Either Error a)) -> IO (Either Error a)
 with action =
   mask \restore ->
     open >>= \case
       Left err -> pure (Left err)
       Right socket -> do
-        socketVar <- newMVar socket
-        result <- try (restore (action socketVar))
+        result <- try (restore (action socket))
         uninterruptibleMask_ (close socket)
         case result of
           Left (exception :: SomeException) -> throwIO exception
@@ -93,34 +91,30 @@ getIntOption socket option =
             _ -> unexpectedError err
     Right val -> pure (Right val)
 
-bind :: MVar Zmq_socket_t -> Endpoint transport -> IO (Either Error ())
-bind socketVar endpoint =
-  withMVar socketVar \socket ->
-    enrichFunction "zmq_bind" (zmq_bind socket (renderEndpoint endpoint))
+bind :: Zmq_socket_t -> Endpoint transport -> IO (Either Error ())
+bind socket endpoint =
+  enrichFunction "zmq_bind" (zmq_bind socket (renderEndpoint endpoint))
 
-unbind :: MVar Zmq_socket_t -> Endpoint transport -> IO (Either Error ())
-unbind socketVar endpoint =
-  withMVar socketVar \socket ->
-    zmq_unbind socket (renderEndpoint endpoint) >>= \case
-      Left errno ->
-        let err = enrichError "zmq_unbind" errno
-         in case errno of
-              EINVAL -> throwIO err
-              ENOENT -> pure (Right ()) -- silence these
-              ENOTSOCK -> throwIO err
-              ETERM -> pure (Left err)
-              _ -> unexpectedError err
-      Right () -> pure (Right ())
+unbind :: Zmq_socket_t -> Endpoint transport -> IO (Either Error ())
+unbind socket endpoint =
+  zmq_unbind socket (renderEndpoint endpoint) >>= \case
+    Left errno ->
+      let err = enrichError "zmq_unbind" errno
+       in case errno of
+            EINVAL -> throwIO err
+            ENOENT -> pure (Right ()) -- silence these
+            ENOTSOCK -> throwIO err
+            ETERM -> pure (Left err)
+            _ -> unexpectedError err
+    Right () -> pure (Right ())
 
-connect :: MVar Zmq_socket_t -> Endpoint transport -> IO (Either Error ())
-connect socketVar endpoint =
-  withMVar socketVar \socket ->
-    enrichFunction "zmq_connect" (zmq_connect socket (renderEndpoint endpoint))
+connect :: Zmq_socket_t -> Endpoint transport -> IO (Either Error ())
+connect socket endpoint =
+  enrichFunction "zmq_connect" (zmq_connect socket (renderEndpoint endpoint))
 
-disconnect :: MVar Zmq_socket_t -> Endpoint transport -> IO (Either Error ())
-disconnect socketVar endpoint =
-  withMVar socketVar \socket ->
-    enrichFunction "zmq_disconnect" (zmq_disconnect socket (renderEndpoint endpoint))
+disconnect :: Zmq_socket_t -> Endpoint transport -> IO (Either Error ())
+disconnect socket endpoint =
+  enrichFunction "zmq_disconnect" (zmq_disconnect socket (renderEndpoint endpoint))
 
 send :: Zmq_socket_t -> NonEmpty ByteString -> IO (Either Error ())
 send socket message =

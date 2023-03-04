@@ -10,7 +10,6 @@ module Zmq.Publisher
 where
 
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
 import Data.List.NonEmpty (NonEmpty)
 import Libzmq qualified
 import UnliftIO
@@ -22,25 +21,27 @@ newtype Publisher
   = Publisher (MVar Libzmq.Zmq_socket_t)
   deriving stock (Eq)
 
-with :: forall a. (Publisher -> IO (Either Error a)) -> IO (Either Error a)
-with =
-  coerce @((MVar Libzmq.Zmq_socket_t -> IO (Either Error a)) -> IO (Either Error a)) Zmq.Internal.Socket.with
+with :: (Publisher -> IO (Either Error a)) -> IO (Either Error a)
+with action =
+  Zmq.Internal.Socket.with \socket -> do
+    socketVar <- newMVar socket
+    action (Publisher socketVar)
 
 bind :: Publisher -> Endpoint transport -> IO (Either Error ())
-bind =
-  coerce Zmq.Internal.Socket.bind
+bind (Publisher socketVar) endpoint =
+  withMVar socketVar \socket -> Zmq.Internal.Socket.bind socket endpoint
 
 unbind :: Publisher -> Endpoint transport -> IO (Either Error ())
-unbind =
-  coerce Zmq.Internal.Socket.unbind
+unbind (Publisher socketVar) endpoint =
+  withMVar socketVar \socket -> Zmq.Internal.Socket.unbind socket endpoint
 
 connect :: Publisher -> Endpoint transport -> IO (Either Error ())
-connect =
-  coerce Zmq.Internal.Socket.connect
+connect (Publisher socketVar) endpoint =
+  withMVar socketVar \socket -> Zmq.Internal.Socket.connect socket endpoint
 
 disconnect :: Publisher -> Endpoint transport -> IO (Either Error ())
-disconnect =
-  coerce Zmq.Internal.Socket.disconnect
+disconnect (Publisher socketVar) endpoint =
+  withMVar socketVar \socket -> Zmq.Internal.Socket.disconnect socket endpoint
 
 send :: Publisher -> NonEmpty ByteString -> IO (Either Error ())
 send (Publisher socketVar) message =

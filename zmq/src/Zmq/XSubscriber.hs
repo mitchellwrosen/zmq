@@ -12,7 +12,6 @@ module Zmq.XSubscriber
 where
 
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
 import Data.List.NonEmpty (NonEmpty)
 import Libzmq qualified
 import UnliftIO
@@ -26,25 +25,27 @@ newtype XSubscriber
   = XSubscriber (MVar Libzmq.Zmq_socket_t)
   deriving stock (Eq)
 
-with :: forall a. (XSubscriber -> IO (Either Error a)) -> IO (Either Error a)
-with =
-  coerce @((MVar Libzmq.Zmq_socket_t -> IO (Either Error a)) -> IO (Either Error a)) Zmq.Internal.Socket.with
+with :: (XSubscriber -> IO (Either Error a)) -> IO (Either Error a)
+with action =
+  Zmq.Internal.Socket.with \socket -> do
+    socketVar <- newMVar socket
+    action (XSubscriber socketVar)
 
 bind :: XSubscriber -> Endpoint transport -> IO (Either Error ())
-bind =
-  coerce Zmq.Internal.Socket.bind
+bind (XSubscriber socketVar) endpoint =
+  withMVar socketVar \socket -> Zmq.Internal.Socket.bind socket endpoint
 
 unbind :: XSubscriber -> Endpoint transport -> IO (Either Error ())
-unbind =
-  coerce Zmq.Internal.Socket.unbind
+unbind (XSubscriber socketVar) endpoint =
+  withMVar socketVar \socket -> Zmq.Internal.Socket.unbind socket endpoint
 
 connect :: XSubscriber -> Endpoint transport -> IO (Either Error ())
-connect =
-  coerce Zmq.Internal.Socket.connect
+connect (XSubscriber socketVar) endpoint =
+  withMVar socketVar \socket -> Zmq.Internal.Socket.connect socket endpoint
 
 disconnect :: XSubscriber -> Endpoint transport -> IO (Either Error ())
-disconnect =
-  coerce Zmq.Internal.Socket.disconnect
+disconnect (XSubscriber socketVar) endpoint =
+  withMVar socketVar \socket -> Zmq.Internal.Socket.disconnect socket endpoint
 
 subscribe :: XSubscriber -> ByteString -> IO (Either Error ())
 subscribe xsubscriber prefix =

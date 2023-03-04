@@ -13,7 +13,6 @@ where
 
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
 import Data.List.NonEmpty (NonEmpty)
 import Libzmq qualified
 import Libzmq.Bindings qualified
@@ -25,25 +24,27 @@ newtype Subscriber
   = Subscriber (MVar Libzmq.Zmq_socket_t)
   deriving stock (Eq)
 
-with :: forall a. (Subscriber -> IO (Either Error a)) -> IO (Either Error a)
-with =
-  coerce @((MVar Libzmq.Zmq_socket_t -> IO (Either Error a)) -> IO (Either Error a)) Zmq.Internal.Socket.with
+with :: (Subscriber -> IO (Either Error a)) -> IO (Either Error a)
+with action =
+  Zmq.Internal.Socket.with \socket -> do
+    socketVar <- newMVar socket
+    action (Subscriber socketVar)
 
 bind :: Subscriber -> Endpoint transport -> IO (Either Error ())
-bind =
-  coerce Zmq.Internal.Socket.bind
+bind (Subscriber socketVar) endpoint =
+  withMVar socketVar \socket -> Zmq.Internal.Socket.bind socket endpoint
 
 unbind :: Subscriber -> Endpoint transport -> IO (Either Error ())
-unbind =
-  coerce Zmq.Internal.Socket.unbind
+unbind (Subscriber socketVar) endpoint =
+  withMVar socketVar \socket -> Zmq.Internal.Socket.unbind socket endpoint
 
 connect :: Subscriber -> Endpoint transport -> IO (Either Error ())
-connect =
-  coerce Zmq.Internal.Socket.connect
+connect (Subscriber socketVar) endpoint =
+  withMVar socketVar \socket -> Zmq.Internal.Socket.connect socket endpoint
 
 disconnect :: Subscriber -> Endpoint transport -> IO (Either Error ())
-disconnect =
-  coerce Zmq.Internal.Socket.disconnect
+disconnect (Subscriber socketVar) endpoint =
+  withMVar socketVar \socket -> Zmq.Internal.Socket.disconnect socket endpoint
 
 -- | <http://api.zeromq.org/4-3:zmq-setsockopt>
 --
