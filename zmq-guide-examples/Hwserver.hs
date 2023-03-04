@@ -1,3 +1,5 @@
+-- Hello World server
+
 import Control.Concurrent (threadDelay)
 import Control.Exception (throwIO)
 import Control.Monad (forever)
@@ -9,13 +11,14 @@ main :: IO ()
 main =
   zmq do
     Zmq.run Zmq.defaultOptions do
+      -- Socket to talk to clients
       Zmq.Responder.with \responder -> do
         zmq (Zmq.Responder.bind responder (Zmq.Tcp "*:5555"))
 
         forever do
           _ <- zmq (Zmq.Responder.receive responder)
           putStrLn "Received Hello"
-          threadDelay 1_000_000
+          threadDelay 1_000_000 -- Do some work
           zmq (Zmq.Responder.send responder ("World" :| []))
 
 zmq :: IO (Either Zmq.Error a) -> IO a

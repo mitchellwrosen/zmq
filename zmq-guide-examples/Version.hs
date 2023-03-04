@@ -1,3 +1,5 @@
+-- Report 0MQ version
+
 import Text.Printf (printf)
 import Zmq qualified
 

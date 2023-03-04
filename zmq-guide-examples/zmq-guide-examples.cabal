@@ -4,6 +4,7 @@ name: zmq-guide-examples
 version: 0
 
 common component
+  build-depends: base, zmq
   default-extensions:
     BlockArguments
     DataKinds
@@ -16,7 +17,7 @@ common component
     ViewPatterns
   default-language: GHC2021
   ghc-options:
-    -threaded 
+    -threaded
     -with-rtsopts=-N2
     -Weverything
     -Wno-all-missed-specialisations
@@ -33,17 +34,24 @@ common component
     ghc-options:
       -Wno-missing-kind-signatures
 
+common bytestring
+  build-depends: bytestring ^>= 0.11.4
+
+common random
+  build-depends: random ^>= 1.2.1
+
 executable hwserver
   import: component
-  build-depends: base, zmq
   main-is: Hwserver.hs
 
 executable hwclient
   import: component
-  build-depends: base, zmq
   main-is: Hwclient.hs
 
 executable version
   import: component
-  build-depends: base, zmq
   main-is: Version.hs
+
+executable wuserver
+  import: component, bytestring, random
+  main-is: Wuserver.hs

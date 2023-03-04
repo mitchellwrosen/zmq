@@ -1,3 +1,5 @@
+-- Hello World client
+
 import Control.Exception (throwIO)
 import Control.Monad (forM_)
 import Data.List.NonEmpty (pattern (:|))
