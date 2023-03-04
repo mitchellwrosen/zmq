@@ -68,7 +68,8 @@ disconnect =
 -- This operation blocks until a peer can receive the message.
 send :: Pusher -> List.NonEmpty ByteString -> IO (Either Error ())
 send socket0 message =
-  withSocket socket0 \socket -> Socket.send socket message
+  withSocket socket0 \socket ->
+    Socket.send socket message
 
 -- | /Alias/: 'Zmq.canSend'
 canSend :: Pusher -> a -> Event a

@@ -57,7 +57,7 @@ library
     Zmq.Internal.Socket
     Zmq.Internal.SocketFinalizer
     Zmq.Error
-    Zmq.SubscriptionMessage
+    Zmq.Subscription
 
 test-suite tests
   import: component

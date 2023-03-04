@@ -28,7 +28,8 @@ module Zmq
     XSubscriber,
 
     -- * Subscription message
-    SubscriptionMessage (..),
+    pattern Subscribe,
+    pattern Unsubscribe,
 
     -- * Errors
     Error (..),
@@ -50,7 +51,7 @@ import Zmq.Pusher (Pusher)
 import Zmq.Requester (Requester)
 import Zmq.Responder (Responder)
 import Zmq.Subscriber (Subscriber)
-import Zmq.SubscriptionMessage (SubscriptionMessage (..))
+import Zmq.Subscription (pattern Subscribe, pattern Unsubscribe)
 import Zmq.XPublisher (XPublisher)
 import Zmq.XSubscriber (XSubscriber)
 

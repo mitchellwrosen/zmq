@@ -360,7 +360,7 @@ poll :: Semigroup a => [Event a] -> IO (Either Error a)
 poll =
   poll_
 
--- poll, with a bound `a` type var. Didn't want that forall in the haddocks :shrug:
+-- poll with a bound `a` type var. didn't want that forall in the haddocks :shrug:
 poll_ :: forall a. Semigroup a => [Event a] -> IO (Either Error a)
 poll_ events =
   withEventPollitems events \items0 ->
@@ -380,16 +380,17 @@ poll_ events =
     -- Precondition: at least one event is not 0
     f :: [(Event a, Zmq_events)] -> a
     f = \case
-      (Event _ _ x, zevents) : results ->
+      (Event _ _ x, zevents) : xs ->
         if zevents /= Zmq_events 0
-          then g x results
-          else f results
+          then g x xs
+          else f xs
+      -- impossible: zmq_poll told us something happened
       [] -> undefined
 
     g :: a -> [(Event a, Zmq_events)] -> a
     g !acc = \case
       [] -> acc
-      (Event _ _ x, zevents) : results ->
+      (Event _ _ x, zevents) : xs ->
         if zevents /= Zmq_events 0
-          then g (acc <> x) results
-          else g acc results
+          then g (acc <> x) xs
+          else g acc xs

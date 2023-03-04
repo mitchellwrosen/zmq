@@ -20,10 +20,9 @@ import Data.List.NonEmpty as List (NonEmpty)
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error)
-import Zmq.Internal.Socket (CanReceive, CanSend, Event, Socket, ThreadSafeSocket)
+import Zmq.Internal.Socket (CanReceive, CanSend, Event, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
-import Zmq.SubscriptionMessage (SubscriptionMessage (Subscribe, Unsubscribe))
-import Zmq.SubscriptionMessage qualified as SubscriptionMessage
+import Zmq.Subscription (pattern Subscribe, pattern Unsubscribe)
 
 -- | A thread-safe __xsubscriber__ socket.
 --
@@ -82,15 +81,18 @@ unsubscribe :: XSubscriber -> ByteString -> IO (Either Error ())
 unsubscribe xsubscriber prefix =
   send xsubscriber (Unsubscribe prefix)
 
-send :: XSubscriber -> SubscriptionMessage -> IO (Either Error ())
-send (XSubscriber socketVar) message =
-  withMVar socketVar \socket ->
-    Socket.send1 socket (SubscriptionMessage.serialize message)
+-- | Send a __message__ on an __xsubscriber__ to all peers.
+--
+-- If a peer has a full message queue, it will not receive the message.
+send :: XSubscriber -> List.NonEmpty ByteString -> IO (Either Error ())
+send socket0 message =
+  withSocket socket0 \socket ->
+    Socket.send socket message
 
 -- | Receive a __message__ on an __xsubscriber__ from any peer (fair queueing).
 receive :: XSubscriber -> IO (Either Error (List.NonEmpty ByteString))
-receive (XSubscriber socketVar) =
-  withMVar socketVar Socket.receive
+receive socket =
+  withSocket socket Socket.receive
 
 -- | /Alias/: 'Zmq.canSend'
 canSend :: XSubscriber -> a -> Event a

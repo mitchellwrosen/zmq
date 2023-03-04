@@ -15,17 +15,13 @@ where
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
+import Data.List.NonEmpty qualified as List (NonEmpty)
 import Data.List.NonEmpty qualified as List.NonEmpty
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error)
 import Zmq.Internal.Socket (CanReceive, CanSend, Event, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
-import Zmq.SubscriptionMessage
-  ( SubscriptionMessage (Subscribe, Unsubscribe),
-    pattern SubscribeMessage,
-    pattern UnsubscribeMessage,
-  )
 
 -- | A thread-safe __xpublisher__ socket.
 --
@@ -80,17 +76,10 @@ send socket0 topic message =
   withSocket socket0 \socket ->
     Socket.send socket (topic List.NonEmpty.:| message)
 
--- | Receive a __subscription message__ on an __xpublisher__ from any peer.
-receive :: XPublisher -> IO (Either Error SubscriptionMessage)
-receive socket0 =
-  withSocket socket0 \socket -> do
-    let loop = do
-          Socket.receive socket >>= \case
-            Left err -> pure (Left err)
-            Right (UnsubscribeMessage prefix) -> pure (Right (Unsubscribe prefix))
-            Right (SubscribeMessage prefix) -> pure (Right (Subscribe prefix))
-            _ -> loop
-    loop
+-- | Receive a __message__ on an __xpublisher__ from any peer (fair queueing).
+receive :: XPublisher -> IO (Either Error (List.NonEmpty ByteString))
+receive socket =
+  withSocket socket Socket.receive
 
 -- | /Alias/: 'Zmq.canSend'
 canSend :: XPublisher -> a -> Event a
