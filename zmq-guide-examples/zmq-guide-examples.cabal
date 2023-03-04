@@ -65,3 +65,7 @@ executable wuclient
 executable taskvent
   import: component, bytestring, random
   main-is: Taskvent.hs
+
+executable taskwork
+  import: component, bytestring
+  main-is: Taskwork.hs
