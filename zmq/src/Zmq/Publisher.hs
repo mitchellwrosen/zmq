@@ -10,7 +10,6 @@ module Zmq.Publisher
 where
 
 import Data.ByteString (ByteString)
-import Data.List.NonEmpty qualified as List (NonEmpty)
 import Data.List.NonEmpty qualified as List.NonEmpty
 import Libzmq
 import UnliftIO
@@ -44,6 +43,6 @@ disconnect :: Publisher -> Endpoint transport -> IO (Either Error ())
 disconnect (Publisher socketVar) endpoint =
   withMVar socketVar \socket -> Zmq.Internal.Socket.disconnect socket endpoint
 
-send :: Publisher -> ByteString -> List.NonEmpty ByteString -> IO (Either Error ())
+send :: Publisher -> ByteString -> [ByteString] -> IO (Either Error ())
 send (Publisher socketVar) topic message =
-  withMVar socketVar \socket -> Zmq.Internal.Socket.send socket (List.NonEmpty.cons topic message)
+  withMVar socketVar \socket -> Zmq.Internal.Socket.send socket (topic List.NonEmpty.:| message)

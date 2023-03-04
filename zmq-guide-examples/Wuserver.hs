@@ -5,7 +5,6 @@
 import Control.Exception (throwIO)
 import Control.Monad (forever)
 import Data.ByteString.Char8 qualified as ByteString.Char8
-import Data.List.NonEmpty (pattern (:|))
 import System.Random.Stateful (globalStdGen, uniformRM)
 import Text.Printf (printf)
 import Zmq qualified
@@ -27,7 +26,7 @@ main =
 
           -- Send message to all subscribers
           let update = ByteString.Char8.pack (printf "%05d %d %d" zipcode temperature relhumidity)
-          Zmq.Publisher.send publisher "" (update :| [])
+          Zmq.Publisher.send publisher update []
 
 zmq :: IO (Either Zmq.Error a) -> IO a
 zmq action =
