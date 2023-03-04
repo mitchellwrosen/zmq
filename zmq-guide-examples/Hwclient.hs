@@ -12,7 +12,7 @@ main =
   Zmq.run Zmq.defaultOptions do
     putStrLn "Connecting to hello world server..."
     requester <- zmq Zmq.Requester.open
-    zmq (Zmq.Requester.connect requester (Zmq.Tcp "localhost:5555"))
+    zmq (Zmq.connect requester "tcp://localhost:5555")
 
     forM_ [(0 :: Int) .. 9] \requestNbr -> do
       printf "Sending Hello %d...\n" requestNbr

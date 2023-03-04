@@ -3,8 +3,8 @@
 
 module Zmq.Internal.Socket
   ( -- * Socket
+    Socket (withSocket),
     ThreadUnsafeSocket (..),
-    withThreadUnsafeSocket,
     openThreadUnsafeSocket,
     openThreadSafeSocket,
     setOption,
@@ -27,6 +27,7 @@ import Data.Functor ((<&>))
 import Data.IORef
 import Data.List.NonEmpty qualified as List (NonEmpty)
 import Data.List.NonEmpty qualified as List.NonEmpty
+import Data.Text (Text)
 import Foreign.C.Types (CInt, CShort)
 import GHC.Exts (TYPE, UnliftedRep, keepAlive#)
 import GHC.IO (IO (..), unIO)
@@ -36,11 +37,12 @@ import GHC.STRef (STRef (..))
 import Libzmq
 import Libzmq.Bindings qualified
 import System.Posix.Types (Fd (..))
-import Zmq.Endpoint
-import Zmq.Error (Error, enrichError, enrichFunction, unexpectedError)
-import Zmq.Internal (renderEndpoint)
+import Zmq.Error (Error, enrichError, unexpectedError)
 import Zmq.Internal.Context (Context (..), globalContextRef)
 import Zmq.Internal.SocketFinalizer (makeSocketFinalizer)
+
+class Socket socket where
+  withSocket :: socket -> (Zmq_socket -> IO a) -> IO a
 
 data ThreadUnsafeSocket = ThreadUnsafeSocket
   { socket :: !Zmq_socket,
@@ -56,10 +58,9 @@ instance Ord ThreadUnsafeSocket where
 instance Show ThreadUnsafeSocket where
   show (ThreadUnsafeSocket s0 _) = show s0
 
-withThreadUnsafeSocket :: ThreadUnsafeSocket -> (Zmq_socket -> IO a) -> IO a
--- withThreadUnsafeSocket (ThreadUnsafeSocket socket _) action = action socket
-withThreadUnsafeSocket (ThreadUnsafeSocket socket (IORef canary#)) action =
-  IO \s -> keepAlive# canary# s (unIO (action socket))
+instance Socket ThreadUnsafeSocket where
+  withSocket (ThreadUnsafeSocket socket (IORef canary#)) action =
+    IO \s -> keepAlive# canary# s (unIO (action socket))
 
 openThreadUnsafeSocket :: Zmq_socket_type -> IO (Either Error ThreadUnsafeSocket)
 openThreadUnsafeSocket =
@@ -126,30 +127,84 @@ getIntOption socket option = do
           Right val -> pure (Right val)
   loop
 
-bind :: Zmq_socket -> Endpoint transport -> IO (Either Error ())
-bind socket endpoint =
-  enrichFunction "zmq_bind" (zmq_bind socket (renderEndpoint endpoint))
+bind :: Socket socket => socket -> Text -> IO (Either Error ())
+bind socket0 endpoint =
+  withSocket socket0 \socket -> bind_ socket endpoint
 
-unbind :: Zmq_socket -> Endpoint transport -> IO (Either Error ())
-unbind socket endpoint =
-  zmq_unbind socket (renderEndpoint endpoint) >>= \case
+bind_ :: Zmq_socket -> Text -> IO (Either Error ())
+bind_ socket endpoint =
+  zmq_bind socket endpoint >>= \case
     Left errno ->
-      let err = enrichError "zmq_unbind" errno
+      let err = enrichError "zmq_bind" errno
        in case errno of
+            EADDRINUSE -> pure (Left err)
+            EADDRNOTAVAIL -> throwIO err
             EINVAL -> throwIO err
-            ENOENT -> pure (Right ()) -- silence these
+            EMTHREAD -> pure (Left err)
+            ENOCOMPATPROTO -> throwIO err
+            ENODEV -> throwIO err
             ENOTSOCK -> throwIO err
+            EPROTONOSUPPORT -> throwIO err
             ETERM -> pure (Left err)
             _ -> unexpectedError err
     Right () -> pure (Right ())
 
-connect :: Zmq_socket -> Endpoint transport -> IO (Either Error ())
-connect socket endpoint =
-  enrichFunction "zmq_connect" (zmq_connect socket (renderEndpoint endpoint))
+unbind :: Socket socket => socket -> Text -> IO ()
+unbind socket0 endpoint =
+  withSocket socket0 \socket -> unbind_ socket endpoint
 
-disconnect :: Zmq_socket -> Endpoint transport -> IO (Either Error ())
-disconnect socket endpoint =
-  enrichFunction "zmq_disconnect" (zmq_disconnect socket (renderEndpoint endpoint))
+unbind_ :: Zmq_socket -> Text -> IO ()
+unbind_ socket endpoint =
+  zmq_unbind socket endpoint >>= \case
+    Left errno ->
+      let err = enrichError "zmq_unbind" errno
+       in case errno of
+            -- These aren't very interesting to report to the user; in all cases, we can say "ok, we
+            -- disconnected", so we prefer the cleaner return type with no Either.
+            EINVAL -> pure ()
+            ENOENT -> pure ()
+            ENOTSOCK -> pure ()
+            ETERM -> pure ()
+            _ -> unexpectedError err
+    Right () -> pure ()
+
+connect :: Socket socket => socket -> Text -> IO (Either Error ())
+connect socket0 endpoint =
+  withSocket socket0 \socket -> connect_ socket endpoint
+
+connect_ :: Zmq_socket -> Text -> IO (Either Error ())
+connect_ socket endpoint =
+  zmq_connect socket endpoint >>= \case
+    Left errno ->
+      let err = enrichError "zmq_connect" errno
+       in case errno of
+            EINVAL -> throwIO err
+            EMTHREAD -> pure (Left err)
+            ENOCOMPATPROTO -> throwIO err
+            ENOTSOCK -> throwIO err
+            EPROTONOSUPPORT -> throwIO err
+            ETERM -> pure (Left err)
+            _ -> unexpectedError err
+    Right () -> pure (Right ())
+
+disconnect :: Socket socket => socket -> Text -> IO ()
+disconnect socket0 endpoint =
+  withSocket socket0 \socket -> disconnect_ socket endpoint
+
+disconnect_ :: Zmq_socket -> Text -> IO ()
+disconnect_ socket endpoint =
+  zmq_disconnect socket endpoint >>= \case
+    Left errno ->
+      let err = enrichError "zmq_disconnect" errno
+       in case errno of
+            -- These aren't very interesting to report to the user; in all cases, we can say "ok, we
+            -- disconnected", so we prefer the cleaner return type with no Either.
+            EINVAL -> pure ()
+            ENOENT -> pure ()
+            ENOTSOCK -> pure ()
+            ETERM -> pure ()
+            _ -> unexpectedError err
+    Right () -> pure ()
 
 send :: Zmq_socket -> List.NonEmpty ByteString -> IO (Either Error ())
 send socket message =

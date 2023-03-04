@@ -15,7 +15,7 @@ main =
   Zmq.run Zmq.defaultOptions do
     -- Prepare our socket
     receiver <- zmq Zmq.Puller.open
-    zmq (Zmq.Puller.bind receiver (Zmq.Tcp "*:5558"))
+    zmq (Zmq.bind receiver "tcp//*:5558")
 
     -- Wait for start of batch
     _ <- zmq (Zmq.Puller.receive receiver)

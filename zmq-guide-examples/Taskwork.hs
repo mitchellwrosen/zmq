@@ -20,11 +20,11 @@ main =
   Zmq.run Zmq.defaultOptions do
     -- Socket to receive messages on
     receiver <- zmq Zmq.Puller.open
-    zmq (Zmq.Puller.connect receiver (Zmq.Tcp "localhost:5557"))
+    zmq (Zmq.connect receiver "tcp://localhost:5557")
 
     -- Socket to send messages to
     sender <- zmq Zmq.Pusher.open
-    zmq (Zmq.Pusher.connect sender (Zmq.Tcp "localhost:5558"))
+    zmq (Zmq.connect sender "tcp://localhost:5558")
 
     -- Process tasks forever
     forever do

@@ -4,6 +4,13 @@ module Zmq
     Options (..),
     defaultOptions,
 
+    -- * Socket
+    Socket,
+    bind,
+    unbind,
+    connect,
+    disconnect,
+
     -- * Socket types
     Publisher,
     Puller,
@@ -13,14 +20,6 @@ module Zmq
     Subscriber,
     XPublisher,
     XSubscriber,
-
-    -- * Transport
-    Transport (..),
-    CompatibleTransport,
-
-    -- * Endpoint
-    Endpoint (..),
-    inproc,
 
     -- * Subscription message
     SubscriptionMessage (..),
@@ -34,11 +33,10 @@ module Zmq
 where
 
 import Libzmq (zmq_version)
-import Zmq.Endpoint (Endpoint (..), inproc)
 import Zmq.Error (Error (..))
-import Zmq.Internal (CompatibleTransport, Transport (..))
 import Zmq.Internal.Context
 import Zmq.Internal.Options (Options (..), defaultOptions)
+import Zmq.Internal.Socket (Socket, bind, connect, disconnect, unbind)
 import Zmq.Publisher (Publisher)
 import Zmq.Puller (Puller)
 import Zmq.Pusher (Pusher)

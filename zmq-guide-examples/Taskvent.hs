@@ -16,11 +16,11 @@ main =
   Zmq.run Zmq.defaultOptions do
     -- Socket to send messages on
     sender <- zmq Zmq.Pusher.open
-    zmq (Zmq.Pusher.bind sender (Zmq.Tcp "*:5557"))
+    zmq (Zmq.bind sender "tcp://*:5557")
 
     -- Socket to send start of batch message on
     sink <- zmq Zmq.Pusher.open
-    zmq (Zmq.Pusher.connect sink (Zmq.Tcp "localhost:5558"))
+    zmq (Zmq.connect sink "tcp://localhost:5558")
 
     putStrLn "Press Enter when the workers are ready"
     _ <- getLine

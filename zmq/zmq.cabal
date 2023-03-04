@@ -39,7 +39,6 @@ library
     libzmq,
     libzmq-bindings,
     text,
-    unliftio,
   exposed-modules:
     Zmq
     Zmq.Publisher
@@ -56,9 +55,7 @@ library
     Zmq.Internal.Options
     Zmq.Internal.Socket
     Zmq.Internal.SocketFinalizer
-    Zmq.Endpoint
     Zmq.Error
-    Zmq.Internal
     Zmq.SubscriptionMessage
 
 test-suite tests
@@ -68,7 +65,6 @@ test-suite tests
     hedgehog,
     hspec,
     text,
-    unliftio,
     zmq,
   ghc-options: -threaded -with-rtsopts=-N2
   hs-source-dirs: test

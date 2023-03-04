@@ -1,13 +1,11 @@
 module Zmq.Error
   ( Error (..),
     enrichError,
-    enrichFunction,
     unexpectedError,
   )
 where
 
-import Control.Exception (Exception, throw)
-import Data.Functor ((<&>))
+import Control.Exception (Exception, throwIO)
 import Data.Text (Text)
 import Libzmq
 
@@ -24,17 +22,11 @@ enrichError :: Text -> Zmq_error -> Error
 enrichError function errno =
   Error {function, errno, description = zmq_strerror errno}
 
-enrichFunction :: Text -> IO (Either Zmq_error a) -> IO (Either Error a)
-enrichFunction function action =
-  action <&> \case
-    Left errno -> Left (enrichError function errno)
-    Right value -> Right value
-
 newtype UnexpectedError
   = UnexpectedError Error
   deriving stock (Show)
   deriving anyclass (Exception)
 
-unexpectedError :: Error -> a
+unexpectedError :: Error -> IO a
 unexpectedError err =
-  throw (UnexpectedError err)
+  throwIO (UnexpectedError err)

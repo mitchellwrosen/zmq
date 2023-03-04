@@ -12,7 +12,7 @@ main =
   Zmq.run Zmq.defaultOptions do
     -- Socket to talk to clients
     responder <- zmq Zmq.Responder.open
-    zmq (Zmq.Responder.bind responder (Zmq.Tcp "*:5555"))
+    zmq (Zmq.bind responder "tcp://*:5555")
 
     forever do
       _ <- zmq (Zmq.Responder.receive responder)

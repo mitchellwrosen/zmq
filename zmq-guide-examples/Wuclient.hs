@@ -7,7 +7,6 @@
 import Control.Exception (throwIO)
 import Control.Monad (replicateM)
 import Data.ByteString.Char8 qualified as ByteString.Char8
-import Data.Function ((&))
 import Data.Functor ((<&>))
 import Data.List.NonEmpty (pattern (:|))
 import System.Environment (getArgs)
@@ -22,7 +21,7 @@ main =
     -- Socket to talk to server
     putStrLn "Collecting updates from weather server..."
     subscriber <- zmq Zmq.Subscriber.open
-    zmq (Zmq.Subscriber.connect subscriber (Zmq.Tcp "localhost:5556"))
+    zmq (Zmq.connect subscriber "tcp://localhost:5556")
 
     -- Subscribe to zipcode, default is NYC, 10001
     filter <-
@@ -35,11 +34,7 @@ main =
     temps <-
       replicateM 100 do
         string :| _ <- zmq (Zmq.Subscriber.receive subscriber)
-        let [_zipcode :: Int, temperature, _relhumidity] =
-              string
-                & ByteString.Char8.unpack
-                & words
-                & map read
+        let [_zipcode :: Int, temperature, _relhumidity] = map read (words (ByteString.Char8.unpack string))
         pure (realToFrac @Int @Double temperature)
     printf "Average temperature for zipcode '%s' was %dF\n" filter (floor (sum temps / 100) :: Int)
 

@@ -15,7 +15,7 @@ main =
   Zmq.run Zmq.defaultOptions do
     -- Prepare our publisher
     publisher <- zmq Zmq.Publisher.open
-    zmq (Zmq.Publisher.bind publisher (Zmq.Tcp "*:5556"))
+    zmq (Zmq.bind publisher "tcp://*:5556")
 
     forever do
       -- Get values that will fool the boss
