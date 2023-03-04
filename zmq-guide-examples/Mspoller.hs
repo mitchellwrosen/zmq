@@ -2,7 +2,7 @@
 -- This version uses zmq_poll()
 
 import Control.Exception (throwIO)
-import Control.Monad (forever)
+import Control.Monad (forever, when)
 import Zmq qualified
 import Zmq.Puller qualified
 import Zmq.Subscriber qualified
@@ -22,22 +22,22 @@ main =
     -- Process messages from both sockets
     forever do
       let items =
-            [ Zmq.canReceive receiver False,
-              Zmq.canReceive subscriber True
+            [ Zmq.canReceive receiver [False],
+              Zmq.canReceive subscriber [True]
             ]
-      zmq (Zmq.poll items) >>= \case
-        False -> do
-          Zmq.Puller.receive receiver >>= \case
-            Left _ -> pure ()
-            Right _ ->
-              -- Process task
-              pure ()
-        True -> do
-          Zmq.Subscriber.receive subscriber >>= \case
-            Left _ -> pure ()
-            Right _ ->
-              -- Process weather update
-              pure ()
+      results <- zmq (Zmq.poll items)
+      when (elem False results) do
+        Zmq.Puller.receive receiver >>= \case
+          Left _ -> pure ()
+          Right _ ->
+            -- Process task
+            pure ()
+      when (elem True results) do
+        Zmq.Subscriber.receive subscriber >>= \case
+          Left _ -> pure ()
+          Right _ ->
+            -- Process weather update
+            pure ()
 
 zmq :: IO (Either Zmq.Error a) -> IO a
 zmq action =

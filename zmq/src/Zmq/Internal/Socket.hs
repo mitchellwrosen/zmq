@@ -356,8 +356,13 @@ withEventPollitems events0 action =
             go (Zmq_pollitem_socket socket events : acc) zevents
    in go [] events0
 
-poll :: [Event a] -> IO (Either Error a)
-poll events =
+poll :: Semigroup a => [Event a] -> IO (Either Error a)
+poll =
+  poll_
+
+-- poll, with a bound `a` type var. Didn't want that forall in the haddocks :shrug:
+poll_ :: forall a. Semigroup a => [Event a] -> IO (Either Error a)
+poll_ events =
   withEventPollitems events \items0 ->
     zmq_pollitems items0 \items -> do
       let loop =
@@ -369,11 +374,22 @@ poll events =
                       EFAULT -> throwIO err
                       ETERM -> pure (Left err)
                       _ -> unexpectedError err
-              Right zevents -> pure (Right (foldr f undefined (zip events zevents)))
+              Right zevents -> pure (Right (f (zip events zevents)))
       loop
   where
-    f :: (Event a, Zmq_events) -> a -> a
-    f (Event _ _ x, zevents) =
-      if zevents == Zmq_events 0
-        then id
-        else const x
+    -- Precondition: at least one event is not 0
+    f :: [(Event a, Zmq_events)] -> a
+    f = \case
+      (Event _ _ x, zevents) : results ->
+        if zevents /= Zmq_events 0
+          then g x results
+          else f results
+      [] -> undefined
+
+    g :: a -> [(Event a, Zmq_events)] -> a
+    g !acc = \case
+      [] -> acc
+      (Event _ _ x, zevents) : results ->
+        if zevents /= Zmq_events 0
+          then g (acc <> x) results
+          else g acc results
