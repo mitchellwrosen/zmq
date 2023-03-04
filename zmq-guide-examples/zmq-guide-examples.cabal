@@ -17,6 +17,8 @@ common component
     ViewPatterns
   default-language: GHC2021
   ghc-options:
+    -eventlog
+    -rtsopts
     -threaded
     -with-rtsopts=-N2
     -Weverything

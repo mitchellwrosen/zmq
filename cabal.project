@@ -3,3 +3,6 @@ packages:
   libzmq, 
   zmq,
   zmq-guide-examples
+
+-- package *
+--   ghc-options: -finfo-table-map -fdistinct-constructor-tables
