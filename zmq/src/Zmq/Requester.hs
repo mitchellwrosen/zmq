@@ -23,7 +23,7 @@ import Zmq.Internal.Socket qualified as Socket
 
 -- | A __requester__ socket.
 --
--- Valid peers: __responder__, __router__
+-- Valid peers: __replier__, __router__
 newtype Requester
   = Requester ThreadUnsafeSocket
   deriving stock (Eq)

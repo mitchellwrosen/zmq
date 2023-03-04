@@ -25,7 +25,7 @@ import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __dealer__ socket.
 --
--- Valid peers: __dealer__, __responder__, __router__
+-- Valid peers: __dealer__, __replier__, __router__
 newtype Dealer
   = Dealer (MVar Zmq_socket)
   deriving stock (Eq)

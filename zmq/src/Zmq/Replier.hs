@@ -1,5 +1,5 @@
-module Zmq.Responder
-  ( Responder,
+module Zmq.Replier
+  ( Replier,
     open,
     bind,
     unbind,
@@ -21,69 +21,69 @@ import Zmq.Error (Error)
 import Zmq.Internal.Socket (CanReceive, CanSend, Event, Socket (withSocket), ThreadUnsafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
--- | A __responder__ socket.
+-- | A __replier__ socket.
 --
 -- Valid peers: __dealer__, __requester__
-newtype Responder
-  = Responder ThreadUnsafeSocket
+newtype Replier
+  = Replier ThreadUnsafeSocket
   deriving stock (Eq)
   deriving newtype (Socket)
 
-instance CanSend Responder
+instance CanSend Replier
 
-instance CanReceive Responder
+instance CanReceive Replier
 
--- | Open a __responder__.
-open :: IO (Either Error Responder)
+-- | Open a __replier__.
+open :: IO (Either Error Replier)
 open =
   coerce (Socket.openThreadUnsafeSocket ZMQ_REP)
 
--- | Bind a __responder__ to an __endpoint__.
+-- | Bind a __replier__ to an __endpoint__.
 --
 -- /Alias/: 'Zmq.bind'
-bind :: Responder -> Text -> IO (Either Error ())
+bind :: Replier -> Text -> IO (Either Error ())
 bind =
   Socket.bind
 
--- | Unbind a __responder__ from an __endpoint__.
+-- | Unbind a __replier__ from an __endpoint__.
 --
 -- /Alias/: 'Zmq.unbind'
-unbind :: Responder -> Text -> IO ()
+unbind :: Replier -> Text -> IO ()
 unbind =
   Socket.unbind
 
--- | Connect a __responder__ to an __endpoint__.
+-- | Connect a __replier__ to an __endpoint__.
 --
 -- /Alias/: 'Zmq.connect'
-connect :: Responder -> Text -> IO (Either Error ())
+connect :: Replier -> Text -> IO (Either Error ())
 connect =
   Socket.connect
 
--- | Disconnect a __responder__ from an __endpoint__.
+-- | Disconnect a __replier__ from an __endpoint__.
 --
 -- /Alias/: 'Zmq.disconnect'
-disconnect :: Responder -> Text -> IO ()
+disconnect :: Replier -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
--- | Send a __message__ on a __responder__ to the last peer received from.
+-- | Send a __message__ on a __replier__ to the last peer received from.
 --
 -- This operation never blocks. If the last peer received from no longer exists, the message is discarded.
-send :: Responder -> List.NonEmpty ByteString -> IO (Either Error ())
+send :: Replier -> List.NonEmpty ByteString -> IO (Either Error ())
 send socket0 message =
   withSocket socket0 \socket -> Socket.send socket message
 
--- | Receive a __message__ on a __responder__ from any peer (fair-queued).
-receive :: Responder -> IO (Either Error (List.NonEmpty ByteString))
+-- | Receive a __message__ on a __replier__ from any peer (fair-queued).
+receive :: Replier -> IO (Either Error (List.NonEmpty ByteString))
 receive socket =
   withSocket socket Socket.receive
 
 -- | /Alias/: 'Zmq.canSend'
-canSend :: Responder -> a -> Event a
+canSend :: Replier -> a -> Event a
 canSend =
   Socket.canSend
 
 -- | /Alias/: 'Zmq.canReceive'
-canReceive :: Responder -> a -> Event a
+canReceive :: Replier -> a -> Event a
 canReceive =
   Socket.canReceive

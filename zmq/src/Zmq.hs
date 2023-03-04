@@ -22,8 +22,8 @@ module Zmq
     Publisher,
     Puller,
     Pusher,
+    Replier,
     Requester,
-    Responder,
     Router,
     Subscriber,
     XPublisher,
@@ -51,8 +51,8 @@ import Zmq.Internal.Socket (Event, Socket, bind, canReceive, canSend, connect, d
 import Zmq.Publisher (Publisher)
 import Zmq.Puller (Puller)
 import Zmq.Pusher (Pusher)
+import Zmq.Replier (Replier)
 import Zmq.Requester (Requester)
-import Zmq.Responder (Responder)
 import Zmq.Router (Router)
 import Zmq.Subscriber (Subscriber)
 import Zmq.Subscription (pattern Subscribe, pattern Unsubscribe)

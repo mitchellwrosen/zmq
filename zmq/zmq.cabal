@@ -46,8 +46,8 @@ library
     Zmq.Publisher
     Zmq.Puller
     Zmq.Pusher
+    Zmq.Replier
     Zmq.Requester
-    Zmq.Responder
     Zmq.Router
     Zmq.Subscriber
     Zmq.XPublisher
