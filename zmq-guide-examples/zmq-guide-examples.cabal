@@ -77,3 +77,15 @@ executable tasksink
 executable mspoller
   import: component
   main-is: Mspoller.hs
+
+executable rrclient
+  import: component, bytestring
+  main-is: Rrclient.hs
+
+executable rrworker
+  import: component, bytestring
+  main-is: Rrworker.hs
+
+executable rrbroker
+  import: component
+  main-is: Rrbroker.hs
