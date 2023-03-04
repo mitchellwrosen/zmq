@@ -55,3 +55,7 @@ executable version
 executable wuserver
   import: component, bytestring, random
   main-is: Wuserver.hs
+
+executable wuclient
+  import: component, bytestring
+  main-is: Wuclient.hs
