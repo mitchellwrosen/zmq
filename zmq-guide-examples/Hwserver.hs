@@ -12,14 +12,14 @@ main =
   zmq do
     Zmq.run Zmq.defaultOptions do
       -- Socket to talk to clients
-      Zmq.Responder.with \responder -> do
-        zmq (Zmq.Responder.bind responder (Zmq.Tcp "*:5555"))
+      responder <- zmq Zmq.Responder.open
+      zmq (Zmq.Responder.bind responder (Zmq.Tcp "*:5555"))
 
-        forever do
-          _ <- zmq (Zmq.Responder.receive responder)
-          putStrLn "Received Hello"
-          threadDelay 1_000_000 -- Do some work
-          zmq (Zmq.Responder.send responder ("World" :| []))
+      forever do
+        _ <- zmq (Zmq.Responder.receive responder)
+        putStrLn "Received Hello"
+        threadDelay 1_000_000 -- Do some work
+        zmq (Zmq.Responder.send responder ("World" :| []))
 
 zmq :: IO (Either Zmq.Error a) -> IO a
 zmq action =

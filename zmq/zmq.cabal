@@ -54,7 +54,6 @@ library
     Zmq.Endpoint
     Zmq.Error
     Zmq.Internal
-    Zmq.Internal.Socket
     Zmq.SubscriptionMessage
 
 test-suite tests

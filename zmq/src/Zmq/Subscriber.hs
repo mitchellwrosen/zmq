@@ -1,6 +1,6 @@
 module Zmq.Subscriber
   ( Subscriber,
-    with,
+    open,
     bind,
     unbind,
     connect,
@@ -13,22 +13,21 @@ where
 
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
+import Data.Coerce (coerce)
 import Data.List.NonEmpty as List (NonEmpty)
 import Libzmq
 import Libzmq.Bindings qualified
 import Zmq.Endpoint
 import Zmq.Error
-import Zmq.Internal.Socket qualified
+import Zmq.Internal.Context qualified as Zmq.Internal.Socket
 
 newtype Subscriber
   = Subscriber (MVar Zmq_socket)
   deriving stock (Eq)
 
-with :: (Subscriber -> IO (Either Error a)) -> IO (Either Error a)
-with action =
-  Zmq.Internal.Socket.with ZMQ_SUB \socket -> do
-    socketVar <- newMVar socket
-    action (Subscriber socketVar)
+open :: IO (Either Error Subscriber)
+open =
+  coerce (Zmq.Internal.Socket.openThreadSafeSocket ZMQ_SUB)
 
 bind :: Subscriber -> Endpoint transport -> IO (Either Error ())
 bind (Subscriber socketVar) endpoint =

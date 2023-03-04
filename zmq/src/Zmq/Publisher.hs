@@ -1,6 +1,6 @@
 module Zmq.Publisher
   ( Publisher,
-    with,
+    open,
     bind,
     unbind,
     connect,
@@ -10,22 +10,21 @@ module Zmq.Publisher
 where
 
 import Data.ByteString (ByteString)
+import Data.Coerce (coerce)
 import Data.List.NonEmpty qualified as List.NonEmpty
 import Libzmq
 import UnliftIO
 import Zmq.Endpoint
 import Zmq.Error (Error)
-import Zmq.Internal.Socket qualified
+import Zmq.Internal.Context qualified as Zmq.Internal.Socket
 
 newtype Publisher
   = Publisher (MVar Zmq_socket)
   deriving stock (Eq)
 
-with :: (Publisher -> IO (Either Error a)) -> IO (Either Error a)
-with action =
-  Zmq.Internal.Socket.with ZMQ_PUB \socket -> do
-    socketVar <- newMVar socket
-    action (Publisher socketVar)
+open :: IO (Either Error Publisher)
+open =
+  coerce (Zmq.Internal.Socket.openThreadSafeSocket ZMQ_PUB)
 
 bind :: Publisher -> Endpoint transport -> IO (Either Error ())
 bind (Publisher socketVar) endpoint =

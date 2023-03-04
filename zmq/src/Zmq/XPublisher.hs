@@ -1,6 +1,6 @@
 module Zmq.XPublisher
   ( XPublisher,
-    with,
+    open,
     bind,
     unbind,
     connect,
@@ -11,23 +11,22 @@ module Zmq.XPublisher
 where
 
 import Data.ByteString (ByteString)
+import Data.Coerce (coerce)
 import Data.List.NonEmpty qualified as List.NonEmpty
 import Libzmq
 import UnliftIO
 import Zmq.Endpoint
 import Zmq.Error (Error)
-import Zmq.Internal.Socket qualified
+import Zmq.Internal.Context qualified as Zmq.Internal.Socket
 import Zmq.SubscriptionMessage
 
 newtype XPublisher
   = XPublisher (MVar Zmq_socket)
   deriving stock (Eq)
 
-with :: (XPublisher -> IO (Either Error a)) -> IO (Either Error a)
-with action =
-  Zmq.Internal.Socket.with ZMQ_XPUB \socket -> do
-    socketVar <- newMVar socket
-    action (XPublisher socketVar)
+open :: IO (Either Error XPublisher)
+open =
+  coerce (Zmq.Internal.Socket.openThreadSafeSocket ZMQ_XPUB)
 
 bind :: XPublisher -> Endpoint transport -> IO (Either Error ())
 bind (XPublisher socketVar) endpoint =
@@ -53,7 +52,6 @@ receive :: XPublisher -> IO (Either Error SubscriptionMessage)
 receive (XPublisher socketVar) =
   withMVar socketVar \socket -> do
     let loop = do
-          -- Zmqhs.receive socket >>= \case
           Zmq.Internal.Socket.receive socket >>= \case
             Left err -> pure (Left err)
             Right (UnsubscribeMessage prefix) -> pure (Right (Unsubscribe prefix))

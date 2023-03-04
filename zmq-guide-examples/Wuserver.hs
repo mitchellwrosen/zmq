@@ -15,18 +15,18 @@ main =
   zmq do
     Zmq.run Zmq.defaultOptions do
       -- Prepare our publisher
-      Zmq.Publisher.with \publisher -> do
-        zmq (Zmq.Publisher.bind publisher (Zmq.Tcp "*:5556"))
+      publisher <- zmq Zmq.Publisher.open
+      zmq (Zmq.Publisher.bind publisher (Zmq.Tcp "*:5556"))
 
-        forever do
-          -- Get values that will fool the boss
-          zipcode <- uniformRM (0 :: Int, 99999) globalStdGen
-          temperature <- uniformRM (-80 :: Int, 134) globalStdGen
-          relhumidity <- uniformRM (10 :: Int, 59) globalStdGen
+      forever do
+        -- Get values that will fool the boss
+        zipcode <- uniformRM (0 :: Int, 99999) globalStdGen
+        temperature <- uniformRM (-80 :: Int, 134) globalStdGen
+        relhumidity <- uniformRM (10 :: Int, 59) globalStdGen
 
-          -- Send message to all subscribers
-          let update = ByteString.Char8.pack (printf "%05d %d %d" zipcode temperature relhumidity)
-          Zmq.Publisher.send publisher update []
+        -- Send message to all subscribers
+        let update = ByteString.Char8.pack (printf "%05d %d %d" zipcode temperature relhumidity)
+        Zmq.Publisher.send publisher update []
 
 zmq :: IO (Either Zmq.Error a) -> IO a
 zmq action =

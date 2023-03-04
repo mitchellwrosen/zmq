@@ -1,6 +1,6 @@
 module Zmq.XSubscriber
   ( XSubscriber,
-    with,
+    open,
     bind,
     unbind,
     connect,
@@ -12,12 +12,13 @@ module Zmq.XSubscriber
 where
 
 import Data.ByteString (ByteString)
+import Data.Coerce (coerce)
 import Data.List.NonEmpty as List (NonEmpty)
 import Libzmq
 import UnliftIO
 import Zmq.Endpoint
 import Zmq.Error (Error)
-import Zmq.Internal.Socket qualified
+import Zmq.Internal.Context qualified as Zmq.Internal.Socket
 import Zmq.SubscriptionMessage (SubscriptionMessage (..))
 import Zmq.SubscriptionMessage qualified as SubscriptionMessage
 
@@ -25,11 +26,9 @@ newtype XSubscriber
   = XSubscriber (MVar Zmq_socket)
   deriving stock (Eq)
 
-with :: (XSubscriber -> IO (Either Error a)) -> IO (Either Error a)
-with action =
-  Zmq.Internal.Socket.with ZMQ_XSUB \socket -> do
-    socketVar <- newMVar socket
-    action (XSubscriber socketVar)
+open :: IO (Either Error XSubscriber)
+open =
+  coerce (Zmq.Internal.Socket.openThreadSafeSocket ZMQ_XSUB)
 
 bind :: XSubscriber -> Endpoint transport -> IO (Either Error ())
 bind (XSubscriber socketVar) endpoint =

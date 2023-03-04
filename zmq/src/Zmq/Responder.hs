@@ -1,6 +1,6 @@
 module Zmq.Responder
   ( Responder,
-    with,
+    open,
     bind,
     unbind,
     connect,
@@ -16,36 +16,37 @@ import Data.List.NonEmpty as List (NonEmpty)
 import Libzmq
 import Zmq.Endpoint
 import Zmq.Error (Error)
-import Zmq.Internal.Socket qualified
+import Zmq.Internal.Context (ThreadUnsafeSocket (..), withThreadUnsafeSocket)
+import Zmq.Internal.Context qualified as Zmq.Internal.Socket
 
 newtype Responder
-  = Responder Zmq_socket
+  = Responder ThreadUnsafeSocket
   deriving stock (Eq)
 
-with :: (Responder -> IO (Either Error a)) -> IO (Either Error a)
-with action =
-  Zmq.Internal.Socket.with ZMQ_REP \socket -> action (Responder socket)
+open :: IO (Either Error Responder)
+open =
+  coerce (Zmq.Internal.Socket.openThreadUnsafeSocket ZMQ_REP)
 
 bind :: Responder -> Endpoint transport -> IO (Either Error ())
-bind =
-  coerce Zmq.Internal.Socket.bind
+bind (Responder socket0) endpoint =
+  withThreadUnsafeSocket socket0 \socket -> Zmq.Internal.Socket.bind socket endpoint
 
 unbind :: Responder -> Endpoint transport -> IO (Either Error ())
-unbind =
-  coerce Zmq.Internal.Socket.unbind
+unbind (Responder socket0) endpoint =
+  withThreadUnsafeSocket socket0 \socket -> Zmq.Internal.Socket.unbind socket endpoint
 
 connect :: Responder -> Endpoint transport -> IO (Either Error ())
-connect =
-  coerce Zmq.Internal.Socket.connect
+connect (Responder socket0) endpoint =
+  withThreadUnsafeSocket socket0 \socket -> Zmq.Internal.Socket.connect socket endpoint
 
 disconnect :: Responder -> Endpoint transport -> IO (Either Error ())
-disconnect =
-  coerce Zmq.Internal.Socket.disconnect
+disconnect (Responder socket0) endpoint =
+  withThreadUnsafeSocket socket0 \socket -> Zmq.Internal.Socket.disconnect socket endpoint
 
 send :: Responder -> List.NonEmpty ByteString -> IO (Either Error ())
-send =
-  coerce Zmq.Internal.Socket.send
+send (Responder socket0) message =
+  withThreadUnsafeSocket socket0 \socket -> Zmq.Internal.Socket.send socket message
 
 receive :: Responder -> IO (Either Error (List.NonEmpty ByteString))
-receive =
-  coerce Zmq.Internal.Socket.receive
+receive (Responder socket) =
+  withThreadUnsafeSocket socket Zmq.Internal.Socket.receive
