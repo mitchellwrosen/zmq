@@ -1,7 +1,6 @@
 module Zmq
-  ( -- * Context
-    withContext,
-    Context,
+  ( -- * Main
+    run,
     Options (..),
     defaultOptions,
 
@@ -27,10 +26,10 @@ module Zmq
   )
 where
 
-import Zmq.Context
 import Zmq.Endpoint (Endpoint (..), inproc)
 import Zmq.Error (Error (..))
 import Zmq.Internal (CompatibleTransport, Transport (..))
+import Zmq.Internal.Context
 import Zmq.Publisher (Publisher)
 import Zmq.Subscriber (Subscriber)
 import Zmq.SubscriptionMessage (SubscriptionMessage (..))

@@ -16,60 +16,66 @@ import Control.Concurrent.MVar
 import Control.Exception
 import Data.Bits ((.&.))
 import Data.ByteString (ByteString)
-import Data.Functor (void, (<&>))
+import Data.Functor ((<&>))
+import Data.IORef
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as List.NonEmpty
 import Foreign.C.Types (CInt, CShort)
 import Libzmq
 import Libzmq.Bindings qualified
 import System.Posix.Types (Fd (..))
-import Zmq.Context
 import Zmq.Endpoint
 import Zmq.Error
 import Zmq.Internal (renderEndpoint)
+import Zmq.Internal.Context (globalContextRef)
 
-with :: Context -> (MVar Zmq_socket_t -> IO (Either Error a)) -> IO (Either Error a)
-with context action =
+with :: (MVar Zmq_socket_t -> IO (Either Error a)) -> IO (Either Error a)
+with action =
   mask \restore ->
-    open context >>= \case
+    open >>= \case
       Left err -> pure (Left err)
       Right socket -> do
         socketVar <- newMVar socket
-        try (restore (action socketVar)) >>= \case
-          Left (exception :: SomeException) -> do
-            uninterruptibleMask_ (void (close socket))
-            throwIO exception
-          Right result -> do
-            uninterruptibleMask_ (close socket) <&> \case
-              Left err ->
-                Left case result of
-                  Left err0 -> err0 -- prefer user's error to close error
-                  Right _ -> err
-              Right () -> result
+        result <- try (restore (action socketVar))
+        uninterruptibleMask_ (close socket)
+        case result of
+          Left (exception :: SomeException) -> throwIO exception
+          Right value -> pure value
 
-open :: Context -> IO (Either Error Zmq_socket_t)
-open (Context context) =
-  zmq_socket context ZMQ_SUB <&> \case
-    Left err -> Left (enrichError "zmq_socket" err)
-    Right socket -> Right socket
+open :: IO (Either Error Zmq_socket_t)
+open = do
+  context <- readIORef globalContextRef
+  zmq_socket context ZMQ_SUB >>= \case
+    Left errno ->
+      let err = enrichError "zmq_socket" errno
+       in case errno of
+            EFAULT -> throwIO err
+            EINVAL -> throwIO err
+            EMFILE -> pure (Left err)
+            ETERM -> pure (Left err)
+            _ -> unexpectedError err
+    Right socket -> pure (Right socket)
 
-close :: Zmq_socket_t -> IO (Either Error ())
+close :: Zmq_socket_t -> IO ()
 close socket =
-  zmq_close socket <&> \case
-    Left err -> Left (enrichError "zmq_close" err)
-    Right () -> Right ()
+  zmq_close socket >>= \case
+    Left errno ->
+      let err = enrichError "zmq_close" errno
+       in case errno of
+            ENOTSOCK -> throwIO err
+            _ -> unexpectedError err
+    Right () -> pure ()
 
 setByteStringOption :: Zmq_socket_t -> CInt -> ByteString -> IO (Either Error ())
 setByteStringOption socket option value =
   zmq_setsockopt_bytestring socket option value >>= \case
     Left errno ->
       undefined
-        let badCall = throwIO err
-            err = enrichError "zmq_setsockopt" errno
+        let err = enrichError "zmq_setsockopt" errno
          in case errno of
               EINTR -> setByteStringOption socket option value
-              EINVAL -> badCall
-              ENOTSOCK -> badCall
+              EINVAL -> throwIO err
+              ENOTSOCK -> throwIO err
               ETERM -> pure (Left err)
               _ -> unexpectedError err
     Right val -> pure (Right val)
@@ -78,12 +84,11 @@ getIntOption :: Zmq_socket_t -> CInt -> IO (Either Error Int)
 getIntOption socket option =
   zmq_getsockopt_int socket option >>= \case
     Left errno ->
-      let badCall = throwIO err
-          err = enrichError "zmq_getsockopt" errno
+      let err = enrichError "zmq_getsockopt" errno
        in case errno of
             EINTR -> getIntOption socket option
-            EINVAL -> badCall
-            ENOTSOCK -> badCall
+            EINVAL -> throwIO err
+            ENOTSOCK -> throwIO err
             ETERM -> pure (Left err)
             _ -> unexpectedError err
     Right val -> pure (Right val)
@@ -98,12 +103,11 @@ unbind socketVar endpoint =
   withMVar socketVar \socket ->
     zmq_unbind socket (renderEndpoint endpoint) >>= \case
       Left errno ->
-        let badCall = throwIO err
-            err = enrichError "zmq_unbind" errno
+        let err = enrichError "zmq_unbind" errno
          in case errno of
-              EINVAL -> badCall
+              EINVAL -> throwIO err
               ENOENT -> pure (Right ()) -- silence these
-              ENOTSOCK -> badCall
+              ENOTSOCK -> throwIO err
               ETERM -> pure (Left err)
               _ -> unexpectedError err
       Right () -> pure (Right ())
@@ -138,19 +142,18 @@ sendf socket frame more = do
   let loop = do
         zmq_send_dontwait socket frame more >>= \case
           Left errno ->
-            let badCall = throwIO err
-                err = enrichError "zmq_send" errno
+            let err = enrichError "zmq_send" errno
              in case errno of
                   EAGAIN ->
                     blockUntilEvent socket Libzmq.Bindings._ZMQ_POLLOUT >>= \case
                       Left err1 -> pure (Left err1)
                       Right () -> loop
-                  EFSM -> badCall
+                  EFSM -> throwIO err
                   EHOSTUNREACH -> pure (Left err)
-                  EINVAL -> badCall
+                  EINVAL -> throwIO err
                   EINTR -> loop
-                  ENOTSUP -> badCall
-                  ENOTSOCK -> badCall
+                  ENOTSUP -> throwIO err
+                  ENOTSOCK -> throwIO err
                   ETERM -> pure (Left err)
                   _ -> unexpectedError err
           Right _len -> pure (Right ())
@@ -186,17 +189,16 @@ receivef socket =
     let loop = do
           zmq_msg_recv_dontwait frame socket >>= \case
             Left errno ->
-              let badCall = throwIO err
-                  err = enrichError "zmq_msg_recv" errno
+              let err = enrichError "zmq_msg_recv" errno
                in case errno of
                     EAGAIN ->
                       blockUntilEvent socket Libzmq.Bindings._ZMQ_POLLIN >>= \case
                         Left err1 -> pure (Left err1)
                         Right () -> loop
-                    EFSM -> badCall
+                    EFSM -> throwIO err
                     EINTR -> loop
-                    ENOTSOCK -> badCall
-                    ENOTSUP -> badCall
+                    ENOTSOCK -> throwIO err
+                    ENOTSUP -> throwIO err
                     ETERM -> pure (Left err)
                     _ -> unexpectedError err
             Right _len -> do

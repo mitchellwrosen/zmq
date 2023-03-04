@@ -14,7 +14,6 @@ import Data.Coerce (coerce)
 import Data.List.NonEmpty (NonEmpty)
 import Libzmq qualified
 import UnliftIO
-import Zmq.Context
 import Zmq.Endpoint
 import Zmq.Error (Error)
 import Zmq.Internal.Socket qualified
@@ -23,9 +22,9 @@ newtype Publisher
   = Publisher (MVar Libzmq.Zmq_socket_t)
   deriving stock (Eq)
 
-with :: forall a. Context -> (Publisher -> IO (Either Error a)) -> IO (Either Error a)
+with :: forall a. (Publisher -> IO (Either Error a)) -> IO (Either Error a)
 with =
-  coerce @(Context -> (MVar Libzmq.Zmq_socket_t -> IO (Either Error a)) -> IO (Either Error a)) Zmq.Internal.Socket.with
+  coerce @((MVar Libzmq.Zmq_socket_t -> IO (Either Error a)) -> IO (Either Error a)) Zmq.Internal.Socket.with
 
 bind :: Publisher -> Endpoint transport -> IO (Either Error ())
 bind =

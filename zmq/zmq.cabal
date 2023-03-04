@@ -43,7 +43,6 @@ library
     libzmq,
     libzmq-bindings,
     text,
-    -- transformers ^>= 0.6,
     unliftio,
   exposed-modules:
     Zmq
@@ -53,7 +52,7 @@ library
     Zmq.XSubscriber
   hs-source-dirs: src
   other-modules:
-    Zmq.Context
+    Zmq.Internal.Context
     Zmq.Endpoint
     Zmq.Error
     Zmq.Internal
