@@ -43,6 +43,7 @@ library
   exposed-modules:
     Zmq
     Zmq.Publisher
+    Zmq.Requester
     Zmq.Responder
     Zmq.Subscriber
     Zmq.XPublisher
