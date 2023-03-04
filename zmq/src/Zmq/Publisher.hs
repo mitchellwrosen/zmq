@@ -6,6 +6,7 @@ module Zmq.Publisher
     connect,
     disconnect,
     send,
+    canSend,
   )
 where
 
@@ -16,7 +17,7 @@ import Data.List.NonEmpty qualified as List.NonEmpty
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error)
-import Zmq.Internal.Socket (Socket (withSocket))
+import Zmq.Internal.Socket (CanSend, Event, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __publisher__ socket.
@@ -25,10 +26,9 @@ import Zmq.Internal.Socket qualified as Socket
 newtype Publisher
   = Publisher (MVar Zmq_socket)
   deriving stock (Eq)
+  deriving (Socket) via (ThreadSafeSocket)
 
-instance Socket Publisher where
-  withSocket (Publisher socketVar) =
-    withMVar socketVar
+instance CanSend Publisher
 
 -- | Open a __publisher__.
 open :: IO (Either Error Publisher)
@@ -70,3 +70,8 @@ send :: Publisher -> ByteString -> [ByteString] -> IO (Either Error ())
 send socket0 topic message =
   withSocket socket0 \socket ->
     Socket.send socket (topic List.NonEmpty.:| message)
+
+-- | /Alias/: 'Zmq.canSend'
+canSend :: Publisher -> a -> Event a
+canSend =
+  Socket.canSend

@@ -7,6 +7,8 @@ module Zmq.Responder
     disconnect,
     send,
     receive,
+    canSend,
+    canReceive,
   )
 where
 
@@ -16,7 +18,7 @@ import Data.List.NonEmpty as List (NonEmpty)
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error)
-import Zmq.Internal.Socket (Socket (withSocket), ThreadUnsafeSocket (..))
+import Zmq.Internal.Socket (CanReceive, CanSend, Event, Socket (withSocket), ThreadUnsafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A __responder__ socket.
@@ -26,6 +28,10 @@ newtype Responder
   = Responder ThreadUnsafeSocket
   deriving stock (Eq)
   deriving newtype (Socket)
+
+instance CanSend Responder
+
+instance CanReceive Responder
 
 -- | Open a __responder__.
 open :: IO (Either Error Responder)
@@ -71,3 +77,13 @@ send socket0 message =
 receive :: Responder -> IO (Either Error (List.NonEmpty ByteString))
 receive socket =
   withSocket socket Socket.receive
+
+-- | /Alias/: 'Zmq.canSend'
+canSend :: Responder -> a -> Event a
+canSend =
+  Socket.canSend
+
+-- | /Alias/: 'Zmq.canReceive'
+canReceive :: Responder -> a -> Event a
+canReceive =
+  Socket.canReceive

@@ -2,8 +2,10 @@
 {-# LANGUAGE UnboxedTuples #-}
 
 module Zmq.Internal.Socket
-  ( -- * Socket
-    Socket (withSocket),
+  ( Socket (..),
+    CanSend,
+    CanReceive,
+    ThreadSafeSocket (..),
     ThreadUnsafeSocket (..),
     openThreadUnsafeSocket,
     openThreadSafeSocket,
@@ -15,6 +17,10 @@ module Zmq.Internal.Socket
     send,
     send1,
     receive,
+    Event,
+    canSend,
+    canReceive,
+    poll,
   )
 where
 
@@ -42,8 +48,26 @@ import Zmq.Internal.Context (Context (..), globalContextRef)
 import Zmq.Internal.SocketFinalizer (makeSocketFinalizer)
 
 class Socket socket where
+  getSocket :: socket -> (Zmq_socket -> IO a) -> IO a
+  getSocket = withSocket
+
   withSocket :: socket -> (Zmq_socket -> IO a) -> IO a
   withSocket = undefined -- hide "minimal complete definition" haddock
+
+class Socket socket => CanSend socket
+
+class Socket socket => CanReceive socket
+
+newtype ThreadSafeSocket
+  = ThreadSafeSocket (MVar Zmq_socket)
+
+instance Socket ThreadSafeSocket where
+  getSocket (ThreadSafeSocket socketVar) action = do
+    socket <- readMVar socketVar
+    action socket
+
+  withSocket (ThreadSafeSocket socketVar) =
+    withMVar socketVar
 
 data ThreadUnsafeSocket = ThreadUnsafeSocket
   { socket :: !Zmq_socket,
@@ -311,3 +335,45 @@ blockUntilEvent socket event =
                   then loop
                   else pure (Right ())
       loop
+
+data Event a
+  = forall socket. Socket socket => Event !socket !Zmq_events !a
+
+canSend :: CanSend socket => socket -> a -> Event a
+canSend socket =
+  Event socket ZMQ_POLLOUT
+
+canReceive :: CanReceive socket => socket -> a -> Event a
+canReceive socket =
+  Event socket ZMQ_POLLIN
+
+withEventPollitems :: [Event a] -> ([Zmq_pollitem] -> IO b) -> IO b
+withEventPollitems events0 action =
+  let go acc = \case
+        [] -> action (reverse acc)
+        Event socket0 events _ : zevents ->
+          getSocket socket0 \socket ->
+            go (Zmq_pollitem_socket socket events : acc) zevents
+   in go [] events0
+
+poll :: [Event a] -> IO (Either Error a)
+poll events =
+  withEventPollitems events \items0 ->
+    zmq_pollitems items0 \items -> do
+      let loop =
+            zmq_poll items (-1) >>= \case
+              Left errno ->
+                let err = enrichError "zmq_poll" errno
+                 in case errno of
+                      EINTR -> loop
+                      EFAULT -> throwIO err
+                      ETERM -> pure (Left err)
+                      _ -> unexpectedError err
+              Right zevents -> pure (Right (foldr f undefined (zip events zevents)))
+      loop
+  where
+    f :: (Event a, Zmq_events) -> a -> a
+    f (Event _ _ x, zevents) =
+      if zevents == Zmq_events 0
+        then id
+        else const x

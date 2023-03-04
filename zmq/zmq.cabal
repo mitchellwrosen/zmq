@@ -9,6 +9,7 @@ common component
     DataKinds
     DeriveAnyClass
     DerivingStrategies
+    DerivingVia
     LambdaCase
     OverloadedStrings
     PatternSynonyms

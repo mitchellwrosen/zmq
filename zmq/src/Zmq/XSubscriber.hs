@@ -8,6 +8,8 @@ module Zmq.XSubscriber
     subscribe,
     unsubscribe,
     receive,
+    canSend,
+    canReceive,
   )
 where
 
@@ -18,7 +20,7 @@ import Data.List.NonEmpty as List (NonEmpty)
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error)
-import Zmq.Internal.Socket (Socket (withSocket))
+import Zmq.Internal.Socket (CanReceive, CanSend, Event, Socket, ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 import Zmq.SubscriptionMessage (SubscriptionMessage (Subscribe, Unsubscribe))
 import Zmq.SubscriptionMessage qualified as SubscriptionMessage
@@ -29,10 +31,11 @@ import Zmq.SubscriptionMessage qualified as SubscriptionMessage
 newtype XSubscriber
   = XSubscriber (MVar Zmq_socket)
   deriving stock (Eq)
+  deriving (Socket) via (ThreadSafeSocket)
 
-instance Socket XSubscriber where
-  withSocket (XSubscriber socketVar) =
-    withMVar socketVar
+instance CanSend XSubscriber
+
+instance CanReceive XSubscriber
 
 -- | Open an __xsubscriber__.
 open :: IO (Either Error XSubscriber)
@@ -88,3 +91,13 @@ send (XSubscriber socketVar) message =
 receive :: XSubscriber -> IO (Either Error (List.NonEmpty ByteString))
 receive (XSubscriber socketVar) =
   withMVar socketVar Socket.receive
+
+-- | /Alias/: 'Zmq.canSend'
+canSend :: XSubscriber -> a -> Event a
+canSend =
+  Socket.canSend
+
+-- | /Alias/: 'Zmq.canReceive'
+canReceive :: XSubscriber -> a -> Event a
+canReceive =
+  Socket.canReceive

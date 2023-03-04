@@ -104,7 +104,7 @@ module Libzmq
         ETERM,
         ETIMEDOUT
       ),
-    Zmq_events,
+    Zmq_events (..),
     pattern ZMQ_POLLIN,
     pattern ZMQ_POLLOUT,
     pattern ZMQ_POLLERR,

@@ -8,6 +8,7 @@ module Zmq.Subscriber
     subscribe,
     unsubscribe,
     receive,
+    canReceive,
   )
 where
 
@@ -18,7 +19,7 @@ import Data.List.NonEmpty as List (NonEmpty)
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error
-import Zmq.Internal.Socket (Socket (withSocket))
+import Zmq.Internal.Socket (CanReceive, Event, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __subscriber__ socket.
@@ -27,10 +28,9 @@ import Zmq.Internal.Socket qualified as Socket
 newtype Subscriber
   = Subscriber (MVar Zmq_socket)
   deriving stock (Eq)
+  deriving (Socket) via (ThreadSafeSocket)
 
-instance Socket Subscriber where
-  withSocket (Subscriber socketVar) =
-    withMVar socketVar
+instance CanReceive Subscriber
 
 -- | Open a __subscriber__.
 open :: IO (Either Error Subscriber)
@@ -83,3 +83,8 @@ unsubscribe socket0 prefix =
 receive :: Subscriber -> IO (Either Error (List.NonEmpty ByteString))
 receive socket =
   withSocket socket Socket.receive
+
+-- | /Alias/: 'Zmq.canReceive'
+canReceive :: Subscriber -> a -> Event a
+canReceive =
+  Socket.canReceive
