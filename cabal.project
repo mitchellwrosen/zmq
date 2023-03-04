@@ -1,4 +1,5 @@
 packages: 
   libzmq-bindings, 
   libzmq, 
-  zmq
+  zmq,
+  zmq-guide-examples
