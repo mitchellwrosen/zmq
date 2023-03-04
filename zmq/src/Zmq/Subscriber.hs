@@ -19,7 +19,7 @@ import Libzmq
 import Libzmq.Bindings qualified
 import Zmq.Endpoint
 import Zmq.Error
-import Zmq.Internal.Context qualified as Zmq.Internal.Socket
+import Zmq.Internal.Socket qualified as Socket
 
 newtype Subscriber
   = Subscriber (MVar Zmq_socket)
@@ -27,23 +27,23 @@ newtype Subscriber
 
 open :: IO (Either Error Subscriber)
 open =
-  coerce (Zmq.Internal.Socket.openThreadSafeSocket ZMQ_SUB)
+  coerce (Socket.openThreadSafeSocket ZMQ_SUB)
 
 bind :: Subscriber -> Endpoint transport -> IO (Either Error ())
 bind (Subscriber socketVar) endpoint =
-  withMVar socketVar \socket -> Zmq.Internal.Socket.bind socket endpoint
+  withMVar socketVar \socket -> Socket.bind socket endpoint
 
 unbind :: Subscriber -> Endpoint transport -> IO (Either Error ())
 unbind (Subscriber socketVar) endpoint =
-  withMVar socketVar \socket -> Zmq.Internal.Socket.unbind socket endpoint
+  withMVar socketVar \socket -> Socket.unbind socket endpoint
 
 connect :: Subscriber -> Endpoint transport -> IO (Either Error ())
 connect (Subscriber socketVar) endpoint =
-  withMVar socketVar \socket -> Zmq.Internal.Socket.connect socket endpoint
+  withMVar socketVar \socket -> Socket.connect socket endpoint
 
 disconnect :: Subscriber -> Endpoint transport -> IO (Either Error ())
 disconnect (Subscriber socketVar) endpoint =
-  withMVar socketVar \socket -> Zmq.Internal.Socket.disconnect socket endpoint
+  withMVar socketVar \socket -> Socket.disconnect socket endpoint
 
 -- | <http://api.zeromq.org/4-3:zmq-setsockopt>
 --
@@ -53,7 +53,7 @@ disconnect (Subscriber socketVar) endpoint =
 subscribe :: Subscriber -> ByteString -> IO (Either Error ())
 subscribe (Subscriber socketVar) prefix =
   withMVar socketVar \socket ->
-    Zmq.Internal.Socket.setByteStringOption socket Libzmq.Bindings._ZMQ_SUBSCRIBE prefix
+    Socket.setByteStringOption socket Libzmq.Bindings._ZMQ_SUBSCRIBE prefix
 
 -- | <http://api.zeromq.org/4-3:zmq-setsockopt>
 --
@@ -63,8 +63,8 @@ subscribe (Subscriber socketVar) prefix =
 unsubscribe :: Subscriber -> ByteString -> IO (Either Error ())
 unsubscribe (Subscriber socketVar) prefix =
   withMVar socketVar \socket ->
-    Zmq.Internal.Socket.setByteStringOption socket Libzmq.Bindings._ZMQ_UNSUBSCRIBE prefix
+    Socket.setByteStringOption socket Libzmq.Bindings._ZMQ_UNSUBSCRIBE prefix
 
 receive :: Subscriber -> IO (Either Error (List.NonEmpty ByteString))
 receive (Subscriber socketVar) =
-  withMVar socketVar Zmq.Internal.Socket.receive
+  withMVar socketVar Socket.receive

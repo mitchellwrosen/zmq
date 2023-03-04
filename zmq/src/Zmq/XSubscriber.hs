@@ -18,8 +18,8 @@ import Libzmq
 import UnliftIO
 import Zmq.Endpoint
 import Zmq.Error (Error)
-import Zmq.Internal.Context qualified as Zmq.Internal.Socket
-import Zmq.SubscriptionMessage (SubscriptionMessage (..))
+import Zmq.Internal.Socket qualified as Socket
+import Zmq.SubscriptionMessage (SubscriptionMessage (Subscribe, Unsubscribe))
 import Zmq.SubscriptionMessage qualified as SubscriptionMessage
 
 newtype XSubscriber
@@ -28,23 +28,23 @@ newtype XSubscriber
 
 open :: IO (Either Error XSubscriber)
 open =
-  coerce (Zmq.Internal.Socket.openThreadSafeSocket ZMQ_XSUB)
+  coerce (Socket.openThreadSafeSocket ZMQ_XSUB)
 
 bind :: XSubscriber -> Endpoint transport -> IO (Either Error ())
 bind (XSubscriber socketVar) endpoint =
-  withMVar socketVar \socket -> Zmq.Internal.Socket.bind socket endpoint
+  withMVar socketVar \socket -> Socket.bind socket endpoint
 
 unbind :: XSubscriber -> Endpoint transport -> IO (Either Error ())
 unbind (XSubscriber socketVar) endpoint =
-  withMVar socketVar \socket -> Zmq.Internal.Socket.unbind socket endpoint
+  withMVar socketVar \socket -> Socket.unbind socket endpoint
 
 connect :: XSubscriber -> Endpoint transport -> IO (Either Error ())
 connect (XSubscriber socketVar) endpoint =
-  withMVar socketVar \socket -> Zmq.Internal.Socket.connect socket endpoint
+  withMVar socketVar \socket -> Socket.connect socket endpoint
 
 disconnect :: XSubscriber -> Endpoint transport -> IO (Either Error ())
 disconnect (XSubscriber socketVar) endpoint =
-  withMVar socketVar \socket -> Zmq.Internal.Socket.disconnect socket endpoint
+  withMVar socketVar \socket -> Socket.disconnect socket endpoint
 
 subscribe :: XSubscriber -> ByteString -> IO (Either Error ())
 subscribe xsubscriber prefix =
@@ -57,8 +57,8 @@ unsubscribe xsubscriber prefix =
 send :: XSubscriber -> SubscriptionMessage -> IO (Either Error ())
 send (XSubscriber socketVar) message =
   withMVar socketVar \socket ->
-    Zmq.Internal.Socket.send1 socket (SubscriptionMessage.serialize message)
+    Socket.send1 socket (SubscriptionMessage.serialize message)
 
 receive :: XSubscriber -> IO (Either Error (List.NonEmpty ByteString))
 receive (XSubscriber socketVar) =
-  withMVar socketVar Zmq.Internal.Socket.receive
+  withMVar socketVar Socket.receive
