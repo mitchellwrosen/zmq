@@ -18,7 +18,7 @@ import Zmq.Error (Error)
 import Zmq.Internal.Socket qualified
 
 newtype Publisher
-  = Publisher (MVar Zmq_socket_t)
+  = Publisher (MVar Zmq_socket)
   deriving stock (Eq)
 
 with :: (Publisher -> IO (Either Error a)) -> IO (Either Error a)

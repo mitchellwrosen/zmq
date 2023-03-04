@@ -19,15 +19,15 @@ import Foreign.Marshal.Array qualified
 import Foreign.Ptr (Ptr, castPtr, nullPtr)
 import Libzmq.Bindings qualified
 import Libzmq.Internal.Types
-  ( Zmq_ctx_option (..),
-    Zmq_ctx_t (..),
+  ( Zmq_ctx (..),
+    Zmq_ctx_option (..),
     Zmq_error (..),
     Zmq_events (..),
+    Zmq_msg (..),
     Zmq_msg_option (..),
-    Zmq_msg_t (..),
-    Zmq_pollitem_t (..),
-    Zmq_pollitems_t (..),
-    Zmq_socket_t (..),
+    Zmq_pollitem (..),
+    Zmq_pollitems (..),
+    Zmq_socket (..),
     Zmq_socket_type (..),
   )
 import System.IO.Unsafe (unsafeDupablePerformIO)
@@ -77,8 +77,8 @@ zmq_version =
 -- | Get a ØMQ context option.
 --
 -- http://api.zeromq.org/master:zmq-ctx-get
-zmq_ctx_get :: Zmq_ctx_t -> Zmq_ctx_option -> IO (Either Zmq_error Int)
-zmq_ctx_get (Zmq_ctx_t context) (Zmq_ctx_option option) =
+zmq_ctx_get :: Zmq_ctx -> Zmq_ctx_option -> IO (Either Zmq_error Int)
+zmq_ctx_get (Zmq_ctx context) (Zmq_ctx_option option) =
   Libzmq.Bindings.zmq_ctx_get context option >>= \case
     -1 -> Left <$> zmq_errno
     n -> pure (Right (fromIntegral @CInt @Int n))
@@ -86,15 +86,15 @@ zmq_ctx_get (Zmq_ctx_t context) (Zmq_ctx_option option) =
 -- | Create a new ØMQ context.
 --
 -- http://api.zeromq.org/master:zmq-ctx-new
-zmq_ctx_new :: IO Zmq_ctx_t
+zmq_ctx_new :: IO Zmq_ctx
 zmq_ctx_new =
   coerce Libzmq.Bindings.zmq_ctx_new
 
 -- | Set a ØMQ context option.
 --
 -- http://api.zeromq.org/master:zmq-ctx-set
-zmq_ctx_set :: Zmq_ctx_t -> Zmq_ctx_option -> Int -> IO (Either Zmq_error ())
-zmq_ctx_set (Zmq_ctx_t context) (Zmq_ctx_option option) value =
+zmq_ctx_set :: Zmq_ctx -> Zmq_ctx_option -> Int -> IO (Either Zmq_error ())
+zmq_ctx_set (Zmq_ctx context) (Zmq_ctx_option option) value =
   Libzmq.Bindings.zmq_ctx_set context option (fromIntegral @Int @CInt value) >>= \case
     0 -> pure (Right ())
     _ -> Left <$> zmq_errno
@@ -102,8 +102,8 @@ zmq_ctx_set (Zmq_ctx_t context) (Zmq_ctx_option option) value =
 -- | Shutdown a ØMQ context.
 --
 -- http://api.zeromq.org/master:zmq-ctx-shutdown
-zmq_ctx_shutdown :: Zmq_ctx_t -> IO (Either Zmq_error ())
-zmq_ctx_shutdown (Zmq_ctx_t context) =
+zmq_ctx_shutdown :: Zmq_ctx -> IO (Either Zmq_error ())
+zmq_ctx_shutdown (Zmq_ctx context) =
   Libzmq.Bindings.zmq_ctx_shutdown context >>= \case
     0 -> pure (Right ())
     _ -> Left <$> zmq_errno
@@ -111,8 +111,8 @@ zmq_ctx_shutdown (Zmq_ctx_t context) =
 -- | Terminate a ØMQ context.
 --
 -- http://api.zeromq.org/master:zmq-ctx-term
-zmq_ctx_term :: Zmq_ctx_t -> IO (Either Zmq_error ())
-zmq_ctx_term (Zmq_ctx_t context) =
+zmq_ctx_term :: Zmq_ctx -> IO (Either Zmq_error ())
+zmq_ctx_term (Zmq_ctx context) =
   Libzmq.Bindings.zmq_ctx_term context >>= \case
     0 -> pure (Right ())
     _ -> Left <$> zmq_errno
@@ -123,8 +123,8 @@ zmq_ctx_term (Zmq_ctx_t context) =
 -- | Release a ØMQ message.
 --
 -- http://api.zeromq.org/master:zmq-msg-close
-zmq_msg_close :: Zmq_msg_t -> IO (Either Zmq_error ())
-zmq_msg_close (Zmq_msg_t message) =
+zmq_msg_close :: Zmq_msg -> IO (Either Zmq_error ())
+zmq_msg_close (Zmq_msg message) =
   Libzmq.Bindings.zmq_msg_close message >>= \case
     0 -> pure (Right ())
     _ -> Left <$> zmq_errno
@@ -132,8 +132,8 @@ zmq_msg_close (Zmq_msg_t message) =
 -- | Copy the content of one ØMQ message to another.
 --
 -- http://api.zeromq.org/master:zmq-msg-copy
-zmq_msg_copy :: Zmq_msg_t -> Zmq_msg_t -> IO (Either Zmq_error ())
-zmq_msg_copy (Zmq_msg_t dst) (Zmq_msg_t src) =
+zmq_msg_copy :: Zmq_msg -> Zmq_msg -> IO (Either Zmq_error ())
+zmq_msg_copy (Zmq_msg dst) (Zmq_msg src) =
   Libzmq.Bindings.zmq_msg_copy dst src >>= \case
     0 -> pure (Right ())
     _ -> Left <$> zmq_errno
@@ -141,30 +141,30 @@ zmq_msg_copy (Zmq_msg_t dst) (Zmq_msg_t src) =
 -- | Get a ØMQ message's content.
 --
 -- http://api.zeromq.org/master:zmq-msg-data
-zmq_msg_data :: Zmq_msg_t -> IO ByteString
-zmq_msg_data (Zmq_msg_t message) = do
+zmq_msg_data :: Zmq_msg -> IO ByteString
+zmq_msg_data (Zmq_msg message) = do
   size <- Libzmq.Bindings.zmq_msg_size message
   bytes <- Libzmq.Bindings.zmq_msg_data message
   ByteString.packCStringLen (bytes, fromIntegral @CSize @Int size)
 
 -- | Free a ØMQ message.
-zmq_msg_free :: Zmq_msg_t -> IO ()
-zmq_msg_free (Zmq_msg_t message) =
+zmq_msg_free :: Zmq_msg -> IO ()
+zmq_msg_free (Zmq_msg message) =
   free message
 
 -- | Get a ØMQ message metadata property.
 --
 -- http://api.zeromq.org/master:zmq-msg-gets
-zmq_msg_gets :: Zmq_msg_t -> Text -> IO (Either Zmq_error Text)
-zmq_msg_gets (Zmq_msg_t message) property = do
+zmq_msg_gets :: Zmq_msg -> Text -> IO (Either Zmq_error Text)
+zmq_msg_gets (Zmq_msg message) property = do
   value <- Text.withCString property (Libzmq.Bindings.zmq_msg_gets message)
   if value == nullPtr then Left <$> zmq_errno else Right <$> Text.fromPtr0 (castPtr value)
 
 -- | Get a ØMQ message option.
 --
 -- http://api.zeromq.org/master:zmq-msg-get
-zmq_msg_get :: Zmq_msg_t -> Zmq_msg_option -> IO (Either Zmq_error Int)
-zmq_msg_get (Zmq_msg_t message) (Zmq_msg_option option) =
+zmq_msg_get :: Zmq_msg -> Zmq_msg_option -> IO (Either Zmq_error Int)
+zmq_msg_get (Zmq_msg message) (Zmq_msg_option option) =
   Libzmq.Bindings.zmq_msg_get message option >>= \case
     -1 -> Left <$> zmq_errno
     n -> pure (Right (fromIntegral @CInt @Int n))
@@ -172,20 +172,20 @@ zmq_msg_get (Zmq_msg_t message) (Zmq_msg_option option) =
 -- | Initialise an empty ØMQ message.
 --
 -- http://api.zeromq.org/master:zmq-msg-init
-zmq_msg_init :: IO Zmq_msg_t
+zmq_msg_init :: IO Zmq_msg
 zmq_msg_init = do
   message <- malloc
   _ <- Libzmq.Bindings.zmq_msg_init message -- always returns 0
-  pure (Zmq_msg_t message)
+  pure (Zmq_msg message)
 
 -- | Initialize an empty ØMQ message of a specified size.
 --
 -- http://api.zeromq.org/master:zmq-msg-init-size
-zmq_msg_init_size :: Int -> IO (Either Zmq_error Zmq_msg_t)
+zmq_msg_init_size :: Int -> IO (Either Zmq_error Zmq_msg)
 zmq_msg_init_size size = do
   message <- malloc
   Libzmq.Bindings.zmq_msg_init_size message (fromIntegral @Int @CSize size) >>= \case
-    0 -> pure (Right (Zmq_msg_t message))
+    0 -> pure (Right (Zmq_msg message))
     _ -> do
       free message
       Left <$> zmq_errno
@@ -193,15 +193,15 @@ zmq_msg_init_size size = do
 -- | Get whether there are more ØMQ message parts to receive.
 --
 -- http://api.zeromq.org/master:zmq-msg-more
-zmq_msg_more :: Zmq_msg_t -> IO Bool
-zmq_msg_more (Zmq_msg_t message) =
+zmq_msg_more :: Zmq_msg -> IO Bool
+zmq_msg_more (Zmq_msg message) =
   (== 1) <$> Libzmq.Bindings.zmq_msg_more message
 
 -- | Move the content of one ØMQ message to another.
 --
 -- http://api.zeromq.org/master:zmq-msg-move
-zmq_msg_move :: Zmq_msg_t -> Zmq_msg_t -> IO (Either Zmq_error ())
-zmq_msg_move (Zmq_msg_t dst) (Zmq_msg_t src) =
+zmq_msg_move :: Zmq_msg -> Zmq_msg -> IO (Either Zmq_error ())
+zmq_msg_move (Zmq_msg dst) (Zmq_msg src) =
   Libzmq.Bindings.zmq_msg_copy dst src >>= \case
     0 -> pure (Right ())
     _ -> Left <$> zmq_errno
@@ -209,8 +209,8 @@ zmq_msg_move (Zmq_msg_t dst) (Zmq_msg_t src) =
 -- | Receive a ØMQ message from a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-msg-recv
-zmq_msg_recv :: Zmq_msg_t -> Zmq_socket_t -> IO (Either Zmq_error Int)
-zmq_msg_recv (Zmq_msg_t message) (Zmq_socket_t socket) =
+zmq_msg_recv :: Zmq_msg -> Zmq_socket -> IO (Either Zmq_error Int)
+zmq_msg_recv (Zmq_msg message) (Zmq_socket socket) =
   Libzmq.Bindings.zmq_msg_recv message socket 0 >>= \case
     -1 -> Left <$> zmq_errno
     n -> pure (Right (fromIntegral @CInt @Int n))
@@ -218,8 +218,8 @@ zmq_msg_recv (Zmq_msg_t message) (Zmq_socket_t socket) =
 -- | Receive a ØMQ message from a ØMQ socket (non-blocking).
 --
 -- http://api.zeromq.org/master:zmq-msg-recv
-zmq_msg_recv_dontwait :: Zmq_msg_t -> Zmq_socket_t -> IO (Either Zmq_error Int)
-zmq_msg_recv_dontwait (Zmq_msg_t message) (Zmq_socket_t socket) =
+zmq_msg_recv_dontwait :: Zmq_msg -> Zmq_socket -> IO (Either Zmq_error Int)
+zmq_msg_recv_dontwait (Zmq_msg message) (Zmq_socket socket) =
   Libzmq.Bindings.zmq_msg_recv__unsafe message socket Libzmq.Bindings._ZMQ_DONTWAIT >>= \case
     -1 -> Left <$> zmq_errno
     n -> pure (Right (fromIntegral @CInt @Int n))
@@ -227,8 +227,8 @@ zmq_msg_recv_dontwait (Zmq_msg_t message) (Zmq_socket_t socket) =
 -- | Send a ØMQ message on a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-msg-send
-zmq_msg_send :: Zmq_msg_t -> Zmq_socket_t -> Bool -> IO (Either Zmq_error Int)
-zmq_msg_send (Zmq_msg_t message) (Zmq_socket_t socket) more =
+zmq_msg_send :: Zmq_msg -> Zmq_socket -> Bool -> IO (Either Zmq_error Int)
+zmq_msg_send (Zmq_msg message) (Zmq_socket socket) more =
   Libzmq.Bindings.zmq_msg_send message socket (if more then Libzmq.Bindings._ZMQ_SNDMORE else 0) >>= \case
     -1 -> Left <$> zmq_errno
     n -> pure (Right (fromIntegral @CInt @Int n))
@@ -236,8 +236,8 @@ zmq_msg_send (Zmq_msg_t message) (Zmq_socket_t socket) more =
 -- | Send a ØMQ message on a ØMQ socket (non-blocking)
 --
 -- http://api.zeromq.org/master:zmq-msg-send
-zmq_msg_send_dontwait :: Zmq_msg_t -> Zmq_socket_t -> Bool -> IO (Either Zmq_error Int)
-zmq_msg_send_dontwait (Zmq_msg_t message) (Zmq_socket_t socket) more =
+zmq_msg_send_dontwait :: Zmq_msg -> Zmq_socket -> Bool -> IO (Either Zmq_error Int)
+zmq_msg_send_dontwait (Zmq_msg message) (Zmq_socket socket) more =
   Libzmq.Bindings.zmq_msg_send__unsafe message socket flags >>= \case
     -1 -> Left <$> zmq_errno
     n -> pure (Right (fromIntegral @CInt @Int n))
@@ -250,8 +250,8 @@ zmq_msg_send_dontwait (Zmq_msg_t message) (Zmq_socket_t socket) more =
 -- | Set a ØMQ message option.
 --
 -- http://api.zeromq.org/master:zmq-msg-set
-zmq_msg_set :: Zmq_msg_t -> Zmq_msg_option -> Int -> IO (Either Zmq_error ())
-zmq_msg_set (Zmq_msg_t message) (Zmq_msg_option option) value =
+zmq_msg_set :: Zmq_msg -> Zmq_msg_option -> Int -> IO (Either Zmq_error ())
+zmq_msg_set (Zmq_msg message) (Zmq_msg_option option) value =
   Libzmq.Bindings.zmq_msg_set message option (fromIntegral @Int @CInt value) >>= \case
     0 -> pure (Right ())
     _ -> Left <$> zmq_errno
@@ -259,8 +259,8 @@ zmq_msg_set (Zmq_msg_t message) (Zmq_msg_option option) value =
 -- | Get a ØMQ message's size, in bytes.
 --
 -- http://api.zeromq.org/master:zmq-msg-size
-zmq_msg_size :: Zmq_msg_t -> IO Int
-zmq_msg_size (Zmq_msg_t message) =
+zmq_msg_size :: Zmq_msg -> IO Int
+zmq_msg_size (Zmq_msg message) =
   fromIntegral @CSize @Int <$> Libzmq.Bindings.zmq_msg_size message
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -269,8 +269,8 @@ zmq_msg_size (Zmq_msg_t message) =
 -- | Accept incoming connections on a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-bind
-zmq_bind :: Zmq_socket_t -> Text -> IO (Either Zmq_error ())
-zmq_bind (Zmq_socket_t socket) endpoint =
+zmq_bind :: Zmq_socket -> Text -> IO (Either Zmq_error ())
+zmq_bind (Zmq_socket socket) endpoint =
   Text.withCString endpoint (Libzmq.Bindings.zmq_bind socket) >>= \case
     0 -> pure (Right ())
     _ -> Left <$> zmq_errno
@@ -278,8 +278,8 @@ zmq_bind (Zmq_socket_t socket) endpoint =
 -- | Close a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-close
-zmq_close :: Zmq_socket_t -> IO (Either Zmq_error ())
-zmq_close (Zmq_socket_t socket) =
+zmq_close :: Zmq_socket -> IO (Either Zmq_error ())
+zmq_close (Zmq_socket socket) =
   Libzmq.Bindings.zmq_close socket >>= \case
     0 -> pure (Right ())
     _ -> Left <$> zmq_errno
@@ -287,8 +287,8 @@ zmq_close (Zmq_socket_t socket) =
 -- | Create an outgoing connection from a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-connect
-zmq_connect :: Zmq_socket_t -> Text -> IO (Either Zmq_error ())
-zmq_connect (Zmq_socket_t socket) endpoint =
+zmq_connect :: Zmq_socket -> Text -> IO (Either Zmq_error ())
+zmq_connect (Zmq_socket socket) endpoint =
   Text.withCString endpoint (Libzmq.Bindings.zmq_connect socket) >>= \case
     0 -> pure (Right ())
     _ -> Left <$> zmq_errno
@@ -296,8 +296,8 @@ zmq_connect (Zmq_socket_t socket) endpoint =
 -- | Disconnect a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-disconnect
-zmq_disconnect :: Zmq_socket_t -> Text -> IO (Either Zmq_error ())
-zmq_disconnect (Zmq_socket_t socket) endpoint =
+zmq_disconnect :: Zmq_socket -> Text -> IO (Either Zmq_error ())
+zmq_disconnect (Zmq_socket socket) endpoint =
   Text.withCString endpoint (Libzmq.Bindings.zmq_connect socket) >>= \case
     0 -> pure (Right ())
     _ -> Left <$> zmq_errno
@@ -305,8 +305,8 @@ zmq_disconnect (Zmq_socket_t socket) endpoint =
 -- | Get a ØMQ socket option of type 'Int'.
 --
 -- http://api.zeromq.org/master:zmq-getsockopt
-zmq_getsockopt_int :: Zmq_socket_t -> CInt -> IO (Either Zmq_error Int)
-zmq_getsockopt_int (Zmq_socket_t socket) option =
+zmq_getsockopt_int :: Zmq_socket -> CInt -> IO (Either Zmq_error Int)
+zmq_getsockopt_int (Zmq_socket socket) option =
   alloca \value ->
     alloca \size -> do
       poke size (fromIntegral @Int @CSize (sizeOf (undefined :: CInt)))
@@ -317,8 +317,8 @@ zmq_getsockopt_int (Zmq_socket_t socket) option =
 -- | Get a ØMQ socket option of type 'Word64'.
 --
 -- http://api.zeromq.org/master:zmq-getsockopt
-zmq_getsockopt_word :: Zmq_socket_t -> CInt -> IO (Either Zmq_error Word)
-zmq_getsockopt_word (Zmq_socket_t socket) option =
+zmq_getsockopt_word :: Zmq_socket -> CInt -> IO (Either Zmq_error Word)
+zmq_getsockopt_word (Zmq_socket socket) option =
   alloca \value ->
     alloca \size -> do
       poke size (fromIntegral @Int @CSize (sizeOf (undefined :: CUInt)))
@@ -331,14 +331,14 @@ zmq_getsockopt_word (Zmq_socket_t socket) option =
 -- http://api.zeromq.org/master:zmq-socket-monitor
 --
 -- FIXME not implemented
-zmq_socket_monitor :: Zmq_socket_t -> CString -> CInt -> IO CInt
+zmq_socket_monitor :: Zmq_socket -> CString -> CInt -> IO CInt
 zmq_socket_monitor = undefined
 
 -- | Receive a message from a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-recv
-zmq_recv :: Zmq_socket_t -> Ptr Word8 -> Int -> IO (Either Zmq_error Int)
-zmq_recv (Zmq_socket_t socket) bytes len =
+zmq_recv :: Zmq_socket -> Ptr Word8 -> Int -> IO (Either Zmq_error Int)
+zmq_recv (Zmq_socket socket) bytes len =
   Libzmq.Bindings.zmq_recv socket bytes (fromIntegral @Int @CSize len) 0 >>= \case
     -1 -> Left <$> zmq_errno
     n -> pure (Right (fromIntegral @CInt @Int n))
@@ -346,8 +346,8 @@ zmq_recv (Zmq_socket_t socket) bytes len =
 -- | Receive a message from a ØMQ socket (non-blocking)
 --
 -- http://api.zeromq.org/master:zmq-recv
-zmq_recv_dontwait :: Zmq_socket_t -> Ptr Word8 -> Int -> IO (Either Zmq_error Int)
-zmq_recv_dontwait (Zmq_socket_t socket) bytes len =
+zmq_recv_dontwait :: Zmq_socket -> Ptr Word8 -> Int -> IO (Either Zmq_error Int)
+zmq_recv_dontwait (Zmq_socket socket) bytes len =
   Libzmq.Bindings.zmq_recv__unsafe socket bytes (fromIntegral @Int @CSize len) Libzmq.Bindings._ZMQ_DONTWAIT >>= \case
     -1 -> Left <$> zmq_errno
     n -> pure (Right (fromIntegral @CInt @Int n))
@@ -355,14 +355,14 @@ zmq_recv_dontwait (Zmq_socket_t socket) bytes len =
 -- | Send a message on a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-send
-zmq_send :: Zmq_socket_t -> ByteString -> Bool -> IO (Either Zmq_error Int)
+zmq_send :: Zmq_socket -> ByteString -> Bool -> IO (Either Zmq_error Int)
 zmq_send socket message more =
   sendwith Libzmq.Bindings.zmq_send socket message (if more then Libzmq.Bindings._ZMQ_SNDMORE else 0)
 
 -- | Send a message on a ØMQ socket (non-blocking).
 --
 -- http://api.zeromq.org/master:zmq-send
-zmq_send_dontwait :: Zmq_socket_t -> ByteString -> Bool -> IO (Either Zmq_error Int)
+zmq_send_dontwait :: Zmq_socket -> ByteString -> Bool -> IO (Either Zmq_error Int)
 zmq_send_dontwait socket message more =
   sendwith Libzmq.Bindings.zmq_send__unsafe socket message flags
   where
@@ -374,14 +374,14 @@ zmq_send_dontwait socket message more =
 -- | Send a constant-memory message on a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-send-const
-zmq_send_const :: Zmq_socket_t -> ByteString -> Bool -> IO (Either Zmq_error Int)
+zmq_send_const :: Zmq_socket -> ByteString -> Bool -> IO (Either Zmq_error Int)
 zmq_send_const socket message more =
   sendwith Libzmq.Bindings.zmq_send_const socket message (if more then Libzmq.Bindings._ZMQ_SNDMORE else 0)
 
 -- | Send a constant-memory message on a ØMQ socket (non-blocking).
 --
 -- http://api.zeromq.org/master:zmq-send-const
-zmq_send_const_dontwait :: Zmq_socket_t -> ByteString -> Bool -> IO (Either Zmq_error Int)
+zmq_send_const_dontwait :: Zmq_socket -> ByteString -> Bool -> IO (Either Zmq_error Int)
 zmq_send_const_dontwait socket message more =
   sendwith Libzmq.Bindings.zmq_send_const__unsafe socket message flags
   where
@@ -392,11 +392,11 @@ zmq_send_const_dontwait socket message more =
 
 sendwith ::
   (forall socket. Ptr socket -> Ptr CChar -> CSize -> CInt -> IO CInt) ->
-  Zmq_socket_t ->
+  Zmq_socket ->
   ByteString ->
   CInt ->
   IO (Either Zmq_error Int)
-sendwith send0 (Zmq_socket_t socket) message flags =
+sendwith send0 (Zmq_socket socket) message flags =
   send >>= \case
     -1 -> Left <$> zmq_errno
     n -> pure (Right (fromIntegral @CInt @Int n))
@@ -412,8 +412,8 @@ sendwith send0 (Zmq_socket_t socket) message flags =
 -- | Set a ØMQ socket option of type 'ByteString'.
 --
 -- http://api.zeromq.org/master:zmq-setsockopt
-zmq_setsockopt_bytestring :: Zmq_socket_t -> CInt -> ByteString -> IO (Either Zmq_error ())
-zmq_setsockopt_bytestring (Zmq_socket_t socket) option bytes =
+zmq_setsockopt_bytestring :: Zmq_socket -> CInt -> ByteString -> IO (Either Zmq_error ())
+zmq_setsockopt_bytestring (Zmq_socket socket) option bytes =
   ByteString.Unsafe.unsafeUseAsCStringLen bytes \(cstring, len) ->
     Libzmq.Bindings.zmq_setsockopt socket option cstring (fromIntegral @Int @CSize len) >>= \case
       0 -> pure (Right ())
@@ -422,16 +422,16 @@ zmq_setsockopt_bytestring (Zmq_socket_t socket) option bytes =
 -- | Create a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-socket
-zmq_socket :: Zmq_ctx_t -> Zmq_socket_type -> IO (Either Zmq_error Zmq_socket_t)
-zmq_socket (Zmq_ctx_t context) (Zmq_socket_type typ) =
+zmq_socket :: Zmq_ctx -> Zmq_socket_type -> IO (Either Zmq_error Zmq_socket)
+zmq_socket (Zmq_ctx context) (Zmq_socket_type typ) =
   Libzmq.Bindings.zmq_socket context typ >>= \socket ->
-    if socket == nullPtr then Left <$> zmq_errno else pure (Right (Zmq_socket_t socket))
+    if socket == nullPtr then Left <$> zmq_errno else pure (Right (Zmq_socket socket))
 
 -- | Stop accepting connections on a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-unbind
-zmq_unbind :: Zmq_socket_t -> Text -> IO (Either Zmq_error ())
-zmq_unbind (Zmq_socket_t socket) endpoint =
+zmq_unbind :: Zmq_socket -> Text -> IO (Either Zmq_error ())
+zmq_unbind (Zmq_socket socket) endpoint =
   Text.withCString endpoint (Libzmq.Bindings.zmq_unbind socket) >>= \case
     0 -> pure (Right ())
     _ -> Left <$> zmq_errno
@@ -439,21 +439,21 @@ zmq_unbind (Zmq_socket_t socket) endpoint =
 ------------------------------------------------------------------------------------------------------------------------
 -- I/O multiplexing
 
-zmq_pollitems :: [Zmq_pollitem_t] -> (Zmq_pollitems_t -> IO a) -> IO a
+zmq_pollitems :: [Zmq_pollitem] -> (Zmq_pollitems -> IO a) -> IO a
 zmq_pollitems pollitems action =
-  Foreign.Marshal.Array.withArrayLen (map f pollitems) \len ptr -> action (Zmq_pollitems_t ptr len)
+  Foreign.Marshal.Array.withArrayLen (map f pollitems) \len ptr -> action (Zmq_pollitems ptr len)
   where
-    f :: Zmq_pollitem_t -> Libzmq.Bindings.Zmq_pollitem_t
+    f :: Zmq_pollitem -> Libzmq.Bindings.Zmq_pollitem
     f = \case
-      Zmq_pollitem_socket (Zmq_socket_t socket) (Zmq_events events) ->
-        Libzmq.Bindings.Zmq_pollitem_t
+      Zmq_pollitem_socket (Zmq_socket socket) (Zmq_events events) ->
+        Libzmq.Bindings.Zmq_pollitem
           { Libzmq.Bindings.socket = socket,
             Libzmq.Bindings.fd = 0,
             Libzmq.Bindings.events = events,
             Libzmq.Bindings.revents = 0
           }
       Zmq_pollitem_fd fd (Zmq_events events) ->
-        Libzmq.Bindings.Zmq_pollitem_t
+        Libzmq.Bindings.Zmq_pollitem
           { Libzmq.Bindings.socket = nullPtr,
             Libzmq.Bindings.fd = fd,
             Libzmq.Bindings.events = events,
@@ -463,25 +463,25 @@ zmq_pollitems pollitems action =
 -- | Input/output multiplexing.
 --
 -- http://api.zeromq.org/master:zmq-poll
-zmq_poll :: Zmq_pollitems_t -> Int64 -> IO (Either Zmq_error [Zmq_events])
-zmq_poll (Zmq_pollitems_t pollitems len) timeout =
+zmq_poll :: Zmq_pollitems -> Int64 -> IO (Either Zmq_error [Zmq_events])
+zmq_poll (Zmq_pollitems pollitems len) timeout =
   Libzmq.Bindings.zmq_poll pollitems (fromIntegral @Int @CInt len) (fromIntegral @Int64 @CLong timeout) >>= \case
     -1 -> Left <$> zmq_errno
     _ -> Right . map f <$> Foreign.Marshal.Array.peekArray len pollitems
   where
-    f :: Libzmq.Bindings.Zmq_pollitem_t -> Zmq_events
-    f Libzmq.Bindings.Zmq_pollitem_t {Libzmq.Bindings.revents} =
+    f :: Libzmq.Bindings.Zmq_pollitem -> Zmq_events
+    f Libzmq.Bindings.Zmq_pollitem {Libzmq.Bindings.revents} =
       Zmq_events revents
 
 -- | Input/output multiplexing.
 --
 -- http://api.zeromq.org/master:zmq-poll
-zmq_poll_dontwait :: Zmq_pollitems_t -> IO (Either Zmq_error [Zmq_events])
-zmq_poll_dontwait (Zmq_pollitems_t pollitems len) =
+zmq_poll_dontwait :: Zmq_pollitems -> IO (Either Zmq_error [Zmq_events])
+zmq_poll_dontwait (Zmq_pollitems pollitems len) =
   Libzmq.Bindings.zmq_poll__unsafe pollitems (fromIntegral @Int @CInt len) 0 >>= \case
     -1 -> Left <$> zmq_errno
     _ -> Right . map f <$> Foreign.Marshal.Array.peekArray len pollitems
   where
-    f :: Libzmq.Bindings.Zmq_pollitem_t -> Zmq_events
-    f Libzmq.Bindings.Zmq_pollitem_t {Libzmq.Bindings.revents} =
+    f :: Libzmq.Bindings.Zmq_pollitem -> Zmq_events
+    f Libzmq.Bindings.Zmq_pollitem {Libzmq.Bindings.revents} =
       Zmq_events revents

@@ -28,7 +28,7 @@ import Zmq.Error
 import Zmq.Internal (renderEndpoint)
 import Zmq.Internal.Context (globalContextRef)
 
-with :: Zmq_socket_type -> (Zmq_socket_t -> IO (Either Error a)) -> IO (Either Error a)
+with :: Zmq_socket_type -> (Zmq_socket -> IO (Either Error a)) -> IO (Either Error a)
 with socketType action =
   mask \restore ->
     open socketType >>= \case
@@ -40,7 +40,7 @@ with socketType action =
           Left (exception :: SomeException) -> throwIO exception
           Right value -> pure value
 
-open :: Zmq_socket_type -> IO (Either Error Zmq_socket_t)
+open :: Zmq_socket_type -> IO (Either Error Zmq_socket)
 open socketType = do
   context <- readIORef globalContextRef
   zmq_socket context socketType >>= \case
@@ -54,7 +54,7 @@ open socketType = do
             _ -> unexpectedError err
     Right socket -> pure (Right socket)
 
-close :: Zmq_socket_t -> IO ()
+close :: Zmq_socket -> IO ()
 close socket =
   zmq_close socket >>= \case
     Left errno ->
@@ -64,7 +64,7 @@ close socket =
             _ -> unexpectedError err
     Right () -> pure ()
 
-setByteStringOption :: Zmq_socket_t -> CInt -> ByteString -> IO (Either Error ())
+setByteStringOption :: Zmq_socket -> CInt -> ByteString -> IO (Either Error ())
 setByteStringOption socket option value =
   zmq_setsockopt_bytestring socket option value >>= \case
     Left errno ->
@@ -78,7 +78,7 @@ setByteStringOption socket option value =
               _ -> unexpectedError err
     Right val -> pure (Right val)
 
-getIntOption :: Zmq_socket_t -> CInt -> IO (Either Error Int)
+getIntOption :: Zmq_socket -> CInt -> IO (Either Error Int)
 getIntOption socket option = do
   let loop = do
         zmq_getsockopt_int socket option >>= \case
@@ -93,11 +93,11 @@ getIntOption socket option = do
           Right val -> pure (Right val)
   loop
 
-bind :: Zmq_socket_t -> Endpoint transport -> IO (Either Error ())
+bind :: Zmq_socket -> Endpoint transport -> IO (Either Error ())
 bind socket endpoint =
   enrichFunction "zmq_bind" (zmq_bind socket (renderEndpoint endpoint))
 
-unbind :: Zmq_socket_t -> Endpoint transport -> IO (Either Error ())
+unbind :: Zmq_socket -> Endpoint transport -> IO (Either Error ())
 unbind socket endpoint =
   zmq_unbind socket (renderEndpoint endpoint) >>= \case
     Left errno ->
@@ -110,15 +110,15 @@ unbind socket endpoint =
             _ -> unexpectedError err
     Right () -> pure (Right ())
 
-connect :: Zmq_socket_t -> Endpoint transport -> IO (Either Error ())
+connect :: Zmq_socket -> Endpoint transport -> IO (Either Error ())
 connect socket endpoint =
   enrichFunction "zmq_connect" (zmq_connect socket (renderEndpoint endpoint))
 
-disconnect :: Zmq_socket_t -> Endpoint transport -> IO (Either Error ())
+disconnect :: Zmq_socket -> Endpoint transport -> IO (Either Error ())
 disconnect socket endpoint =
   enrichFunction "zmq_disconnect" (zmq_disconnect socket (renderEndpoint endpoint))
 
-send :: Zmq_socket_t -> NonEmpty ByteString -> IO (Either Error ())
+send :: Zmq_socket -> NonEmpty ByteString -> IO (Either Error ())
 send socket message =
   let loop = \case
         [frame] -> sendf socket frame False
@@ -129,11 +129,11 @@ send socket message =
         [] -> undefined -- impossible
    in loop (List.NonEmpty.toList message)
 
-send1 :: Zmq_socket_t -> ByteString -> IO (Either Error ())
+send1 :: Zmq_socket -> ByteString -> IO (Either Error ())
 send1 socket frame =
   sendf socket frame False
 
-sendf :: Zmq_socket_t -> ByteString -> Bool -> IO (Either Error ())
+sendf :: Zmq_socket -> ByteString -> Bool -> IO (Either Error ())
 sendf socket frame more = do
   let loop = do
         zmq_send_dontwait socket frame more >>= \case
@@ -155,7 +155,7 @@ sendf socket frame more = do
           Right _len -> pure (Right ())
   loop
 
-receive :: Zmq_socket_t -> IO (Either Error (NonEmpty ByteString))
+receive :: Zmq_socket -> IO (Either Error (NonEmpty ByteString))
 receive socket =
   receivef socket >>= \case
     Left err -> pure (Left err)
@@ -165,7 +165,7 @@ receive socket =
         Right frames -> Right (frame List.NonEmpty.:| reverse frames)
     Right (NoMore frame) -> pure (Right (frame List.NonEmpty.:| []))
 
-receive_ :: Zmq_socket_t -> IO (Either Error [ByteString])
+receive_ :: Zmq_socket -> IO (Either Error [ByteString])
 receive_ socket =
   receivef socket >>= \case
     Left err -> pure (Left err)
@@ -179,7 +179,7 @@ data ReceiveF
   = More ByteString
   | NoMore ByteString
 
-receivef :: Zmq_socket_t -> IO (Either Error ReceiveF)
+receivef :: Zmq_socket -> IO (Either Error ReceiveF)
 receivef socket =
   bracket zmq_msg_init zmq_msg_close \frame -> do
     let loop = do
@@ -204,7 +204,7 @@ receivef socket =
                 True -> Right (More bytes)
     loop
 
-blockUntilEvent :: Zmq_socket_t -> CShort -> IO (Either Error ())
+blockUntilEvent :: Zmq_socket -> CShort -> IO (Either Error ())
 blockUntilEvent socket event =
   getIntOption socket Libzmq.Bindings._ZMQ_FD >>= \case
     Left err -> pure (Left err)

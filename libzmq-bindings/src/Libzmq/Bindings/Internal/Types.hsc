@@ -13,46 +13,46 @@ import Foreign.Storable (Storable (..))
 #if defined _WIN32
 #if defined _WIN64
 -- | A ØMQ file descriptor.
-type Zmq_fd_t = Word64
+type Zmq_fd = Word64
 #else
 -- | A ØMQ file descriptor.
-type Zmq_fd_t = Word
+type Zmq_fd = Word
 #endif
 #else
 -- | A ØMQ file descriptor.
-type Zmq_fd_t = Int
+type Zmq_fd = Int
 #endif
 
 -- | A ØMQ message.
-newtype Zmq_msg_t
-  = Zmq_msg_t (Ptr CChar)
+newtype Zmq_msg
+  = Zmq_msg (Ptr CChar)
   deriving stock (Eq, Ord, Show)
 
-instance Storable Zmq_msg_t where
+instance Storable Zmq_msg where
   alignment _ = #{alignment zmq_msg_t}
   sizeOf _ = #{size zmq_msg_t}
   peek = coerce @(Ptr (Ptr CChar) -> IO (Ptr CChar)) #{peek zmq_msg_t, _}
   poke = coerce @(Ptr (Ptr CChar) -> Ptr CChar -> IO ()) #{poke zmq_msg_t, _}
 
 -- | A ØMQ poll item.
-data Zmq_pollitem_t = Zmq_pollitem_t
+data Zmq_pollitem = Zmq_pollitem
   { socket :: !(Ptr ()),
-    fd :: !Zmq_fd_t,
+    fd :: !Zmq_fd,
     events :: !CShort,
     revents :: !CShort
   }
   deriving stock (Eq, Ord, Show)
 
-instance Storable Zmq_pollitem_t where
+instance Storable Zmq_pollitem where
   alignment _ = #{alignment zmq_pollitem_t}
   sizeOf _ = #{size zmq_pollitem_t}
   peek p =
-    Zmq_pollitem_t
+    Zmq_pollitem
       <$> #{peek zmq_pollitem_t, socket} p
       <*> #{peek zmq_pollitem_t, fd} p
       <*> #{peek zmq_pollitem_t, events} p
       <*> #{peek zmq_pollitem_t, revents} p
-  poke p Zmq_pollitem_t {socket, fd, events, revents} = do
+  poke p Zmq_pollitem {socket, fd, events, revents} = do
     #{poke zmq_pollitem_t, socket} p socket
     #{poke zmq_pollitem_t, fd} p fd
     #{poke zmq_pollitem_t, events} p events

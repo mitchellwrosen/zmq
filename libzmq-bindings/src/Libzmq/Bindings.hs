@@ -55,9 +55,9 @@ module Libzmq.Bindings
     zmq_poll__unsafe,
 
     -- * Types
-    Zmq_fd_t,
-    Zmq_msg_t,
-    Zmq_pollitem_t (..),
+    Zmq_fd,
+    Zmq_msg,
+    Zmq_pollitem (..),
 
     -- * Constants
 

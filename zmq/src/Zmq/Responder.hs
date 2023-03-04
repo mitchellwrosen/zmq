@@ -19,7 +19,7 @@ import Zmq.Error (Error)
 import Zmq.Internal.Socket qualified
 
 newtype Responder
-  = Responder Zmq_socket_t
+  = Responder Zmq_socket
   deriving stock (Eq)
 
 with :: (Responder -> IO (Either Error a)) -> IO (Either Error a)

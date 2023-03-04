@@ -96,8 +96,8 @@ pattern ZMQ_THREAD_SCHED_POLICY <-
   #-}
 
 -- | A ØMQ context.
-newtype Zmq_ctx_t
-  = Zmq_ctx_t (Ptr ())
+newtype Zmq_ctx
+  = Zmq_ctx (Ptr ())
   deriving stock (Eq, Ord, Show)
 
 -- | A ØMQ error.
@@ -453,23 +453,23 @@ pattern ZMQ_SHARED <-
   #-}
 
 -- | A ØMQ message.
-newtype Zmq_msg_t
-  = Zmq_msg_t (Ptr Libzmq.Bindings.Zmq_msg_t)
+newtype Zmq_msg
+  = Zmq_msg (Ptr Libzmq.Bindings.Zmq_msg)
   deriving stock (Eq, Ord, Show)
   deriving newtype (Storable)
 
 -- | A ØMQ pollitem.
-data Zmq_pollitem_t
-  = Zmq_pollitem_socket !Zmq_socket_t !Zmq_events
-  | Zmq_pollitem_fd !Libzmq.Bindings.Zmq_fd_t !Zmq_events
+data Zmq_pollitem
+  = Zmq_pollitem_socket !Zmq_socket !Zmq_events
+  | Zmq_pollitem_fd !Libzmq.Bindings.Zmq_fd !Zmq_events
 
 -- | A set of ØMQ pollitems.
-data Zmq_pollitems_t
-  = Zmq_pollitems_t !(Ptr Libzmq.Bindings.Zmq_pollitem_t) !Int
+data Zmq_pollitems
+  = Zmq_pollitems !(Ptr Libzmq.Bindings.Zmq_pollitem) !Int
 
 -- | A ØMQ socket.
-data Zmq_socket_t
-  = Zmq_socket_t (Ptr ())
+data Zmq_socket
+  = Zmq_socket (Ptr ())
   deriving stock (Eq, Ord, Show)
 
 -- | A ØMQ socket type.

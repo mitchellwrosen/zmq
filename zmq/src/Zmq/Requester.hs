@@ -19,7 +19,7 @@ import Zmq.Error (Error)
 import Zmq.Internal.Socket qualified
 
 newtype Requester
-  = Requester Zmq_socket_t
+  = Requester Zmq_socket
   deriving stock (Eq)
 
 with :: (Requester -> IO (Either Error a)) -> IO (Either Error a)

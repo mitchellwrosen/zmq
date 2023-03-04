@@ -21,7 +21,7 @@ import Zmq.Error
 import Zmq.Internal.Socket qualified
 
 newtype Subscriber
-  = Subscriber (MVar Zmq_socket_t)
+  = Subscriber (MVar Zmq_socket)
   deriving stock (Eq)
 
 with :: (Subscriber -> IO (Either Error a)) -> IO (Either Error a)

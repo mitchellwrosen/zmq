@@ -69,7 +69,7 @@ module Libzmq
         ZMQ_THREAD_NAME_PREFIX,
         ZMQ_THREAD_SCHED_POLICY
       ),
-    Zmq_ctx_t,
+    Zmq_ctx,
     Zmq_error
       ( Zmq_error,
         EADDRINUSE,
@@ -109,16 +109,16 @@ module Libzmq
     pattern ZMQ_POLLOUT,
     pattern ZMQ_POLLERR,
     pattern ZMQ_POLLPRI,
-    Libzmq.Bindings.Zmq_fd_t,
+    Libzmq.Bindings.Zmq_fd,
     Zmq_msg_option
       ( Zmq_msg_option,
         ZMQ_MORE,
         ZMQ_SHARED
       ),
-    Zmq_msg_t,
-    Zmq_pollitem_t (..),
-    Zmq_pollitems_t,
-    Zmq_socket_t,
+    Zmq_msg,
+    Zmq_pollitem (..),
+    Zmq_pollitems,
+    Zmq_socket,
     Zmq_socket_type
       ( Zmq_socket_type,
         ZMQ_DEALER,

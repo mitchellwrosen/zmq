@@ -3,7 +3,7 @@ module Libzmq.Bindings.Internal.Functions (module Libzmq.Bindings.Internal.Funct
 import Foreign.C.String (CString)
 import Foreign.C.Types (CChar (..), CInt (..), CLong (..), CSize (..))
 import Foreign.Ptr (Ptr)
-import Libzmq.Bindings.Internal.Types (Zmq_msg_t, Zmq_pollitem_t)
+import Libzmq.Bindings.Internal.Types (Zmq_msg, Zmq_pollitem)
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Error
@@ -73,91 +73,91 @@ foreign import capi interruptible "zmq.h zmq_ctx_term"
 --
 -- http://api.zeromq.org/master:zmq-msg-close
 foreign import capi unsafe "zmq.h zmq_msg_close"
-  zmq_msg_close :: Ptr Zmq_msg_t -> IO CInt
+  zmq_msg_close :: Ptr Zmq_msg -> IO CInt
 
 -- | Copy the content of one ØMQ message to another.
 --
 -- http://api.zeromq.org/master:zmq-msg-copy
 foreign import capi unsafe "zmq.h zmq_msg_copy"
-  zmq_msg_copy :: Ptr Zmq_msg_t -> Ptr Zmq_msg_t -> IO CInt
+  zmq_msg_copy :: Ptr Zmq_msg -> Ptr Zmq_msg -> IO CInt
 
 -- | Get a ØMQ message's content.
 --
 -- http://api.zeromq.org/master:zmq-msg-data
 foreign import capi unsafe "zmq.h zmq_msg_data"
-  zmq_msg_data :: Ptr Zmq_msg_t -> IO (Ptr a)
+  zmq_msg_data :: Ptr Zmq_msg -> IO (Ptr a)
 
 -- | Get a ØMQ message metadata property.
 --
 -- http://api.zeromq.org/master:zmq-msg-gets
 foreign import capi unsafe "zmq.h zmq_msg_gets"
-  zmq_msg_gets :: Ptr Zmq_msg_t -> CString -> IO CString
+  zmq_msg_gets :: Ptr Zmq_msg -> CString -> IO CString
 
 -- | Get a ØMQ message option.
 --
 -- http://api.zeromq.org/master:zmq-msg-get
 foreign import capi unsafe "zmq.h zmq_msg_get"
-  zmq_msg_get :: Ptr Zmq_msg_t -> CInt -> IO CInt
+  zmq_msg_get :: Ptr Zmq_msg -> CInt -> IO CInt
 
 -- | Initialise an empty ØMQ message.
 --
 -- http://api.zeromq.org/master:zmq-msg-init
 foreign import capi unsafe "zmq.h zmq_msg_init"
-  zmq_msg_init :: Ptr Zmq_msg_t -> IO CInt
+  zmq_msg_init :: Ptr Zmq_msg -> IO CInt
 
 -- | Initialize an empty ØMQ message of a specified size.
 --
 -- http://api.zeromq.org/master:zmq-msg-init-size
 foreign import capi unsafe "zmq.h zmq_msg_init_size"
-  zmq_msg_init_size :: Ptr Zmq_msg_t -> CSize -> IO CInt
+  zmq_msg_init_size :: Ptr Zmq_msg -> CSize -> IO CInt
 
 -- | Get whether there are more ØMQ message parts to receive.
 --
 -- http://api.zeromq.org/master:zmq-msg-more
 foreign import capi unsafe "zmq.h zmq_msg_more"
-  zmq_msg_more :: Ptr Zmq_msg_t -> IO CInt
+  zmq_msg_more :: Ptr Zmq_msg -> IO CInt
 
 -- | Move the content of one ØMQ message to another.
 --
 -- http://api.zeromq.org/master:zmq-msg-move
 foreign import capi unsafe "zmq.h zmq_msg_move"
-  zmq_msg_move :: Ptr Zmq_msg_t -> Ptr Zmq_msg_t -> IO CInt
+  zmq_msg_move :: Ptr Zmq_msg -> Ptr Zmq_msg -> IO CInt
 
 -- | Receive a ØMQ message from a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-msg-recv
 foreign import capi interruptible "zmq.h zmq_msg_recv"
-  zmq_msg_recv :: Ptr Zmq_msg_t -> Ptr socket -> CInt -> IO CInt
+  zmq_msg_recv :: Ptr Zmq_msg -> Ptr socket -> CInt -> IO CInt
 
 -- | Receive a ØMQ message from a ØMQ socket (unsafe FFI).
 --
 -- http://api.zeromq.org/master:zmq-msg-recv
 foreign import capi unsafe "zmq.h zmq_msg_recv"
-  zmq_msg_recv__unsafe :: Ptr Zmq_msg_t -> Ptr socket -> CInt -> IO CInt
+  zmq_msg_recv__unsafe :: Ptr Zmq_msg -> Ptr socket -> CInt -> IO CInt
 
 -- | Send a ØMQ message on a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-msg-send
 foreign import capi interruptible "zmq.h zmq_msg_send"
-  zmq_msg_send :: Ptr Zmq_msg_t -> Ptr socket -> CInt -> IO CInt
+  zmq_msg_send :: Ptr Zmq_msg -> Ptr socket -> CInt -> IO CInt
 
 -- | Send a ØMQ message on a ØMQ socket (unsafe FFI).
 --
 -- http://api.zeromq.org/master:zmq-msg-send
 foreign import capi unsafe "zmq.h zmq_msg_send"
-  zmq_msg_send__unsafe :: Ptr Zmq_msg_t -> Ptr socket -> CInt -> IO CInt
+  zmq_msg_send__unsafe :: Ptr Zmq_msg -> Ptr socket -> CInt -> IO CInt
 
 -- | Set a ØMQ message option.
 --
 -- http://api.zeromq.org/master:zmq-msg-set
 foreign import capi unsafe "zmq.h zmq_msg_set"
-  zmq_msg_set :: Ptr Zmq_msg_t -> CInt -> CInt -> IO CInt
+  zmq_msg_set :: Ptr Zmq_msg -> CInt -> CInt -> IO CInt
 
 -- | Get a ØMQ message's size, in bytes.
 --
 -- http://api.zeromq.org/master:zmq-msg-size
 foreign import capi unsafe "zmq.h zmq_msg_size"
-  zmq_msg_size :: Ptr Zmq_msg_t -> IO CSize
+  zmq_msg_size :: Ptr Zmq_msg -> IO CSize
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Socket
@@ -261,10 +261,10 @@ foreign import capi unsafe "zmq.h zmq_unbind"
 --
 -- http://api.zeromq.org/master:zmq-poll
 foreign import capi interruptible "zmq.h zmq_poll"
-  zmq_poll :: Ptr Zmq_pollitem_t -> CInt -> CLong -> IO CInt
+  zmq_poll :: Ptr Zmq_pollitem -> CInt -> CLong -> IO CInt
 
 -- | Input/output multiplexing (unsafe FFI).
 --
 -- http://api.zeromq.org/master:zmq-poll
 foreign import capi unsafe "zmq.h zmq_poll"
-  zmq_poll__unsafe :: Ptr Zmq_pollitem_t -> CInt -> CLong -> IO CInt
+  zmq_poll__unsafe :: Ptr Zmq_pollitem -> CInt -> CLong -> IO CInt

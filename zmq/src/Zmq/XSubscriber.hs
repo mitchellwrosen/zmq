@@ -22,7 +22,7 @@ import Zmq.SubscriptionMessage (SubscriptionMessage (..))
 import Zmq.SubscriptionMessage qualified as SubscriptionMessage
 
 newtype XSubscriber
-  = XSubscriber (MVar Zmq_socket_t)
+  = XSubscriber (MVar Zmq_socket)
   deriving stock (Eq)
 
 with :: (XSubscriber -> IO (Either Error a)) -> IO (Either Error a)

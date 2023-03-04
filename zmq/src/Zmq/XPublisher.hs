@@ -20,7 +20,7 @@ import Zmq.Internal.Socket qualified
 import Zmq.SubscriptionMessage
 
 newtype XPublisher
-  = XPublisher (MVar Zmq_socket_t)
+  = XPublisher (MVar Zmq_socket)
   deriving stock (Eq)
 
 with :: (XPublisher -> IO (Either Error a)) -> IO (Either Error a)

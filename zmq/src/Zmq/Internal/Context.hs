@@ -29,12 +29,12 @@ defaultOptions =
       maxSockets = fromIntegral Libzmq.Bindings._ZMQ_MAX_SOCKETS_DFLT
     }
 
-globalContextRef :: IORef Zmq_ctx_t
+globalContextRef :: IORef Zmq_ctx
 globalContextRef =
   unsafePerformIO (newIORef bogusContext)
 {-# NOINLINE globalContextRef #-}
 
-bogusContext :: Zmq_ctx_t
+bogusContext :: Zmq_ctx
 bogusContext =
   error "zmq library not initialized"
 
@@ -54,7 +54,7 @@ run options action =
       Right value -> pure value
 
 -- Create a new ØMQ context.
-newContext :: Options -> IO Zmq_ctx_t
+newContext :: Options -> IO Zmq_ctx
 newContext Options {ioThreads, maxMessageSize, maxSockets} = do
   context <- zmq_ctx_new
   setContextOption context ZMQ_IO_THREADS (fromIntegral @Natural @Int ioThreads)
@@ -63,7 +63,7 @@ newContext Options {ioThreads, maxMessageSize, maxSockets} = do
   pure context
 
 -- Terminate a ØMQ context.
-terminateContext :: Zmq_ctx_t -> IO ()
+terminateContext :: Zmq_ctx -> IO ()
 terminateContext context = do
   let loop = do
         zmq_ctx_term context >>= \case
@@ -76,7 +76,7 @@ terminateContext context = do
           Right () -> pure ()
   loop
 
-setContextOption :: Zmq_ctx_t -> Zmq_ctx_option -> Int -> IO ()
+setContextOption :: Zmq_ctx -> Zmq_ctx_option -> Int -> IO ()
 setContextOption context option value =
   zmq_ctx_set context option value >>= \case
     Left errno ->
