@@ -66,7 +66,7 @@ disconnect :: Requester -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
--- | Send a __message__ on a __requester__ to one peer (fair queueing).
+-- | Send a __message__ on a __requester__ to one peer (round-robin).
 --
 -- This operation blocks until a peer can receive the message.
 send :: Requester -> List.NonEmpty ByteString -> IO (Either Error ())

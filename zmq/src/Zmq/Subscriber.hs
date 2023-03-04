@@ -79,7 +79,7 @@ unsubscribe socket0 prefix =
   withSocket socket0 \socket ->
     Socket.setOption socket Libzmq.ZMQ_UNSUBSCRIBE prefix
 
--- | Receive a __message__ on a __subscriber__ from any peer (fair queueing).
+-- | Receive a __message__ on a __subscriber__ from any peer (fair-queued).
 receive :: Subscriber -> IO (Either Error (List.NonEmpty ByteString))
 receive socket =
   withSocket socket Socket.receive

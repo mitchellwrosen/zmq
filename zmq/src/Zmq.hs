@@ -18,11 +18,13 @@ module Zmq
     poll,
 
     -- * Socket types
+    Dealer,
     Publisher,
     Puller,
     Pusher,
     Requester,
     Responder,
+    Router,
     Subscriber,
     XPublisher,
     XSubscriber,
@@ -41,6 +43,7 @@ module Zmq
 where
 
 import Libzmq (Zmq_error (..), zmq_version)
+import Zmq.Dealer (Dealer)
 import Zmq.Error (Error (..))
 import Zmq.Internal.Context
 import Zmq.Internal.Options (Options (..), defaultOptions)
@@ -50,6 +53,7 @@ import Zmq.Puller (Puller)
 import Zmq.Pusher (Pusher)
 import Zmq.Requester (Requester)
 import Zmq.Responder (Responder)
+import Zmq.Router (Router)
 import Zmq.Subscriber (Subscriber)
 import Zmq.Subscription (pattern Subscribe, pattern Unsubscribe)
 import Zmq.XPublisher (XPublisher)

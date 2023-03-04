@@ -23,7 +23,7 @@ import Zmq.Internal.Socket qualified as Socket
 
 -- | A __responder__ socket.
 --
--- Valid peers: __requester__, __dealer__
+-- Valid peers: __dealer__, __requester__
 newtype Responder
   = Responder ThreadUnsafeSocket
   deriving stock (Eq)
@@ -73,7 +73,7 @@ send :: Responder -> List.NonEmpty ByteString -> IO (Either Error ())
 send socket0 message =
   withSocket socket0 \socket -> Socket.send socket message
 
--- | Receive a __message__ on a __responder__ from any peer (fair queueing).
+-- | Receive a __message__ on a __responder__ from any peer (fair-queued).
 receive :: Responder -> IO (Either Error (List.NonEmpty ByteString))
 receive socket =
   withSocket socket Socket.receive

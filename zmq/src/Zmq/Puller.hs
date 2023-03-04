@@ -63,7 +63,7 @@ disconnect :: Puller -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
--- | Receive a __message__ on a __puller__ from one peer (fair queueing).
+-- | Receive a __message__ on a __puller__ from one peer (fair-queued).
 receive :: Puller -> IO (Either Error (List.NonEmpty ByteString))
 receive socket =
   withSocket socket Socket.receive

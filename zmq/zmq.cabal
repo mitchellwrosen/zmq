@@ -42,11 +42,13 @@ library
     text,
   exposed-modules:
     Zmq
+    Zmq.Dealer
     Zmq.Publisher
     Zmq.Puller
     Zmq.Pusher
     Zmq.Requester
     Zmq.Responder
+    Zmq.Router
     Zmq.Subscriber
     Zmq.XPublisher
     Zmq.XSubscriber

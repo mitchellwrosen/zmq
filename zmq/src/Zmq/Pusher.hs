@@ -63,7 +63,7 @@ disconnect :: Pusher -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
--- | Send a __message__ on a __pusher__ to one peer (fair queueing).
+-- | Send a __message__ on a __pusher__ to one peer (round-robin).
 --
 -- This operation blocks until a peer can receive the message.
 send :: Pusher -> List.NonEmpty ByteString -> IO (Either Error ())

@@ -1,5 +1,5 @@
-module Zmq.XPublisher
-  ( XPublisher,
+module Zmq.Dealer
+  ( Dealer,
     open,
     bind,
     unbind,
@@ -23,70 +23,70 @@ import Zmq.Error (Error)
 import Zmq.Internal.Socket (CanReceive, CanSend, Event, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
--- | A thread-safe __xpublisher__ socket.
+-- | A thread-safe __dealer__ socket.
 --
--- Valid peers: __subscriber__, __xsubscriber__
-newtype XPublisher
-  = XPublisher (MVar Zmq_socket)
+-- Valid peers: __dealer__, __responder__, __router__
+newtype Dealer
+  = Dealer (MVar Zmq_socket)
   deriving stock (Eq)
   deriving (Socket) via (ThreadSafeSocket)
 
-instance CanSend XPublisher
+instance CanSend Dealer
 
-instance CanReceive XPublisher
+instance CanReceive Dealer
 
--- | Open an __xpublisher__.
-open :: IO (Either Error XPublisher)
+-- | Open an __dealer__.
+open :: IO (Either Error Dealer)
 open =
   coerce (Socket.openThreadSafeSocket ZMQ_XPUB)
 
--- | Bind an __xpublisher__ to an __endpoint__.
+-- | Bind a __dealer__ to an __endpoint__.
 --
 -- /Alias/: 'Zmq.bind'
-bind :: XPublisher -> Text -> IO (Either Error ())
+bind :: Dealer -> Text -> IO (Either Error ())
 bind =
   Socket.bind
 
--- | Unbind an __xpublisher__ from an __endpoint__.
+-- | Unbind a __dealer__ from an __endpoint__.
 --
 -- /Alias/: 'Zmq.unbind'
-unbind :: XPublisher -> Text -> IO ()
+unbind :: Dealer -> Text -> IO ()
 unbind =
   Socket.unbind
 
--- | Connect an __xpublisher__ to an __endpoint__.
+-- | Connect a __dealer__ to an __endpoint__.
 --
 -- /Alias/: 'Zmq.connect'
-connect :: XPublisher -> Text -> IO (Either Error ())
+connect :: Dealer -> Text -> IO (Either Error ())
 connect =
   Socket.connect
 
--- | Disconnect an __xpublisher__ from an __endpoint__.
+-- | Disconnect a __dealer__ from an __endpoint__.
 --
 -- /Alias/: 'Zmq.disconnect'
-disconnect :: XPublisher -> Text -> IO ()
+disconnect :: Dealer -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
--- | Send a __message__ on an __xpublisher__ to all peers.
+-- | Send a __message__ on a __dealer__ to one peer (round-robin).
 --
--- If a peer has a full message queue, it will not receive the message.
-send :: XPublisher -> ByteString -> [ByteString] -> IO (Either Error ())
+-- This operation blocks until a peer can receive the message.
+send :: Dealer -> ByteString -> [ByteString] -> IO (Either Error ())
 send socket0 topic message =
   withSocket socket0 \socket ->
     Socket.send socket (topic List.NonEmpty.:| message)
 
--- | Receive a __message__ on an __xpublisher__ from any peer (fair-queued).
-receive :: XPublisher -> IO (Either Error (List.NonEmpty ByteString))
+-- | Receive a __message__ on an __dealer__ from any peer (fair-queued).
+receive :: Dealer -> IO (Either Error (List.NonEmpty ByteString))
 receive socket =
   withSocket socket Socket.receive
 
 -- | /Alias/: 'Zmq.canSend'
-canSend :: XPublisher -> a -> Event a
+canSend :: Dealer -> a -> Event a
 canSend =
   Socket.canSend
 
 -- | /Alias/: 'Zmq.canReceive'
-canReceive :: XPublisher -> a -> Event a
+canReceive :: Dealer -> a -> Event a
 canReceive =
   Socket.canReceive

@@ -89,7 +89,7 @@ send socket0 message =
   withSocket socket0 \socket ->
     Socket.send socket message
 
--- | Receive a __message__ on an __xsubscriber__ from any peer (fair queueing).
+-- | Receive a __message__ on an __xsubscriber__ from any peer (fair-queued).
 receive :: XSubscriber -> IO (Either Error (List.NonEmpty ByteString))
 receive socket =
   withSocket socket Socket.receive
