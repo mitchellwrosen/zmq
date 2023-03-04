@@ -7,7 +7,7 @@ module Zmq.Internal.Socket
     withThreadUnsafeSocket,
     openThreadUnsafeSocket,
     openThreadSafeSocket,
-    setByteStringOption,
+    setOption,
     bind,
     unbind,
     connect,
@@ -96,18 +96,24 @@ openSocket wrap socketType = do
         atomicModifyIORef' socketsRef \finalizers -> (finalizer : finalizers, ())
         pure (Right thing)
 
-setByteStringOption :: Zmq_socket -> CInt -> ByteString -> IO (Either Error ())
-setByteStringOption socket option value =
-  zmq_setsockopt_bytestring socket option value >>= \case
-    Left errno ->
-      let err = enrichError "zmq_setsockopt" errno
-       in case errno of
-            EINTR -> setByteStringOption socket option value
-            EINVAL -> throwIO err
-            ENOTSOCK -> throwIO err
-            ETERM -> pure (Left err)
-            _ -> unexpectedError err
-    Right val -> pure (Right val)
+-- setIntOption :: Zmq_socket -> CInt -> Int -> IO (Either Error ())
+-- setIntOption socket option value =
+--   zmq_setsockopt_int socket option value >>= \case
+
+setOption :: Zmq_socket -> Zmq_socket_option a -> a -> IO (Either Error ())
+setOption socket option value = do
+  let loop =
+        zmq_setsockopt socket option value >>= \case
+          Left errno ->
+            let err = enrichError "zmq_setsockopt" errno
+             in case errno of
+                  EINTR -> loop
+                  EINVAL -> throwIO err
+                  ENOTSOCK -> throwIO err
+                  ETERM -> pure (Left err)
+                  _ -> unexpectedError err
+          Right val -> pure (Right val)
+  loop
 
 getIntOption :: Zmq_socket -> CInt -> IO (Either Error Int)
 getIntOption socket option = do

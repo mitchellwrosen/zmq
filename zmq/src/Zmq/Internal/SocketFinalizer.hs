@@ -25,8 +25,12 @@ import Zmq.Internal.Idempotent (Idempotent, makeIdempotent, runIdempotent)
 newtype SocketFinalizer
   = SocketFinalizer (Weak (Idempotent ()))
 
--- pass zmq_close
-makeSocketFinalizer :: forall (canary# :: TYPE UnliftedRep). IO (Either Zmq_error ()) -> canary# -> IO SocketFinalizer
+makeSocketFinalizer ::
+  forall (canary# :: TYPE UnliftedRep).
+  -- zmq_close
+  IO (Either Zmq_error ()) ->
+  canary# ->
+  IO SocketFinalizer
 makeSocketFinalizer close canary# = do
   idempotentClose <- makeIdempotent (putStrLn "running finalizer" >> void close)
   coerce @(IO (Weak (Idempotent ()))) do

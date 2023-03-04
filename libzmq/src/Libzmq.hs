@@ -36,7 +36,7 @@ module Libzmq
     -- ** Socket
     zmq_socket,
     zmq_close,
-    zmq_setsockopt_bytestring,
+    zmq_setsockopt,
     zmq_getsockopt_int,
     zmq_getsockopt_word,
     zmq_bind,
@@ -119,6 +119,7 @@ module Libzmq
     Zmq_pollitem (..),
     Zmq_pollitems,
     Zmq_socket,
+    Zmq_socket_option (..),
     Zmq_socket_type
       ( Zmq_socket_type,
         ZMQ_DEALER,

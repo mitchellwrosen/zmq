@@ -28,6 +28,7 @@ import Libzmq.Internal.Types
     Zmq_pollitem (..),
     Zmq_pollitems (..),
     Zmq_socket (..),
+    Zmq_socket_option (..),
     Zmq_socket_type (..),
   )
 import System.IO.Unsafe (unsafeDupablePerformIO)
@@ -309,7 +310,7 @@ zmq_getsockopt_int :: Zmq_socket -> CInt -> IO (Either Zmq_error Int)
 zmq_getsockopt_int (Zmq_socket socket) option =
   alloca \value ->
     alloca \size -> do
-      poke size (fromIntegral @Int @CSize (sizeOf (undefined :: CInt)))
+      poke size (sizeof @CInt)
       Libzmq.Bindings.zmq_getsockopt socket option value size >>= \case
         0 -> Right . fromIntegral @CInt @Int <$> peek value
         _ -> Left <$> zmq_errno
@@ -321,7 +322,7 @@ zmq_getsockopt_word :: Zmq_socket -> CInt -> IO (Either Zmq_error Word)
 zmq_getsockopt_word (Zmq_socket socket) option =
   alloca \value ->
     alloca \size -> do
-      poke size (fromIntegral @Int @CSize (sizeOf (undefined :: CUInt)))
+      poke size (sizeof @CUInt)
       Libzmq.Bindings.zmq_getsockopt socket option value size >>= \case
         0 -> Right . fromIntegral @CUInt @Word <$> peek value
         _ -> Left <$> zmq_errno
@@ -409,12 +410,94 @@ sendwith send0 (Zmq_socket socket) message flags =
           (fromIntegral @Int @CSize len)
           flags
 
--- | Set a ØMQ socket option of type 'ByteString'.
+-- | Set a ØMQ socket option.
 --
 -- http://api.zeromq.org/master:zmq-setsockopt
+zmq_setsockopt :: Zmq_socket -> Zmq_socket_option a -> a -> IO (Either Zmq_error ())
+zmq_setsockopt socket = \case
+  ZMQ_AFFINITY -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_AFFINITY
+  ZMQ_BACKLOG -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_BACKLOG
+  ZMQ_BINDTODEVICE -> zmq_setsockopt_text socket Libzmq.Bindings._ZMQ_BINDTODEVICE
+  ZMQ_CONFLATE -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_CONFLATE
+  ZMQ_CONNECT_ROUTING_ID -> zmq_setsockopt_bytestring socket Libzmq.Bindings._ZMQ_CONNECT_ROUTING_ID
+  ZMQ_CONNECT_TIMEOUT -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_CONNECT_TIMEOUT
+  ZMQ_CURVE_SERVER -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_CURVE_SERVER
+  ZMQ_GSSAPI_PLAINTEXT -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_GSSAPI_PLAINTEXT
+  ZMQ_GSSAPI_PRINCIPAL -> zmq_setsockopt_text socket Libzmq.Bindings._ZMQ_GSSAPI_PRINCIPAL
+  ZMQ_GSSAPI_PRINCIPAL_NAMETYPE -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_GSSAPI_PRINCIPAL_NAMETYPE
+  ZMQ_GSSAPI_SERVER -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_GSSAPI_SERVER
+  ZMQ_GSSAPI_SERVICE_PRINCIPAL -> zmq_setsockopt_text socket Libzmq.Bindings._ZMQ_GSSAPI_SERVICE_PRINCIPAL
+  ZMQ_GSSAPI_SERVICE_PRINCIPAL_NAMETYPE -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_GSSAPI_SERVICE_PRINCIPAL_NAMETYPE
+  ZMQ_HANDSHAKE_IVL -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_HANDSHAKE_IVL
+  ZMQ_HEARTBEAT_IVL -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_HEARTBEAT_IVL
+  ZMQ_HEARTBEAT_TIMEOUT -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_HEARTBEAT_TIMEOUT
+  ZMQ_HEARTBEAT_TTL -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_HEARTBEAT_TTL
+  ZMQ_IMMEDIATE -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_IMMEDIATE
+  ZMQ_INVERT_MATCHING -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_INVERT_MATCHING
+  ZMQ_IPV6' -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_IPV6
+  ZMQ_LINGER -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_LINGER
+  ZMQ_MAXMSGSIZE -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_MAXMSGSIZE
+  ZMQ_MULTICAST_HOPS -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_MULTICAST_HOPS
+  ZMQ_MULTICAST_MAXTPDU -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_MULTICAST_MAXTPDU
+  ZMQ_PLAIN_PASSWORD -> zmq_setsockopt_text socket Libzmq.Bindings._ZMQ_PLAIN_PASSWORD
+  ZMQ_PLAIN_SERVER -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_PLAIN_SERVER
+  ZMQ_PLAIN_USERNAME -> zmq_setsockopt_text socket Libzmq.Bindings._ZMQ_PLAIN_USERNAME
+  ZMQ_PROBE_ROUTER -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_PROBE_ROUTER
+  ZMQ_RATE -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_RATE
+  ZMQ_RCVBUF -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_RCVBUF
+  ZMQ_RCVHWM -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_RCVHWM
+  ZMQ_RCVTIMEO -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_RCVTIMEO
+  ZMQ_RECONNECT_IVL -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_RECONNECT_IVL
+  ZMQ_RECONNECT_IVL_MAX -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_RECONNECT_IVL_MAX
+  ZMQ_RECOVERY_IVL -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_RECOVERY_IVL
+  ZMQ_REQ_CORRELATE -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_REQ_CORRELATE
+  ZMQ_REQ_RELAXED -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_REQ_RELAXED
+  ZMQ_ROUTER_HANDOVER -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_ROUTER_HANDOVER
+  ZMQ_ROUTER_MANDATORY -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_ROUTER_MANDATORY
+  ZMQ_ROUTING_ID -> zmq_setsockopt_bytestring socket Libzmq.Bindings._ZMQ_ROUTING_ID
+  ZMQ_SNDBUF -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_SNDBUF
+  ZMQ_SNDHWM -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_SNDHWM
+  ZMQ_SNDTIMEO -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_SNDTIMEO
+  ZMQ_SOCKS_PROXY -> zmq_setsockopt_text socket Libzmq.Bindings._ZMQ_SOCKS_PROXY
+  ZMQ_STREAM_NOTIFY -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_STREAM_NOTIFY
+  ZMQ_SUBSCRIBE -> zmq_setsockopt_bytestring socket Libzmq.Bindings._ZMQ_SUBSCRIBE
+  ZMQ_TCP_KEEPALIVE -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_TCP_KEEPALIVE
+  ZMQ_TCP_KEEPALIVE_CNT -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_TCP_KEEPALIVE_CNT
+  ZMQ_TCP_KEEPALIVE_IDLE -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_TCP_KEEPALIVE_IDLE
+  ZMQ_TCP_KEEPALIVE_INTVL -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_TCP_KEEPALIVE_INTVL
+  ZMQ_TCP_MAXRT -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_TCP_MAXRT
+  ZMQ_TOS -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_TOS
+  ZMQ_UNSUBSCRIBE -> zmq_setsockopt_bytestring socket Libzmq.Bindings._ZMQ_UNSUBSCRIBE
+  ZMQ_USE_FD -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_USE_FD
+  ZMQ_VMCI_BUFFER_MAX_SIZE -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_VMCI_BUFFER_MAX_SIZE
+  ZMQ_VMCI_BUFFER_MIN_SIZE -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_VMCI_BUFFER_MIN_SIZE
+  ZMQ_VMCI_BUFFER_SIZE -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_VMCI_BUFFER_SIZE
+  ZMQ_VMCI_CONNECT_TIMEOUT -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_VMCI_CONNECT_TIMEOUT
+  ZMQ_XPUB_MANUAL -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_XPUB_MANUAL
+  ZMQ_XPUB_NODROP -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_XPUB_NODROP
+  ZMQ_XPUB_VERBOSE -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_XPUB_VERBOSE
+  ZMQ_XPUB_VERBOSER -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_XPUB_VERBOSER
+  ZMQ_XPUB_WELCOME_MSG -> zmq_setsockopt_bytestring socket Libzmq.Bindings._ZMQ_XPUB_WELCOME_MSG
+  ZMQ_ZAP_DOMAIN -> zmq_setsockopt_text socket Libzmq.Bindings._ZMQ_ZAP_DOMAIN
+
 zmq_setsockopt_bytestring :: Zmq_socket -> CInt -> ByteString -> IO (Either Zmq_error ())
 zmq_setsockopt_bytestring (Zmq_socket socket) option bytes =
   ByteString.Unsafe.unsafeUseAsCStringLen bytes \(cstring, len) ->
+    Libzmq.Bindings.zmq_setsockopt socket option cstring (fromIntegral @Int @CSize len) >>= \case
+      0 -> pure (Right ())
+      _ -> Left <$> zmq_errno
+
+zmq_setsockopt_storable :: forall a. Storable a => Zmq_socket -> CInt -> a -> IO (Either Zmq_error ())
+zmq_setsockopt_storable (Zmq_socket socket) option value =
+  alloca \ptr -> do
+    poke ptr value
+    Libzmq.Bindings.zmq_setsockopt socket option ptr (sizeof @a) >>= \case
+      0 -> pure (Right ())
+      _ -> Left <$> zmq_errno
+
+zmq_setsockopt_text :: Zmq_socket -> CInt -> Text -> IO (Either Zmq_error ())
+zmq_setsockopt_text (Zmq_socket socket) option text =
+  Text.withCStringLen text \(cstring, len) ->
     Libzmq.Bindings.zmq_setsockopt socket option cstring (fromIntegral @Int @CSize len) >>= \case
       0 -> pure (Right ())
       _ -> Left <$> zmq_errno
@@ -485,3 +568,10 @@ zmq_poll_dontwait (Zmq_pollitems pollitems len) =
     f :: Libzmq.Bindings.Zmq_pollitem -> Zmq_events
     f Libzmq.Bindings.Zmq_pollitem {Libzmq.Bindings.revents} =
       Zmq_events revents
+
+------------------------------------------------------------------------------------------------------------------------
+-- Misc. utils
+
+sizeof :: forall a. Storable a => CSize
+sizeof =
+  fromIntegral @Int @CSize (sizeOf (undefined :: a))

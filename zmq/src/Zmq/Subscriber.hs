@@ -16,7 +16,6 @@ import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
 import Data.List.NonEmpty as List (NonEmpty)
 import Libzmq
-import Libzmq.Bindings qualified
 import Zmq.Endpoint
 import Zmq.Error
 import Zmq.Internal.Socket qualified as Socket
@@ -45,25 +44,15 @@ disconnect :: Subscriber -> Endpoint transport -> IO (Either Error ())
 disconnect (Subscriber socketVar) endpoint =
   withMVar socketVar \socket -> Socket.disconnect socket endpoint
 
--- | <http://api.zeromq.org/4-3:zmq-setsockopt>
---
--- May throw:
---   * @ETERM@ if the context was terminated.
---   * @ENOTSOCK@ if the socket is invalid.
 subscribe :: Subscriber -> ByteString -> IO (Either Error ())
 subscribe (Subscriber socketVar) prefix =
   withMVar socketVar \socket ->
-    Socket.setByteStringOption socket Libzmq.Bindings._ZMQ_SUBSCRIBE prefix
+    Socket.setOption socket Libzmq.ZMQ_SUBSCRIBE prefix
 
--- | <http://api.zeromq.org/4-3:zmq-setsockopt>
---
--- May throw:
---   * @ETERM@ if the context was terminated.
---   * @ENOTSOCK@ if the socket is invalid.
 unsubscribe :: Subscriber -> ByteString -> IO (Either Error ())
 unsubscribe (Subscriber socketVar) prefix =
   withMVar socketVar \socket ->
-    Socket.setByteStringOption socket Libzmq.Bindings._ZMQ_UNSUBSCRIBE prefix
+    Socket.setOption socket Libzmq.ZMQ_UNSUBSCRIBE prefix
 
 receive :: Subscriber -> IO (Either Error (List.NonEmpty ByteString))
 receive (Subscriber socketVar) =

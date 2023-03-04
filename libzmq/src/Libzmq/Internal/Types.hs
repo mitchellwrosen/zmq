@@ -2,10 +2,14 @@ module Libzmq.Internal.Types (module Libzmq.Internal.Types) where
 
 import Control.Monad (guard)
 import Data.Bits ((.&.), (.|.))
+import Data.ByteString (ByteString)
 import Data.Coerce
 import Data.Function ((&))
+import Data.Int (Int32, Int64)
 import Data.List qualified as List
 import Data.Maybe (catMaybes)
+import Data.Text (Text)
+import Data.Word (Word64)
 import Foreign.C.Error
 import Foreign.C.Types (CInt, CShort)
 import Foreign.Ptr (Ptr)
@@ -471,6 +475,80 @@ data Zmq_pollitems
 data Zmq_socket
   = Zmq_socket (Ptr ())
   deriving stock (Eq, Ord, Show)
+
+-- | A ØMQ socket option.
+data Zmq_socket_option a where
+  ZMQ_AFFINITY :: Zmq_socket_option Word64
+  ZMQ_BACKLOG :: Zmq_socket_option Int32
+  ZMQ_BINDTODEVICE :: Zmq_socket_option Text
+  ZMQ_CONFLATE :: Zmq_socket_option Int32
+  ZMQ_CONNECT_ROUTING_ID :: Zmq_socket_option ByteString
+  ZMQ_CONNECT_TIMEOUT :: Zmq_socket_option Int32
+  -- ZMQ_CURVE_PUBLICKEY
+  -- ZMQ_CURVE_SECRETKEY
+  ZMQ_CURVE_SERVER :: Zmq_socket_option Int32
+  -- ZMQ_CURVE_SERVERKEY
+  ZMQ_GSSAPI_PLAINTEXT :: Zmq_socket_option Int32
+  ZMQ_GSSAPI_PRINCIPAL :: Zmq_socket_option Text
+  ZMQ_GSSAPI_PRINCIPAL_NAMETYPE :: Zmq_socket_option Int32
+  ZMQ_GSSAPI_SERVER :: Zmq_socket_option Int32
+  ZMQ_GSSAPI_SERVICE_PRINCIPAL :: Zmq_socket_option Text
+  ZMQ_GSSAPI_SERVICE_PRINCIPAL_NAMETYPE :: Zmq_socket_option Int32
+  ZMQ_HANDSHAKE_IVL :: Zmq_socket_option Int32
+  ZMQ_HEARTBEAT_IVL :: Zmq_socket_option Int32
+  ZMQ_HEARTBEAT_TIMEOUT :: Zmq_socket_option Int32
+  ZMQ_HEARTBEAT_TTL :: Zmq_socket_option Int32
+  ZMQ_IMMEDIATE :: Zmq_socket_option Int32
+  ZMQ_INVERT_MATCHING :: Zmq_socket_option Int32
+  ZMQ_IPV6' :: Zmq_socket_option Int32
+  ZMQ_LINGER :: Zmq_socket_option Int32
+  ZMQ_MAXMSGSIZE :: Zmq_socket_option Int64
+  ZMQ_MULTICAST_HOPS :: Zmq_socket_option Int32
+  ZMQ_MULTICAST_MAXTPDU :: Zmq_socket_option Int32
+  ZMQ_PLAIN_PASSWORD :: Zmq_socket_option Text
+  ZMQ_PLAIN_SERVER :: Zmq_socket_option Int32
+  ZMQ_PLAIN_USERNAME :: Zmq_socket_option Text
+  ZMQ_PROBE_ROUTER :: Zmq_socket_option Int32
+  ZMQ_RATE :: Zmq_socket_option Int32
+  ZMQ_RCVBUF :: Zmq_socket_option Int32
+  ZMQ_RCVHWM :: Zmq_socket_option Int32
+  ZMQ_RCVTIMEO :: Zmq_socket_option Int32
+  ZMQ_RECONNECT_IVL :: Zmq_socket_option Int32
+  ZMQ_RECONNECT_IVL_MAX :: Zmq_socket_option Int32
+  ZMQ_RECOVERY_IVL :: Zmq_socket_option Int32
+  ZMQ_REQ_CORRELATE :: Zmq_socket_option Int32
+  ZMQ_REQ_RELAXED :: Zmq_socket_option Int32
+  ZMQ_ROUTER_HANDOVER :: Zmq_socket_option Int32
+  ZMQ_ROUTER_MANDATORY :: Zmq_socket_option Int32
+  ZMQ_ROUTING_ID :: Zmq_socket_option ByteString
+  ZMQ_SNDBUF :: Zmq_socket_option Int32
+  ZMQ_SNDHWM :: Zmq_socket_option Int32
+  ZMQ_SNDTIMEO :: Zmq_socket_option Int32
+  ZMQ_SOCKS_PROXY :: Zmq_socket_option Text
+  ZMQ_STREAM_NOTIFY :: Zmq_socket_option Int32
+  ZMQ_SUBSCRIBE :: Zmq_socket_option ByteString
+  ZMQ_TCP_KEEPALIVE :: Zmq_socket_option Int32
+  ZMQ_TCP_KEEPALIVE_CNT :: Zmq_socket_option Int32
+  ZMQ_TCP_KEEPALIVE_IDLE :: Zmq_socket_option Int32
+  ZMQ_TCP_KEEPALIVE_INTVL :: Zmq_socket_option Int32
+  ZMQ_TCP_MAXRT :: Zmq_socket_option Int32
+  ZMQ_TOS :: Zmq_socket_option Int32
+  ZMQ_UNSUBSCRIBE :: Zmq_socket_option ByteString
+  ZMQ_USE_FD :: Zmq_socket_option Int32
+  ZMQ_VMCI_BUFFER_MAX_SIZE :: Zmq_socket_option Word64
+  ZMQ_VMCI_BUFFER_MIN_SIZE :: Zmq_socket_option Word64
+  ZMQ_VMCI_BUFFER_SIZE :: Zmq_socket_option Word64
+  ZMQ_VMCI_CONNECT_TIMEOUT :: Zmq_socket_option Int32
+  ZMQ_XPUB_MANUAL :: Zmq_socket_option Int32
+  ZMQ_XPUB_NODROP :: Zmq_socket_option Int32
+  ZMQ_XPUB_VERBOSE :: Zmq_socket_option Int32
+  ZMQ_XPUB_VERBOSER :: Zmq_socket_option Int32
+  ZMQ_XPUB_WELCOME_MSG :: Zmq_socket_option ByteString
+  ZMQ_ZAP_DOMAIN :: Zmq_socket_option Text
+
+deriving stock instance Eq (Zmq_socket_option a)
+
+deriving stock instance Show (Zmq_socket_option a)
 
 -- | A ØMQ socket type.
 newtype Zmq_socket_type

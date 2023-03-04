@@ -24,7 +24,7 @@ data Context = Context
     -- This design allows us to acquire sockets with straight-line syntax, rather than incur a syntactic indent due to
     -- bracketing a resource acquire/release.
     --
-    -- FIXME compact this sometimes
+    -- FIXME compact this when a finalizer runs, probably
     socketFinalizersRef :: !(IORef [SocketFinalizer])
   }
 

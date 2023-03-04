@@ -11,10 +11,13 @@ library
     libzmq-bindings,
     text ^>= 2.0,
   default-extensions:
+    AllowAmbiguousTypes
     BlockArguments
     DerivingStrategies
+    GADTs
     LambdaCase
     PatternSynonyms
+    ScopedTypeVariables
     ViewPatterns
   default-language: GHC2021
   exposed-modules:
