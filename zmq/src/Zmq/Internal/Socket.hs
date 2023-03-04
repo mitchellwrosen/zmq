@@ -252,7 +252,7 @@ send1 socket frame =
 
 sendf :: Zmq_socket -> ByteString -> Bool -> IO (Either Error ())
 sendf socket frame more = do
-  let loop = do
+  let loop =
         zmq_send_dontwait socket frame more >>= \case
           Left errno ->
             let err = enrichError "zmq_send" errno
@@ -279,7 +279,7 @@ receive socket =
     Right (More frame) ->
       receive_ socket <&> \case
         Left err -> Left err
-        Right frames -> Right (frame List.NonEmpty.:| reverse frames)
+        Right frames -> Right (frame List.NonEmpty.:| frames)
     Right (NoMore frame) -> pure (Right (frame List.NonEmpty.:| []))
 
 receive_ :: Zmq_socket -> IO (Either Error [ByteString])

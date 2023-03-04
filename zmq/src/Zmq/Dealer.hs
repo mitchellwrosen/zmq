@@ -16,7 +16,6 @@ import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
 import Data.List.NonEmpty qualified as List (NonEmpty)
-import Data.List.NonEmpty qualified as List.NonEmpty
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error)
@@ -38,7 +37,7 @@ instance CanReceive Dealer
 -- | Open an __dealer__.
 open :: IO (Either Error Dealer)
 open =
-  coerce (Socket.openThreadSafeSocket ZMQ_XPUB)
+  coerce (Socket.openThreadSafeSocket ZMQ_DEALER)
 
 -- | Bind a __dealer__ to an __endpoint__.
 --
@@ -71,10 +70,10 @@ disconnect =
 -- | Send a __message__ on a __dealer__ to one peer (round-robin).
 --
 -- This operation blocks until a peer can receive the message.
-send :: Dealer -> ByteString -> [ByteString] -> IO (Either Error ())
-send socket0 topic message =
+send :: Dealer -> List.NonEmpty ByteString -> IO (Either Error ())
+send socket0 message =
   withSocket socket0 \socket ->
-    Socket.send socket (topic List.NonEmpty.:| message)
+    Socket.send socket message
 
 -- | Receive a __message__ on an __dealer__ from any peer (fair-queued).
 receive :: Dealer -> IO (Either Error (List.NonEmpty ByteString))

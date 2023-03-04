@@ -466,10 +466,12 @@ newtype Zmq_msg
 data Zmq_pollitem
   = Zmq_pollitem_socket !Zmq_socket !Zmq_events
   | Zmq_pollitem_fd !Libzmq.Bindings.Zmq_fd !Zmq_events
+  deriving stock (Eq, Ord, Show)
 
 -- | A set of ØMQ pollitems.
 data Zmq_pollitems
   = Zmq_pollitems !(Ptr Libzmq.Bindings.Zmq_pollitem) !Int
+  deriving stock (Eq, Ord, Show)
 
 -- | A ØMQ socket.
 data Zmq_socket

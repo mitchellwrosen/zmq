@@ -1,7 +1,7 @@
 -- Hello World client
 
 import Control.Exception (throwIO)
-import Control.Monad (forM_)
+import Data.Foldable (for_)
 import Data.List.NonEmpty (pattern (:|))
 import Text.Printf (printf)
 import Zmq qualified
@@ -14,7 +14,7 @@ main =
     requester <- zmq Zmq.Requester.open
     zmq (Zmq.connect requester "tcp://localhost:5555")
 
-    forM_ [(0 :: Int) .. 9] \requestNbr -> do
+    for_ [(0 :: Int) .. 9] \requestNbr -> do
       printf "Sending Hello %d...\n" requestNbr
       zmq (Zmq.Requester.send requester ("Hello" :| []))
       _ <- zmq (Zmq.Requester.receive requester)

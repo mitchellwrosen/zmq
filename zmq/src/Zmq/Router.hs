@@ -16,7 +16,6 @@ import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
 import Data.List.NonEmpty qualified as List (NonEmpty)
-import Data.List.NonEmpty qualified as List.NonEmpty
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error)
@@ -38,7 +37,7 @@ instance CanReceive Router
 -- | Open a __router__.
 open :: IO (Either Error Router)
 open =
-  coerce (Socket.openThreadSafeSocket ZMQ_XPUB)
+  coerce (Socket.openThreadSafeSocket ZMQ_ROUTER)
 
 -- | Bind a __router__ to an __endpoint__.
 --
@@ -71,10 +70,10 @@ disconnect =
 -- | Send a __message__ on a __router__ to the peer identified by the first frame.
 --
 -- If the peer identified by the first frame no longer exists, the message is discarded.
-send :: Router -> ByteString -> [ByteString] -> IO (Either Error ())
-send socket0 topic message =
+send :: Router -> List.NonEmpty ByteString -> IO (Either Error ())
+send socket0 message =
   withSocket socket0 \socket ->
-    Socket.send socket (topic List.NonEmpty.:| message)
+    Socket.send socket message
 
 -- | Receive a __message__ on an __router__ from any peer (fair-queued).
 receive :: Router -> IO (Either Error (List.NonEmpty ByteString))
