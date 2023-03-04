@@ -68,10 +68,21 @@ setContextOptions context Options {ioThreads, maxMessageSize, maxSockets} = do
 -- Terminate a context.
 terminateContext :: Context -> IO ()
 terminateContext Context {context, socketFinalizersRef} = do
-  -- FIXME we should disallow new sockets from being created here
-  finalizers <- readIORef socketFinalizersRef
+  -- Shut down the context, causing any blocking operations on sockets to return ETERM
+  zmq_ctx_shutdown context >>= \case
+    Left errno ->
+      let err = enrichError "zmq_ctx_shutdown" errno
+       in case errno of
+            EFAULT -> throwIO err
+            _ -> unexpectedError err
+    Right () -> pure ()
+
+  -- Close all of the open sockets
   -- Why reverse: close in the order they were acquired :shrug:
+  finalizers <- readIORef socketFinalizersRef
   for_ (reverse finalizers) runSocketFinalizer
+
+  -- Terminate the context
   let loop = do
         zmq_ctx_term context >>= \case
           Left errno ->
