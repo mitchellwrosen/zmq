@@ -11,19 +11,19 @@ where
 
 import Data.ByteString (ByteString)
 import Data.List.NonEmpty (NonEmpty)
-import Libzmq qualified
+import Libzmq
 import UnliftIO
 import Zmq.Endpoint
 import Zmq.Error (Error)
 import Zmq.Internal.Socket qualified
 
 newtype Publisher
-  = Publisher (MVar Libzmq.Zmq_socket_t)
+  = Publisher (MVar Zmq_socket_t)
   deriving stock (Eq)
 
 with :: (Publisher -> IO (Either Error a)) -> IO (Either Error a)
 with action =
-  Zmq.Internal.Socket.with \socket -> do
+  Zmq.Internal.Socket.with ZMQ_PUB \socket -> do
     socketVar <- newMVar socket
     action (Publisher socketVar)
 

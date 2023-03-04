@@ -13,18 +13,18 @@ where
 import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
 import Data.List.NonEmpty (NonEmpty)
-import Libzmq qualified
+import Libzmq
 import Zmq.Endpoint
 import Zmq.Error (Error)
 import Zmq.Internal.Socket qualified
 
 newtype Responder
-  = Responder Libzmq.Zmq_socket_t
+  = Responder Zmq_socket_t
   deriving stock (Eq)
 
 with :: (Responder -> IO (Either Error a)) -> IO (Either Error a)
 with action =
-  Zmq.Internal.Socket.with \socket -> action (Responder socket)
+  Zmq.Internal.Socket.with ZMQ_REP \socket -> action (Responder socket)
 
 bind :: Responder -> Endpoint transport -> IO (Either Error ())
 bind =

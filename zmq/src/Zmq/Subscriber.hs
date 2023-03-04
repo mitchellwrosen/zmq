@@ -14,19 +14,19 @@ where
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
 import Data.List.NonEmpty (NonEmpty)
-import Libzmq qualified
+import Libzmq
 import Libzmq.Bindings qualified
 import Zmq.Endpoint
 import Zmq.Error
 import Zmq.Internal.Socket qualified
 
 newtype Subscriber
-  = Subscriber (MVar Libzmq.Zmq_socket_t)
+  = Subscriber (MVar Zmq_socket_t)
   deriving stock (Eq)
 
 with :: (Subscriber -> IO (Either Error a)) -> IO (Either Error a)
 with action =
-  Zmq.Internal.Socket.with \socket -> do
+  Zmq.Internal.Socket.with ZMQ_SUB \socket -> do
     socketVar <- newMVar socket
     action (Subscriber socketVar)
 

@@ -12,7 +12,7 @@ where
 
 import Data.ByteString (ByteString)
 import Data.List.NonEmpty (NonEmpty)
-import Libzmq qualified
+import Libzmq
 import UnliftIO
 import Zmq.Endpoint
 import Zmq.Error (Error)
@@ -20,12 +20,12 @@ import Zmq.Internal.Socket qualified
 import Zmq.SubscriptionMessage
 
 newtype XPublisher
-  = XPublisher (MVar Libzmq.Zmq_socket_t)
+  = XPublisher (MVar Zmq_socket_t)
   deriving stock (Eq)
 
 with :: (XPublisher -> IO (Either Error a)) -> IO (Either Error a)
 with action =
-  Zmq.Internal.Socket.with \socket -> do
+  Zmq.Internal.Socket.with ZMQ_XPUB \socket -> do
     socketVar <- newMVar socket
     action (XPublisher socketVar)
 

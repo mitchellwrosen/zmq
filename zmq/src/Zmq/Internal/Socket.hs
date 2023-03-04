@@ -28,10 +28,10 @@ import Zmq.Error
 import Zmq.Internal (renderEndpoint)
 import Zmq.Internal.Context (globalContextRef)
 
-with :: (Zmq_socket_t -> IO (Either Error a)) -> IO (Either Error a)
-with action =
+with :: Zmq_socket_type -> (Zmq_socket_t -> IO (Either Error a)) -> IO (Either Error a)
+with socketType action =
   mask \restore ->
-    open >>= \case
+    open socketType >>= \case
       Left err -> pure (Left err)
       Right socket -> do
         result <- try (restore (action socket))
@@ -40,10 +40,10 @@ with action =
           Left (exception :: SomeException) -> throwIO exception
           Right value -> pure value
 
-open :: IO (Either Error Zmq_socket_t)
-open = do
+open :: Zmq_socket_type -> IO (Either Error Zmq_socket_t)
+open socketType = do
   context <- readIORef globalContextRef
-  zmq_socket context ZMQ_SUB >>= \case
+  zmq_socket context socketType >>= \case
     Left errno ->
       let err = enrichError "zmq_socket" errno
        in case errno of
