@@ -69,3 +69,7 @@ executable taskvent
 executable taskwork
   import: component, bytestring
   main-is: Taskwork.hs
+
+executable tasksink
+  import: component
+  main-is: Tasksink.hs
