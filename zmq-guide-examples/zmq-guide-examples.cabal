@@ -61,3 +61,7 @@ executable wuserver
 executable wuclient
   import: component, bytestring
   main-is: Wuclient.hs
+
+executable taskvent
+  import: component, bytestring, random
+  main-is: Taskvent.hs

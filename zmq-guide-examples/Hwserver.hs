@@ -9,17 +9,16 @@ import Zmq.Responder qualified
 
 main :: IO ()
 main =
-  zmq do
-    Zmq.run Zmq.defaultOptions do
-      -- Socket to talk to clients
-      responder <- zmq Zmq.Responder.open
-      zmq (Zmq.Responder.bind responder (Zmq.Tcp "*:5555"))
+  Zmq.run Zmq.defaultOptions do
+    -- Socket to talk to clients
+    responder <- zmq Zmq.Responder.open
+    zmq (Zmq.Responder.bind responder (Zmq.Tcp "*:5555"))
 
-      forever do
-        _ <- zmq (Zmq.Responder.receive responder)
-        putStrLn "Received Hello"
-        threadDelay 1_000_000 -- Do some work
-        zmq (Zmq.Responder.send responder ("World" :| []))
+    forever do
+      _ <- zmq (Zmq.Responder.receive responder)
+      putStrLn "Received Hello"
+      threadDelay 1_000_000 -- Do some work
+      zmq (Zmq.Responder.send responder ("World" :| []))
 
 zmq :: IO (Either Zmq.Error a) -> IO a
 zmq action =
