@@ -11,6 +11,7 @@ import Data.Functor ((<&>))
 import Data.Text (Text)
 import Libzmq
 
+-- TODO show args
 data Error = Error
   { function :: !Text,
     errno :: !Zmq_error,

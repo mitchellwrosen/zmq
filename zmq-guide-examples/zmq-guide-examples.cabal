@@ -36,3 +36,9 @@ executable hwserver
   build-depends: base, zmq
   ghc-options: -threaded -with-rtsopts=-N2
   main-is: Hwserver.hs
+
+executable hwclient
+  import: component
+  build-depends: base, zmq
+  ghc-options: -threaded -with-rtsopts=-N2
+  main-is: Hwclient.hs
