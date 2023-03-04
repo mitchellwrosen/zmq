@@ -89,3 +89,7 @@ executable rrworker
 executable rrbroker
   import: component
   main-is: Rrbroker.hs
+
+executable wuproxy
+  import: component
+  main-is: Wuproxy.hs

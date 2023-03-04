@@ -7,6 +7,7 @@ module Zmq.XSubscriber
     disconnect,
     subscribe,
     unsubscribe,
+    send,
     receive,
     canSend,
     canReceive,
