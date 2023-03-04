@@ -79,17 +79,19 @@ setByteStringOption socket option value =
     Right val -> pure (Right val)
 
 getIntOption :: Zmq_socket_t -> CInt -> IO (Either Error Int)
-getIntOption socket option =
-  zmq_getsockopt_int socket option >>= \case
-    Left errno ->
-      let err = enrichError "zmq_getsockopt" errno
-       in case errno of
-            EINTR -> getIntOption socket option
-            EINVAL -> throwIO err
-            ENOTSOCK -> throwIO err
-            ETERM -> pure (Left err)
-            _ -> unexpectedError err
-    Right val -> pure (Right val)
+getIntOption socket option = do
+  let loop = do
+        zmq_getsockopt_int socket option >>= \case
+          Left errno ->
+            let err = enrichError "zmq_getsockopt" errno
+             in case errno of
+                  EINTR -> loop
+                  EINVAL -> throwIO err
+                  ENOTSOCK -> throwIO err
+                  ETERM -> pure (Left err)
+                  _ -> unexpectedError err
+          Right val -> pure (Right val)
+  loop
 
 bind :: Zmq_socket_t -> Endpoint transport -> IO (Either Error ())
 bind socket endpoint =

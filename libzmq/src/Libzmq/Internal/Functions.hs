@@ -10,7 +10,7 @@ import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
 import Data.Text.Foreign qualified as Text
 import Data.Word (Word8)
-import Foreign (Storable (peek), alloca)
+import Foreign (Storable (peek, poke, sizeOf), alloca)
 import Foreign.C (CUInt)
 import Foreign.C.String (CString)
 import Foreign.C.Types (CChar (..), CInt (..), CLong (..), CSize (..))
@@ -308,7 +308,8 @@ zmq_disconnect (Zmq_socket_t socket) endpoint =
 zmq_getsockopt_int :: Zmq_socket_t -> CInt -> IO (Either Zmq_error Int)
 zmq_getsockopt_int (Zmq_socket_t socket) option =
   alloca \value ->
-    alloca \size ->
+    alloca \size -> do
+      poke size (fromIntegral @Int @CSize (sizeOf (undefined :: CInt)))
       Libzmq.Bindings.zmq_getsockopt socket option value size >>= \case
         0 -> Right . fromIntegral @CInt @Int <$> peek value
         _ -> Left <$> zmq_errno
@@ -319,7 +320,8 @@ zmq_getsockopt_int (Zmq_socket_t socket) option =
 zmq_getsockopt_word :: Zmq_socket_t -> CInt -> IO (Either Zmq_error Word)
 zmq_getsockopt_word (Zmq_socket_t socket) option =
   alloca \value ->
-    alloca \size ->
+    alloca \size -> do
+      poke size (fromIntegral @Int @CSize (sizeOf (undefined :: CUInt)))
       Libzmq.Bindings.zmq_getsockopt socket option value size >>= \case
         0 -> Right . fromIntegral @CUInt @Word <$> peek value
         _ -> Left <$> zmq_errno
