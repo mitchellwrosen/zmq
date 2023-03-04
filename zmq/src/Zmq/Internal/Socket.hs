@@ -92,13 +92,9 @@ openSocket wrap socketType = do
               _ -> unexpectedError err
       Right socket -> do
         ThingAndCanary thing canary <- wrap socket
-        finalizer <- makeSocketFinalizer (zmq_close socket) canary
+        finalizer <- makeSocketFinalizer (zmq_setsockopt socket) (zmq_close socket) canary
         atomicModifyIORef' socketsRef \finalizers -> (finalizer : finalizers, ())
         pure (Right thing)
-
--- setIntOption :: Zmq_socket -> CInt -> Int -> IO (Either Error ())
--- setIntOption socket option value =
---   zmq_setsockopt_int socket option value >>= \case
 
 setOption :: Zmq_socket -> Zmq_socket_option a -> a -> IO (Either Error ())
 setOption socket option value = do

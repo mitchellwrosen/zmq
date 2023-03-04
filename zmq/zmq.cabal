@@ -53,7 +53,6 @@ library
   hs-source-dirs: src
   other-modules:
     Zmq.Internal.Context
-    Zmq.Internal.Idempotent
     Zmq.Internal.Options
     Zmq.Internal.Socket
     Zmq.Internal.SocketFinalizer
