@@ -6,6 +6,7 @@ module Zmq.Internal.Socket
     connect,
     disconnect,
     send,
+    send1,
     receive,
   )
 where
@@ -117,48 +118,105 @@ disconnect socketVar endpoint =
   withMVar socketVar \socket ->
     enrichFunction "zmq_disconnect" (zmq_disconnect socket (renderEndpoint endpoint))
 
-send :: MVar Zmq_socket_t -> NonEmpty ByteString -> IO (Either Error ())
-send socketVar message =
-  withMVar socketVar \socket ->
-    let loop = \case
-          [frame] -> send1 socket frame False
-          frame : frames ->
-            send1 socket frame True >>= \case
-              Left err -> pure (Left err)
-              Right () -> loop frames
-          [] -> undefined -- impossible
-     in loop (List.NonEmpty.toList message)
+send :: Zmq_socket_t -> NonEmpty ByteString -> IO (Either Error ())
+send socket message =
+  let loop = \case
+        [frame] -> sendf socket frame False
+        frame : frames ->
+          sendf socket frame True >>= \case
+            Left err -> pure (Left err)
+            Right () -> loop frames
+        [] -> undefined -- impossible
+   in loop (List.NonEmpty.toList message)
 
-send1 :: Zmq_socket_t -> ByteString -> Bool -> IO (Either Error ())
-send1 socket frame more =
-  zmq_send_dontwait socket frame more >>= \case
-    Left errno ->
-      let badCall = throwIO err
-          err = enrichError "zmq_send" errno
-       in case errno of
-            EAGAIN ->
-              getIntOption socket Libzmq.Bindings._ZMQ_FD >>= \case
-                Left err1 -> pure (Left err1)
-                Right fd -> do
-                  let loop = do
-                        threadWaitRead (fromIntegral @Int @Fd fd) -- "read" is not a typo
-                        getIntOption socket Libzmq.Bindings._ZMQ_EVENTS >>= \case
-                          Left err1 -> pure (Left err1)
-                          Right events ->
-                            if events .&. fromIntegral @CShort @Int Libzmq.Bindings._ZMQ_POLLOUT == 0
-                              then loop
-                              else send1 socket frame more
-                  loop
-            EFSM -> badCall
-            EHOSTUNREACH -> pure (Left err)
-            EINVAL -> badCall
-            EINTR -> send1 socket frame more
-            ENOTSUP -> badCall
-            ENOTSOCK -> badCall
-            ETERM -> pure (Left err)
-            _ -> unexpectedError err
-    Right _len -> pure (Right ())
+send1 :: Zmq_socket_t -> ByteString -> IO (Either Error ())
+send1 socket frame =
+  sendf socket frame False
 
-receive :: MVar Zmq_socket_t -> IO (NonEmpty ByteString)
-receive socketVar =
-  withMVar socketVar undefined -- Zmqhs.receive
+sendf :: Zmq_socket_t -> ByteString -> Bool -> IO (Either Error ())
+sendf socket frame more = do
+  let loop = do
+        zmq_send_dontwait socket frame more >>= \case
+          Left errno ->
+            let badCall = throwIO err
+                err = enrichError "zmq_send" errno
+             in case errno of
+                  EAGAIN ->
+                    blockUntilEvent socket Libzmq.Bindings._ZMQ_POLLOUT >>= \case
+                      Left err1 -> pure (Left err1)
+                      Right () -> loop
+                  EFSM -> badCall
+                  EHOSTUNREACH -> pure (Left err)
+                  EINVAL -> badCall
+                  EINTR -> loop
+                  ENOTSUP -> badCall
+                  ENOTSOCK -> badCall
+                  ETERM -> pure (Left err)
+                  _ -> unexpectedError err
+          Right _len -> pure (Right ())
+  loop
+
+receive :: Zmq_socket_t -> IO (Either Error (NonEmpty ByteString))
+receive socket =
+  receivef socket >>= \case
+    Left err -> pure (Left err)
+    Right (More frame) ->
+      receive_ socket <&> \case
+        Left err -> Left err
+        Right frames -> Right (frame List.NonEmpty.:| reverse frames)
+    Right (NoMore frame) -> pure (Right (frame List.NonEmpty.:| []))
+
+receive_ :: Zmq_socket_t -> IO (Either Error [ByteString])
+receive_ socket =
+  receivef socket >>= \case
+    Left err -> pure (Left err)
+    Right (More frame) ->
+      receive_ socket <&> \case
+        Left err -> Left err
+        Right frames -> Right (frame : frames)
+    Right (NoMore frame) -> pure (Right [frame])
+
+data ReceiveF
+  = More ByteString
+  | NoMore ByteString
+
+receivef :: Zmq_socket_t -> IO (Either Error ReceiveF)
+receivef socket =
+  bracket zmq_msg_init zmq_msg_close \frame -> do
+    let loop = do
+          zmq_msg_recv_dontwait frame socket >>= \case
+            Left errno ->
+              let badCall = throwIO err
+                  err = enrichError "zmq_msg_recv" errno
+               in case errno of
+                    EAGAIN ->
+                      blockUntilEvent socket Libzmq.Bindings._ZMQ_POLLIN >>= \case
+                        Left err1 -> pure (Left err1)
+                        Right () -> loop
+                    EFSM -> badCall
+                    EINTR -> loop
+                    ENOTSOCK -> badCall
+                    ENOTSUP -> badCall
+                    ETERM -> pure (Left err)
+                    _ -> unexpectedError err
+            Right _len -> do
+              bytes <- zmq_msg_data frame
+              zmq_msg_more frame <&> \case
+                False -> Right (NoMore bytes)
+                True -> Right (More bytes)
+    loop
+
+blockUntilEvent :: Zmq_socket_t -> CShort -> IO (Either Error ())
+blockUntilEvent socket event =
+  getIntOption socket Libzmq.Bindings._ZMQ_FD >>= \case
+    Left err -> pure (Left err)
+    Right fd -> do
+      let loop = do
+            threadWaitRead (fromIntegral @Int @Fd fd)
+            getIntOption socket Libzmq.Bindings._ZMQ_EVENTS >>= \case
+              Left err1 -> pure (Left err1)
+              Right events ->
+                if events .&. fromIntegral @CShort @Int event == 0
+                  then loop
+                  else pure (Right ())
+      loop

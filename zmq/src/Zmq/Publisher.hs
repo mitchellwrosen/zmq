@@ -44,5 +44,5 @@ disconnect =
   coerce Zmq.Internal.Socket.disconnect
 
 send :: Publisher -> NonEmpty ByteString -> IO (Either Error ())
-send =
-  coerce Zmq.Internal.Socket.send
+send (Publisher socketVar) message =
+  withMVar socketVar \socket -> Zmq.Internal.Socket.send socket message

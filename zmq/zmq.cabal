@@ -45,7 +45,6 @@ library
     text,
     transformers ^>= 0.6,
     unliftio,
-    zmqhs,
   exposed-modules:
     Zmq
     Zmq.Publisher
@@ -60,17 +59,6 @@ library
     Zmq.Internal
     Zmq.Internal.Socket
     Zmq.SubscriptionMessage
-
-executable zmq
-  import: component
-  build-depends:
-    base,
-    text,
-    zmq,
-  hs-source-dirs:
-    app
-  ghc-options: -O -threaded -with-rtsopts=-N2
-  main-is: Main.hs
 
 test-suite tests
   import: component

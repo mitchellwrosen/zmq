@@ -12,17 +12,14 @@ where
 
 import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
-import Data.Function
 import Data.List.NonEmpty (NonEmpty)
 import Libzmq qualified
 import UnliftIO
 import Zmq.Context
 import Zmq.Endpoint
 import Zmq.Error (Error)
-import Zmq.Internal (renderEndpoint)
 import Zmq.Internal.Socket qualified
 import Zmq.SubscriptionMessage
-import Zmqhs qualified
 
 newtype XPublisher
   = XPublisher (MVar Libzmq.Zmq_socket_t)
@@ -49,15 +46,17 @@ disconnect =
   coerce Zmq.Internal.Socket.disconnect
 
 send :: XPublisher -> NonEmpty ByteString -> IO (Either Error ())
-send =
-  coerce Zmq.Internal.Socket.send
+send (XPublisher socketVar) message =
+  withMVar socketVar \socket -> Zmq.Internal.Socket.send socket message
 
-receive :: XPublisher -> IO SubscriptionMessage
+receive :: XPublisher -> IO (Either Error SubscriptionMessage)
 receive (XPublisher socketVar) =
-  withMVar socketVar \socket ->
-    fix \again ->
-      -- Zmqhs.receive socket >>= \case
-      undefined socket >>= \case
-        UnsubscribeMessage prefix -> pure (Unsubscribe prefix)
-        SubscribeMessage prefix -> pure (Subscribe prefix)
-        _ -> again
+  withMVar socketVar \socket -> do
+    let loop = do
+          -- Zmqhs.receive socket >>= \case
+          Zmq.Internal.Socket.receive socket >>= \case
+            Left err -> pure (Left err)
+            Right (UnsubscribeMessage prefix) -> pure (Right (Unsubscribe prefix))
+            Right (SubscribeMessage prefix) -> pure (Right (Subscribe prefix))
+            _ -> loop
+    loop

@@ -13,7 +13,7 @@ where
 
 import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
-import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.List.NonEmpty (NonEmpty)
 import Libzmq qualified
 import UnliftIO
 import Zmq.Context
@@ -57,8 +57,9 @@ unsubscribe xsubscriber prefix =
 
 send :: XSubscriber -> SubscriptionMessage -> IO (Either Error ())
 send (XSubscriber socketVar) message =
-  Zmq.Internal.Socket.send socketVar (SubscriptionMessage.serialize message :| [])
+  withMVar socketVar \socket ->
+    Zmq.Internal.Socket.send1 socket (SubscriptionMessage.serialize message)
 
-receive :: XSubscriber -> IO (NonEmpty ByteString)
-receive =
-  coerce Zmq.Internal.Socket.receive
+receive :: XSubscriber -> IO (Either Error (NonEmpty ByteString))
+receive (XSubscriber socketVar) =
+  withMVar socketVar Zmq.Internal.Socket.receive

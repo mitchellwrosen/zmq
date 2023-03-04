@@ -21,7 +21,6 @@ import Zmq.Context
 import Zmq.Endpoint
 import Zmq.Error
 import Zmq.Internal.Socket qualified
-import Zmqhs qualified
 
 newtype Subscriber
   = Subscriber (MVar Libzmq.Zmq_socket_t)
@@ -67,6 +66,6 @@ unsubscribe (Subscriber socketVar) prefix =
   withMVar socketVar \socket ->
     Zmq.Internal.Socket.setByteStringOption socket Libzmq.Bindings._ZMQ_UNSUBSCRIBE prefix
 
-receive :: Subscriber -> IO (NonEmpty ByteString)
-receive =
-  coerce Zmq.Internal.Socket.receive
+receive :: Subscriber -> IO (Either Error (NonEmpty ByteString))
+receive (Subscriber socketVar) =
+  withMVar socketVar Zmq.Internal.Socket.receive

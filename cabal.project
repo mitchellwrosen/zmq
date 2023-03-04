@@ -1,1 +1,4 @@
-packages: libzmq-bindings, libzmq, zmqhs, zmq
+packages: 
+  libzmq-bindings, 
+  libzmq, 
+  zmq

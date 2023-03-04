@@ -33,6 +33,7 @@ defaultOptions =
       maxSockets = fromIntegral Libzmq.Bindings._ZMQ_MAX_SOCKETS_DFLT
     }
 
+-- | Perform an action with a new ØMQ context.
 withContext :: Options -> (Context -> IO (Either Error a)) -> IO (Either Error a)
 withContext options action =
   mask \restore ->
@@ -51,7 +52,7 @@ withContext options action =
                   Right _ -> err
               Right () -> result
 
--- | Create a new ØMQ context.
+-- Create a new ØMQ context.
 newContext :: Options -> IO (Either Error Context)
 newContext Options {ioThreads, maxMessageSize, maxSockets} = do
   context <- Libzmq.zmq_ctx_new
@@ -64,7 +65,7 @@ newContext Options {ioThreads, maxMessageSize, maxSockets} = do
     zmq_ctx_set context option value =
       ExceptT (enrichFunction "zmq_ctx_set" (Libzmq.zmq_ctx_set context option value))
 
--- | Terminate a ØMQ context.
+-- Terminate a ØMQ context.
 terminateContext :: Context -> IO (Either Error ())
 terminateContext (Context context) = do
   fix \again ->
