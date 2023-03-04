@@ -43,7 +43,7 @@ library
     libzmq,
     libzmq-bindings,
     text,
-    transformers ^>= 0.6,
+    -- transformers ^>= 0.6,
     unliftio,
   exposed-modules:
     Zmq
