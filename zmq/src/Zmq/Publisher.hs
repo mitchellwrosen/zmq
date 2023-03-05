@@ -1,5 +1,8 @@
 module Zmq.Publisher
   ( Publisher,
+    Options,
+    defaultOptions,
+    lossy,
     open,
     bind,
     unbind,
@@ -12,10 +15,11 @@ where
 
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
+import Data.Functor ((<&>))
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error)
+import Zmq.Internal.PublisherOptions (Options (..), defaultOptions, lossy)
 import Zmq.Internal.Socket (CanSend, Event, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
@@ -30,9 +34,18 @@ newtype Publisher
 instance CanSend Publisher
 
 -- | Open a __publisher__.
-open :: IO (Either Error Publisher)
-open =
-  coerce (Socket.openThreadSafeSocket ZMQ_PUB)
+open :: Options -> IO (Either Error Publisher)
+open Options {lossy_} = do
+  Socket.openThreadSafeSocket ZMQ_PUB >>= \case
+    Left err -> pure (Left err)
+    Right socketVar -> do
+      socket <- readMVar socketVar
+      if lossy_
+        then pure (Right (Publisher socketVar))
+        else
+          Socket.setOption socket ZMQ_XPUB_NODROP 1 <&> \case
+            Left err -> Left err
+            Right () -> Right (Publisher socketVar)
 
 -- | Bind a __publisher__ to an __endpoint__.
 --

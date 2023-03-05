@@ -1,5 +1,8 @@
 module Zmq.XPublisher
   ( XPublisher,
+    Options,
+    defaultOptions,
+    lossy,
     open,
     bind,
     unbind,
@@ -14,10 +17,11 @@ where
 
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
+import Data.Functor ((<&>))
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error)
+import Zmq.Internal.PublisherOptions (Options (..), defaultOptions, lossy)
 import Zmq.Internal.Socket (CanReceive, CanSend, Event, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
@@ -34,9 +38,18 @@ instance CanSend XPublisher
 instance CanReceive XPublisher
 
 -- | Open an __xpublisher__.
-open :: IO (Either Error XPublisher)
-open =
-  coerce (Socket.openThreadSafeSocket ZMQ_XPUB)
+open :: Options -> IO (Either Error XPublisher)
+open Options {lossy_} = do
+  Socket.openThreadSafeSocket ZMQ_XPUB >>= \case
+    Left err -> pure (Left err)
+    Right socketVar -> do
+      socket <- readMVar socketVar
+      if lossy_
+        then pure (Right (XPublisher socketVar))
+        else
+          Socket.setOption socket ZMQ_XPUB_NODROP 1 <&> \case
+            Left err -> Left err
+            Right () -> Right (XPublisher socketVar)
 
 -- | Bind an __xpublisher__ to an __endpoint__.
 --

@@ -89,7 +89,7 @@ wuserver :: IO ()
 wuserver =
   Zmq.run Zmq.defaultOptions do
     -- Prepare our publisher
-    publisher <- unwrap Zmq.Publisher.open
+    publisher <- unwrap (Zmq.Publisher.open Zmq.Publisher.defaultOptions)
     unwrap (Zmq.bind publisher "tcp://*:5556")
 
     forever do
@@ -311,7 +311,7 @@ wuproxy =
     unwrap (Zmq.connect frontend "tcp://192.168.55.210:5556")
 
     -- This is our public endpoint for subscribers
-    backend <- unwrap Zmq.XPublisher.open
+    backend <- unwrap (Zmq.XPublisher.open Zmq.Publisher.defaultOptions)
     unwrap (Zmq.bind backend "tcp://10.1.1.0:8100")
 
     -- Run the proxy until the user interrupts us
@@ -374,7 +374,7 @@ tasksink2 =
     unwrap (Zmq.bind receiver "tcp://*:5558")
 
     -- Socket for worker control
-    controller <- unwrap Zmq.Publisher.open
+    controller <- unwrap (Zmq.Publisher.open Zmq.Publisher.defaultOptions)
     unwrap (Zmq.bind controller "tcp://*:5559")
 
     -- Wait for start of batch
