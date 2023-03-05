@@ -9,8 +9,6 @@ module Zmq.Dealer
     sends,
     receive,
     receives,
-    canSend,
-    canReceive,
   )
 where
 
@@ -21,7 +19,7 @@ import Data.List.NonEmpty qualified as List (NonEmpty)
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error (..), catchingOkErrors)
-import Zmq.Internal.Socket (CanReceive, CanSend, Event, Socket (withSocket), ThreadSafeSocket)
+import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __dealer__ socket.
@@ -31,8 +29,6 @@ newtype Dealer
   = Dealer (MVar Zmq_socket)
   deriving stock (Eq)
   deriving (Socket) via (ThreadSafeSocket)
-
-instance CanSend Dealer
 
 instance CanReceive Dealer
 
@@ -110,13 +106,3 @@ receives :: Dealer -> IO (Either Error (List.NonEmpty ByteString))
 receives socket =
   catchingOkErrors do
     withSocket socket Socket.receiveMany
-
--- | /Alias/: 'Zmq.canSend'
-canSend :: Dealer -> a -> Event a
-canSend =
-  Socket.canSend
-
--- | /Alias/: 'Zmq.canReceive'
-canReceive :: Dealer -> a -> Event a
-canReceive =
-  Socket.canReceive

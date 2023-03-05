@@ -9,8 +9,6 @@ module Zmq.Router
     sends,
     receive,
     receives,
-    canSend,
-    canReceive,
   )
 where
 
@@ -22,7 +20,7 @@ import Data.List.NonEmpty as List.NonEmpty
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error, catchingOkErrors)
-import Zmq.Internal.Socket (CanReceive, CanSend, Event, Socket (withSocket), ThreadSafeSocket)
+import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __router__ socket.
@@ -32,8 +30,6 @@ newtype Router
   = Router (MVar Zmq_socket)
   deriving stock (Eq)
   deriving (Socket) via (ThreadSafeSocket)
-
-instance CanSend Router
 
 instance CanReceive Router
 
@@ -129,13 +125,3 @@ receives socket0 =
             [] -> ByteString.empty :| []
             frame : frames -> frame :| frames
         )
-
--- | /Alias/: 'Zmq.canSend'
-canSend :: Router -> a -> Event a
-canSend =
-  Socket.canSend
-
--- | /Alias/: 'Zmq.canReceive'
-canReceive :: Router -> a -> Event a
-canReceive =
-  Socket.canReceive

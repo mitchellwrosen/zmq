@@ -12,9 +12,9 @@ module Zmq
     disconnect,
 
     -- * IO multiplexing
-    Event,
-    canSend,
-    canReceive,
+    Sockets,
+    the,
+    also,
     poll,
 
     -- * Socket types
@@ -47,7 +47,7 @@ import Zmq.Dealer (Dealer)
 import Zmq.Error (Error (..))
 import Zmq.Internal.Context
 import Zmq.Internal.Options (Options (..), defaultOptions)
-import Zmq.Internal.Socket (Event, Socket, bind, canReceive, canSend, connect, disconnect, poll, unbind)
+import Zmq.Internal.Socket (Socket, Sockets, also, bind, connect, disconnect, poll, the, unbind)
 import Zmq.Publisher (Publisher)
 import Zmq.Puller (Puller)
 import Zmq.Pusher (Pusher)

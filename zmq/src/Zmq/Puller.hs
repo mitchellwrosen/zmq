@@ -6,7 +6,6 @@ module Zmq.Puller
     connect,
     disconnect,
     receive,
-    canReceive,
   )
 where
 
@@ -16,7 +15,7 @@ import Data.Coerce (coerce)
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error
-import Zmq.Internal.Socket (CanReceive, Event, Socket (withSocket), ThreadSafeSocket)
+import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __puller__ socket.
@@ -67,8 +66,3 @@ receive :: Puller -> IO (Either Error ByteString)
 receive socket =
   catchingOkErrors do
     withSocket socket Socket.receive
-
--- | /Alias/: 'Zmq.canReceive'
-canReceive :: Puller -> a -> Event a
-canReceive =
-  Socket.canReceive

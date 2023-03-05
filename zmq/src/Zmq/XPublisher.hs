@@ -10,8 +10,6 @@ module Zmq.XPublisher
     disconnect,
     send,
     receive,
-    canSend,
-    canReceive,
   )
 where
 
@@ -22,7 +20,7 @@ import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error, catchingOkErrors, enrichError, throwOkError)
 import Zmq.Internal.PublisherOptions (Options (..), defaultOptions, lossy)
-import Zmq.Internal.Socket (CanReceive, CanSend, Event, Socket (withSocket), ThreadSafeSocket)
+import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __xpublisher__ socket.
@@ -32,8 +30,6 @@ newtype XPublisher
   = XPublisher (MVar Zmq_socket)
   deriving stock (Eq)
   deriving (Socket) via (ThreadSafeSocket)
-
-instance CanSend XPublisher
 
 instance CanReceive XPublisher
 
@@ -94,13 +90,3 @@ receive :: XPublisher -> IO (Either Error ByteString)
 receive socket =
   catchingOkErrors do
     withSocket socket Socket.receive
-
--- | /Alias/: 'Zmq.canSend'
-canSend :: XPublisher -> a -> Event a
-canSend =
-  Socket.canSend
-
--- | /Alias/: 'Zmq.canReceive'
-canReceive :: XPublisher -> a -> Event a
-canReceive =
-  Socket.canReceive

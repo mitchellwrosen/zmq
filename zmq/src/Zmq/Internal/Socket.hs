@@ -3,7 +3,6 @@
 
 module Zmq.Internal.Socket
   ( Socket (..),
-    CanSend,
     CanReceive,
     ThreadSafeSocket (..),
     ThreadUnsafeSocket (..),
@@ -25,9 +24,9 @@ module Zmq.Internal.Socket
     receiveTwo,
     receiveMany,
     blockUntilCanSend,
-    Event,
-    canSend,
-    canReceive,
+    Sockets,
+    the,
+    also,
     poll,
   )
 where
@@ -39,8 +38,11 @@ import Control.Monad (when)
 import Data.Bits ((.&.))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as ByteString
+import Data.Coerce (coerce)
 import Data.Functor ((<&>))
 import Data.IORef
+import Data.IntSet (IntSet)
+import Data.IntSet qualified as IntSet
 import Data.List.NonEmpty (pattern (:|))
 import Data.List.NonEmpty qualified as List (NonEmpty)
 import Data.Text (Text)
@@ -63,8 +65,6 @@ class Socket socket where
 
   withSocket :: socket -> (Zmq_socket -> IO a) -> IO a
   withSocket = undefined -- hide "minimal complete definition" haddock
-
-class Socket socket => CanSend socket
 
 class Socket socket => CanReceive socket
 
@@ -467,34 +467,32 @@ blockUntilEvent socket event = do
         when (events .&. fromIntegral @CShort @Int event == 0) loop
   loop
 
-data Event a
-  = forall socket. Socket socket => Event !socket !Zmq_events !a
+newtype Sockets
+  = Sockets [SomeSocket]
 
-canSend :: CanSend socket => socket -> a -> Event a
-canSend socket =
-  Event socket ZMQ_POLLOUT
+data SomeSocket
+  = forall socket. Socket socket => SomeSocket socket
 
-canReceive :: CanReceive socket => socket -> a -> Event a
-canReceive socket =
-  Event socket ZMQ_POLLIN
+the :: CanReceive socket => socket -> Sockets
+the socket =
+  also socket (Sockets [])
 
-withEventPollitems :: [Event a] -> ([Zmq_pollitem] -> IO b) -> IO b
-withEventPollitems events0 action =
+also :: CanReceive socket => socket -> Sockets -> Sockets
+also socket =
+  coerce (SomeSocket socket :)
+
+withPollitems :: [SomeSocket] -> ([Zmq_pollitem] -> IO a) -> IO a
+withPollitems events0 action =
   let go acc = \case
         [] -> action (reverse acc)
-        Event socket0 events _ : zevents ->
+        SomeSocket socket0 : zevents ->
           getSocket socket0 \socket ->
-            go (Zmq_pollitem_socket socket events : acc) zevents
+            go (Zmq_pollitem_socket socket ZMQ_POLLIN : acc) zevents
    in go [] events0
 
-poll :: Semigroup a => [Event a] -> IO (Either Error a)
-poll =
-  poll_
-
--- poll with a bound `a` type var. didn't want that forall in the haddocks :shrug:
-poll_ :: forall a. Semigroup a => [Event a] -> IO (Either Error a)
-poll_ events =
-  withEventPollitems events \items0 ->
+poll :: Sockets -> IO (Either Error (Int -> Bool))
+poll (Sockets sockets) =
+  withPollitems sockets \items0 ->
     zmq_pollitems items0 \items -> do
       let loop =
             zmq_poll items (-1) >>= \case
@@ -505,23 +503,15 @@ poll_ events =
                       EFAULT -> throwIO err
                       ETERM -> pure (Left err)
                       _ -> unexpectedError err
-              Right zevents -> pure (Right (f (zip events zevents)))
+              Right zevents ->
+                let indices = f IntSet.empty (zip [0 ..] zevents)
+                 in pure (Right (`IntSet.member` indices))
       loop
   where
-    -- Precondition: at least one event is not 0
-    f :: [(Event a, Zmq_events)] -> a
-    f = \case
-      (Event _ _ x, zevents) : xs ->
+    f :: IntSet -> [(Int, Zmq_events)] -> IntSet
+    f !acc = \case
+      (i, zevents) : xs ->
         if zevents /= Zmq_events 0
-          then g x xs
-          else f xs
-      -- impossible: zmq_poll told us something happened
-      [] -> undefined
-
-    g :: a -> [(Event a, Zmq_events)] -> a
-    g !acc = \case
+          then f (IntSet.insert i acc) xs
+          else f acc xs
       [] -> acc
-      (Event _ _ x, zevents) : xs ->
-        if zevents /= Zmq_events 0
-          then g (acc <> x) xs
-          else g acc xs

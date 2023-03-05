@@ -6,7 +6,6 @@ module Zmq.Pusher
     connect,
     disconnect,
     send,
-    canSend,
   )
 where
 
@@ -16,7 +15,7 @@ import Data.Coerce (coerce)
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error (..), catchingOkErrors)
-import Zmq.Internal.Socket (CanSend, Event, Socket (withSocket), ThreadSafeSocket)
+import Zmq.Internal.Socket (Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __pusher__ socket.
@@ -26,8 +25,6 @@ newtype Pusher
   = Pusher (MVar Zmq_socket)
   deriving stock (Eq)
   deriving (Socket) via (ThreadSafeSocket)
-
-instance CanSend Pusher
 
 -- | Open a __pusher__.
 open :: IO (Either Error Pusher)
@@ -76,8 +73,3 @@ send socket0 message = do
                 loop
               True -> pure ()
     loop
-
--- | /Alias/: 'Zmq.canSend'
-canSend :: Pusher -> a -> Event a
-canSend =
-  Socket.canSend

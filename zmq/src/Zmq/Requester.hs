@@ -7,8 +7,6 @@ module Zmq.Requester
     disconnect,
     send,
     receive,
-    canSend,
-    canReceive,
   )
 where
 
@@ -17,7 +15,7 @@ import Data.Coerce (coerce)
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error (..), catchingOkErrors)
-import Zmq.Internal.Socket (CanReceive, CanSend, Event, Socket (withSocket), ThreadUnsafeSocket (..))
+import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadUnsafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A __requester__ socket.
@@ -27,8 +25,6 @@ newtype Requester
   = Requester ThreadUnsafeSocket
   deriving stock (Eq)
   deriving newtype (Socket)
-
-instance CanSend Requester
 
 instance CanReceive Requester
 
@@ -85,13 +81,3 @@ receive :: Requester -> IO (Either Error ByteString)
 receive socket =
   catchingOkErrors do
     withSocket socket Socket.receive
-
--- | /Alias/: 'Zmq.canSend'
-canSend :: Requester -> a -> Event a
-canSend =
-  Socket.canSend
-
--- | /Alias/: 'Zmq.canReceive'
-canReceive :: Requester -> a -> Event a
-canReceive =
-  Socket.canReceive

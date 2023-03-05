@@ -7,8 +7,6 @@ module Zmq.Replier
     disconnect,
     send,
     receive,
-    canSend,
-    canReceive,
   )
 where
 
@@ -17,7 +15,7 @@ import Data.Coerce (coerce)
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error, catchingOkErrors)
-import Zmq.Internal.Socket (CanReceive, CanSend, Event, Socket (withSocket), ThreadUnsafeSocket (..))
+import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadUnsafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A __replier__ socket.
@@ -27,8 +25,6 @@ newtype Replier
   = Replier ThreadUnsafeSocket
   deriving stock (Eq)
   deriving newtype (Socket)
-
-instance CanSend Replier
 
 instance CanReceive Replier
 
@@ -79,13 +75,3 @@ receive :: Replier -> IO (Either Error ByteString)
 receive socket =
   catchingOkErrors do
     withSocket socket Socket.receive
-
--- | /Alias/: 'Zmq.canSend'
-canSend :: Replier -> a -> Event a
-canSend =
-  Socket.canSend
-
--- | /Alias/: 'Zmq.canReceive'
-canReceive :: Replier -> a -> Event a
-canReceive =
-  Socket.canReceive

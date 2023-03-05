@@ -5,6 +5,7 @@ import Control.Exception (throwIO)
 import Control.Monad (forever, replicateM, replicateM_, when)
 import Data.ByteString.Char8 qualified as ByteString.Char8
 import Data.Foldable (for_)
+import Data.Function ((&))
 import Data.Functor ((<&>))
 import Data.List.NonEmpty (pattern (:|))
 import Data.List.NonEmpty qualified as List.NonEmpty
@@ -224,17 +225,16 @@ mspoller =
     -- Process messages from both sockets
     forever do
       let items =
-            [ Zmq.canReceive receiver [False],
-              Zmq.canReceive subscriber [True]
-            ]
-      results <- unwrap (Zmq.poll items)
-      when (elem False results) do
+            Zmq.the receiver
+              & Zmq.also subscriber
+      ready <- unwrap (Zmq.poll items)
+      when (ready 0) do
         Zmq.Puller.receive receiver >>= \case
           Left _ -> pure ()
           Right _ ->
             -- Process task
             pure ()
-      when (elem True results) do
+      when (ready 1) do
         Zmq.Subscriber.receive subscriber >>= \case
           Left _ -> pure ()
           Right _ ->
@@ -289,16 +289,15 @@ rrbroker =
 
     -- Initialize poll set
     let items =
-          [ Zmq.canReceive frontend [False],
-            Zmq.canReceive backend [True]
-          ]
+          Zmq.the frontend
+            & Zmq.also backend
     -- Switch messages between sockets
     forever do
-      results <- unwrap (Zmq.poll items)
-      when (elem False results) do
+      ready <- unwrap (Zmq.poll items)
+      when (ready 0) do
         (identity, message) <- unwrap (Zmq.Router.receive frontend)
         unwrap (Zmq.Dealer.sends backend (identity :| [message]))
-      when (elem True results) do
+      when (ready 1) do
         identity :| message : _ <- unwrap (Zmq.Dealer.receives backend)
         unwrap (Zmq.Router.send frontend identity message)
 
@@ -316,15 +315,14 @@ wuproxy =
 
     -- Run the proxy until the user interrupts us
     let items =
-          [ Zmq.canReceive frontend [False],
-            Zmq.canReceive backend [True]
-          ]
+          Zmq.the frontend
+            & Zmq.also backend
     forever do
-      results <- unwrap (Zmq.poll items)
-      when (elem False results) do
+      ready <- unwrap (Zmq.poll items)
+      when (ready 0) do
         (topic, message) <- unwrap (Zmq.XSubscriber.receive frontend)
         unwrap (Zmq.XPublisher.send backend topic message)
-      when (elem True results) do
+      when (ready 1) do
         message <- unwrap (Zmq.XPublisher.receive backend)
         unwrap (Zmq.XSubscriber.send frontend message)
 
@@ -349,18 +347,17 @@ taskwork2 =
     -- Process messages from either socket
     let loop = do
           let items =
-                [ Zmq.canReceive receiver [False],
-                  Zmq.canReceive controller [True]
-                ]
-          results <- unwrap (Zmq.poll items)
-          when (elem False results) do
+                Zmq.the receiver
+                  & Zmq.also controller
+          ready <- unwrap (Zmq.poll items)
+          when (ready 0) do
             string <- unwrap (Zmq.Puller.receive receiver)
             printf "%s." (ByteString.Char8.unpack string) -- Show progress
             hFlush stdout
             threadDelay (read (ByteString.Char8.unpack string) * 1_000) -- Do the work
             unwrap (Zmq.Pusher.send sender "")
           -- Any waiting controller command acts as 'KILL'
-          when (not (elem True results)) do
+          when (not (ready 1)) do
             loop
     loop
 
@@ -423,15 +420,14 @@ mtserver =
             unwrap (Zmq.Replier.send receiver "World")
       -- Connect work threads to client threads via a queue proxy
       let items =
-            [ Zmq.canReceive clients [False],
-              Zmq.canReceive workers [True]
-            ]
+            Zmq.the clients
+              & Zmq.also workers
       forever do
-        results <- unwrap (Zmq.poll items)
-        when (elem False results) do
+        ready <- unwrap (Zmq.poll items)
+        when (ready 0) do
           (identity, message) <- unwrap (Zmq.Router.receives clients)
           unwrap (Zmq.Dealer.sends workers (List.NonEmpty.cons identity message))
-        when (elem True results) do
+        when (ready 1) do
           identity :| frame : frames <- unwrap (Zmq.Dealer.receives workers)
           unwrap (Zmq.Router.sends clients identity (frame :| frames))
 
