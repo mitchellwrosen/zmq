@@ -129,7 +129,7 @@ setOption socket option value = do
           Left errno ->
             let err = enrichError "zmq_setsockopt" errno
              in case errno of
-                  EINTR -> loop
+                  EINTR -> pure (Left err)
                   EINVAL -> throwIO err
                   ENOTSOCK -> throwIO err
                   ETERM -> pure (Left err)
@@ -144,7 +144,7 @@ getIntOption socket option = do
           Left errno ->
             let err = enrichError "zmq_getsockopt" errno
              in case errno of
-                  EINTR -> loop
+                  EINTR -> pure (Left err)
                   EINVAL -> throwIO err
                   ENOTSOCK -> throwIO err
                   ETERM -> pure (Left err)
@@ -264,7 +264,7 @@ sendf socket frame more = do
                   EFSM -> throwIO err
                   EHOSTUNREACH -> pure (Left err)
                   EINVAL -> throwIO err
-                  EINTR -> loop
+                  EINTR -> pure (Left err)
                   ENOTSUP -> throwIO err
                   ENOTSOCK -> throwIO err
                   ETERM -> pure (Left err)
@@ -309,7 +309,7 @@ receivef socket =
                         Left err1 -> pure (Left err1)
                         Right () -> loop
                     EFSM -> throwIO err
-                    EINTR -> loop
+                    EINTR -> pure (Left err)
                     ENOTSOCK -> throwIO err
                     ENOTSUP -> throwIO err
                     ETERM -> pure (Left err)
@@ -370,7 +370,7 @@ poll_ events =
               Left errno ->
                 let err = enrichError "zmq_poll" errno
                  in case errno of
-                      EINTR -> loop
+                      EINTR -> pure (Left err)
                       EFAULT -> throwIO err
                       ETERM -> pure (Left err)
                       _ -> unexpectedError err
