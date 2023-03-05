@@ -14,7 +14,6 @@ where
 
 import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
-import Data.List.NonEmpty as List (NonEmpty)
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error)
@@ -75,7 +74,7 @@ send socket0 message =
     Socket.send socket message
 
 -- | Receive a __message__ on a __replier__ from any peer (fair-queued).
-receive :: Replier -> IO (Either Error (List.NonEmpty ByteString))
+receive :: Replier -> IO (Either Error ByteString)
 receive socket =
   withSocket socket Socket.receive
 

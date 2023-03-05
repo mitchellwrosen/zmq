@@ -17,7 +17,6 @@ where
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
-import Data.List.NonEmpty as List (NonEmpty)
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error)
@@ -70,14 +69,14 @@ disconnect :: XSubscriber -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
--- | Subscribe an __xsubscriber__ to a topic (prefix matching).
+-- | Subscribe an __xsubscriber__ to a __topic__ (prefix matching).
 --
 -- To subscribe to all topics, subscribe to the empty string.
 subscribe :: XSubscriber -> ByteString -> IO (Either Error ())
 subscribe xsubscriber prefix =
   send xsubscriber (Subscribe prefix)
 
--- | Unsubscribe an __xsubscriber__ from a previously-subscribed topic.
+-- | Unsubscribe an __xsubscriber__ from a previously-subscribed __topic__.
 unsubscribe :: XSubscriber -> ByteString -> IO (Either Error ())
 unsubscribe xsubscriber prefix =
   send xsubscriber (Unsubscribe prefix)
@@ -92,10 +91,10 @@ send socket0 message =
   withSocket socket0 \socket ->
     Socket.send socket message
 
--- | Receive a __message__ on an __xsubscriber__ from any peer (fair-queued).
-receive :: XSubscriber -> IO (Either Error (List.NonEmpty ByteString))
+-- | Receive a __topic message__ on an __xsubscriber__ from any peer (fair-queued).
+receive :: XSubscriber -> IO (Either Error (ByteString, ByteString))
 receive socket =
-  withSocket socket Socket.receive
+  withSocket socket Socket.receive2
 
 -- | /Alias/: 'Zmq.canSend'
 canSend :: XSubscriber -> a -> Event a

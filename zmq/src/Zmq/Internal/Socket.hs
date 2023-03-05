@@ -18,6 +18,8 @@ module Zmq.Internal.Socket
     send2,
     sends,
     receive,
+    receive2,
+    receives,
     Event,
     canSend,
     canReceive,
@@ -283,22 +285,49 @@ sendf socket frame more = do
           Right _len -> pure (Right ())
   loop
 
-receive :: Zmq_socket -> IO (Either Error (List.NonEmpty ByteString))
+receive :: Zmq_socket -> IO (Either Error ByteString)
 receive socket =
   receivef socket >>= \case
     Left err -> pure (Left err)
     Right (More frame) ->
       receive_ socket <&> \case
+        Just err -> Left err
+        Nothing -> Right frame
+    Right (NoMore frame) -> pure (Right frame)
+
+receive2 :: Zmq_socket -> IO (Either Error (ByteString, ByteString))
+receive2 socket =
+  receivef socket >>= \case
+    Left err -> pure (Left err)
+    Right (More frame0) ->
+      receive socket <&> \case
+        Left err -> Left err
+        Right frame1 -> Right (frame0, frame1)
+    Right (NoMore frame) -> pure (Right (frame, ByteString.empty))
+
+receive_ :: Zmq_socket -> IO (Maybe Error)
+receive_ socket =
+  receivef socket >>= \case
+    Left err -> pure (Just err)
+    Right (More _) -> receive_ socket
+    Right (NoMore _) -> pure Nothing
+
+receives :: Zmq_socket -> IO (Either Error (List.NonEmpty ByteString))
+receives socket =
+  receivef socket >>= \case
+    Left err -> pure (Left err)
+    Right (More frame) ->
+      receives_ socket <&> \case
         Left err -> Left err
         Right frames -> Right (frame List.NonEmpty.:| frames)
     Right (NoMore frame) -> pure (Right (frame List.NonEmpty.:| []))
 
-receive_ :: Zmq_socket -> IO (Either Error [ByteString])
-receive_ socket =
+receives_ :: Zmq_socket -> IO (Either Error [ByteString])
+receives_ socket =
   receivef socket >>= \case
     Left err -> pure (Left err)
     Right (More frame) ->
-      receive_ socket <&> \case
+      receives_ socket <&> \case
         Left err -> Left err
         Right frames -> Right (frame : frames)
     Right (NoMore frame) -> pure (Right [frame])

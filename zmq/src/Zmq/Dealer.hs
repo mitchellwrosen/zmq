@@ -8,6 +8,7 @@ module Zmq.Dealer
     send,
     sends,
     receive,
+    receives,
     canSend,
     canReceive,
   )
@@ -85,9 +86,14 @@ sends socket0 message =
     Socket.sends socket message
 
 -- | Receive a __message__ on an __dealer__ from any peer (fair-queued).
-receive :: Dealer -> IO (Either Error (List.NonEmpty ByteString))
+receive :: Dealer -> IO (Either Error ByteString)
 receive socket =
   withSocket socket Socket.receive
+
+-- | Receive a __multiframe message__ on an __dealer__ from any peer (fair-queued).
+receives :: Dealer -> IO (Either Error (List.NonEmpty ByteString))
+receives socket =
+  withSocket socket Socket.receives
 
 -- | /Alias/: 'Zmq.canSend'
 canSend :: Dealer -> a -> Event a

@@ -120,7 +120,7 @@ wuclient =
     -- Process 100 updates
     temps <-
       replicateM 100 do
-        string :| _ <- unwrap (Zmq.Subscriber.receive subscriber)
+        (string, _) <- unwrap (Zmq.Subscriber.receive subscriber)
         let [_zipcode :: Int, temperature, _relhumidity] = map read (words (ByteString.Char8.unpack string))
         pure (realToFrac @Int @Double temperature)
     printf "Average temperature for zipcode '%s' was %dF\n" filter (floor (sum temps / 100) :: Int)
@@ -173,7 +173,7 @@ taskwork =
 
     -- Process tasks forever
     forever do
-      string :| _ <- unwrap (Zmq.Puller.receive receiver)
+      string <- unwrap (Zmq.Puller.receive receiver)
       printf "%s." (ByteString.Char8.unpack string) -- Show progress
       hFlush stdout
       threadDelay (read (ByteString.Char8.unpack string) * 1_000) -- Do the work
@@ -250,7 +250,7 @@ rrclient =
 
     for_ [(0 :: Int) .. 9] \requestNbr -> do
       unwrap (Zmq.Requester.send requester "Hello")
-      string :| _ <- unwrap (Zmq.Requester.receive requester)
+      string <- unwrap (Zmq.Requester.receive requester)
       printf "Received reply %d [%s]\n" requestNbr (ByteString.Char8.unpack string)
 
 -- Hello World worker
@@ -265,7 +265,7 @@ rrworker =
 
     forever do
       -- Wait for next request from client
-      string :| _ <- unwrap (Zmq.Replier.receive responder)
+      string <- unwrap (Zmq.Replier.receive responder)
       printf "Received request: [%s]\n" (ByteString.Char8.unpack string)
 
       -- Do some 'work'
@@ -293,11 +293,11 @@ rrbroker =
     forever do
       results <- unwrap (Zmq.poll items)
       when (elem False results) do
-        message <- unwrap (Zmq.Router.receive frontend)
-        unwrap (Zmq.Dealer.sends backend message)
+        (identity, message) <- unwrap (Zmq.Router.receive frontend)
+        unwrap (Zmq.Dealer.sends backend (identity :| [message]))
       when (elem True results) do
-        message <- unwrap (Zmq.Dealer.receive backend)
-        unwrap (Zmq.Router.sends frontend message)
+        identity :| message : _ <- unwrap (Zmq.Dealer.receives backend)
+        unwrap (Zmq.Router.send frontend identity message)
 
 -- Weather proxy device
 wuproxy :: IO ()
@@ -319,10 +319,10 @@ wuproxy =
     forever do
       results <- unwrap (Zmq.poll items)
       when (elem False results) do
-        topic :| message : _ <- unwrap (Zmq.XSubscriber.receive frontend)
+        (topic, message) <- unwrap (Zmq.XSubscriber.receive frontend)
         unwrap (Zmq.XPublisher.send backend topic message)
       when (elem True results) do
-        message :| _ <- unwrap (Zmq.XPublisher.receive backend)
+        message <- unwrap (Zmq.XPublisher.receive backend)
         unwrap (Zmq.XSubscriber.send frontend message)
 
 -- Task worker - design 2
@@ -351,7 +351,7 @@ taskwork2 =
                 ]
           results <- unwrap (Zmq.poll items)
           when (elem False results) do
-            string :| _ <- unwrap (Zmq.Puller.receive receiver)
+            string <- unwrap (Zmq.Puller.receive receiver)
             printf "%s." (ByteString.Char8.unpack string) -- Show progress
             hFlush stdout
             threadDelay (read (ByteString.Char8.unpack string) * 1_000) -- Do the work

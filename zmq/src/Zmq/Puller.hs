@@ -13,7 +13,6 @@ where
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
-import Data.List.NonEmpty as List (NonEmpty)
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error
@@ -64,7 +63,7 @@ disconnect =
   Socket.disconnect
 
 -- | Receive a __message__ on a __puller__ from one peer (fair-queued).
-receive :: Puller -> IO (Either Error (List.NonEmpty ByteString))
+receive :: Puller -> IO (Either Error ByteString)
 receive socket =
   withSocket socket Socket.receive
 

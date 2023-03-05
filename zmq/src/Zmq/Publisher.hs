@@ -62,7 +62,7 @@ disconnect :: Publisher -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
--- | Send a __message__ on a __publisher__ to all peers.
+-- | Send a __topic message__ on a __publisher__ to all peers.
 --
 -- This operation never blocks. If a peer has a full message queue, it will not receive the message.
 send :: Publisher -> ByteString -> ByteString -> IO (Either Error ())

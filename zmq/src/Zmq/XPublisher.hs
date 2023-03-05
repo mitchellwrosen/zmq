@@ -15,7 +15,6 @@ where
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
-import Data.List.NonEmpty qualified as List (NonEmpty)
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error)
@@ -67,7 +66,7 @@ disconnect :: XPublisher -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
--- | Send a __message__ on an __xpublisher__ to all peers.
+-- | Send a __topic message__ on an __xpublisher__ to all peers.
 --
 -- If a peer has a full message queue, it will not receive the message.
 send :: XPublisher -> ByteString -> ByteString -> IO (Either Error ())
@@ -76,7 +75,7 @@ send socket0 topic message =
     Socket.send2 socket topic message
 
 -- | Receive a __message__ on an __xpublisher__ from any peer (fair-queued).
-receive :: XPublisher -> IO (Either Error (List.NonEmpty ByteString))
+receive :: XPublisher -> IO (Either Error ByteString)
 receive socket =
   withSocket socket Socket.receive
 
