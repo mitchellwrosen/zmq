@@ -109,7 +109,7 @@ receive socket =
 receives :: Dealer -> IO (Either Error (List.NonEmpty ByteString))
 receives socket =
   catchingOkErrors do
-    withSocket socket Socket.receives
+    withSocket socket Socket.receiveMany
 
 -- | /Alias/: 'Zmq.canSend'
 canSend :: Dealer -> a -> Event a

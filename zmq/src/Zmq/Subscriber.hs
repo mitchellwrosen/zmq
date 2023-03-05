@@ -84,7 +84,7 @@ unsubscribe socket0 prefix =
 receive :: Subscriber -> IO (Either Error (ByteString, ByteString))
 receive socket =
   catchingOkErrors do
-    withSocket socket Socket.receive2
+    withSocket socket Socket.receiveTwo
 
 -- | /Alias/: 'Zmq.canReceive'
 canReceive :: Subscriber -> a -> Event a

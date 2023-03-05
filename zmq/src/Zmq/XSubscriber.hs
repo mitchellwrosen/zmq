@@ -96,7 +96,7 @@ send socket0 message =
 receive :: XSubscriber -> IO (Either Error (ByteString, ByteString))
 receive socket =
   catchingOkErrors do
-    withSocket socket Socket.receive2
+    withSocket socket Socket.receiveTwo
 
 -- | /Alias/: 'Zmq.canSend'
 canSend :: XSubscriber -> a -> Event a

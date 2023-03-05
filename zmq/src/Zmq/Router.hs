@@ -109,7 +109,7 @@ receive :: Router -> IO (Either Error (ByteString, ByteString))
 receive socket0 =
   catchingOkErrors do
     withSocket socket0 \socket -> do
-      identity :| message0 <- Socket.receives socket
+      identity :| message0 <- Socket.receiveMany socket
       pure
         ( identity,
           case message0 of
@@ -122,7 +122,7 @@ receives :: Router -> IO (Either Error (ByteString, List.NonEmpty ByteString))
 receives socket0 =
   catchingOkErrors do
     withSocket socket0 \socket -> do
-      identity :| message0 <- Socket.receives socket
+      identity :| message0 <- Socket.receiveMany socket
       pure
         ( identity,
           case message0 of

@@ -22,8 +22,8 @@ module Zmq.Internal.Socket
     sendMany,
     sendManyDontWait,
     receive,
-    receive2,
-    receives,
+    receiveTwo,
+    receiveMany,
     blockUntilCanSend,
     Event,
     canSend,
@@ -390,8 +390,8 @@ receive socket =
     NoMore frame -> pure frame
 
 -- Throws ok errors
-receive2 :: Zmq_socket -> IO (ByteString, ByteString)
-receive2 socket =
+receiveTwo :: Zmq_socket -> IO (ByteString, ByteString)
+receiveTwo socket =
   receivef socket >>= \case
     More frame0 -> do
       frame1 <- receive socket
@@ -406,8 +406,8 @@ receive_ socket =
     NoMore _ -> pure ()
 
 -- Throws ok errors
-receives :: Zmq_socket -> IO (List.NonEmpty ByteString)
-receives socket =
+receiveMany :: Zmq_socket -> IO (List.NonEmpty ByteString)
+receiveMany socket =
   receivef socket >>= \case
     More frame -> do
       frames <- receives_ socket
