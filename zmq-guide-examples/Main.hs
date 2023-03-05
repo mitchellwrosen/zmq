@@ -2,12 +2,14 @@
 
 import Control.Concurrent (threadDelay)
 import Control.Exception (throwIO)
-import Control.Monad (forever, replicateM, when)
+import Control.Monad (forever, replicateM, replicateM_, when)
 import Data.ByteString.Char8 qualified as ByteString.Char8
 import Data.Foldable (for_)
 import Data.Functor ((<&>))
 import Data.List.NonEmpty (pattern (:|))
+import Data.List.NonEmpty qualified as List.NonEmpty
 import GHC.Clock (getMonotonicTimeNSec)
+import Ki qualified
 import System.Environment (getArgs)
 import System.IO (hFlush, stdout)
 import System.Random.Stateful (globalStdGen, uniformRM)
@@ -43,6 +45,7 @@ main =
     ["wuproxy"] -> wuproxy
     ["taskwork2"] -> taskwork2
     ["tasksink2"] -> tasksink2
+    ["mtserver"] -> mtserver
     _ -> pure ()
 
 -- Hello World server
@@ -390,6 +393,47 @@ tasksink2 =
 
     -- Send kill signal to workers
     unwrap (Zmq.Publisher.send controller "KILL" "")
+
+-- Multithreaded Hello World server
+mtserver :: IO ()
+mtserver =
+  Zmq.run Zmq.defaultOptions do
+    -- Socket to talk to clients
+    clients <- unwrap Zmq.Router.open
+    unwrap (Zmq.bind clients "tcp://*:5555")
+
+    -- Socket to talk to workers
+    workers <- unwrap Zmq.Dealer.open
+    unwrap (Zmq.bind workers "inproc://workers")
+
+    -- Launch pool of worker threads
+    Ki.scoped \scope -> do
+      replicateM_ 5 do
+        Ki.fork_ scope do
+          -- Socket to talk to dispatcher
+          receiver <- unwrap Zmq.Replier.open
+          unwrap (Zmq.connect receiver "inproc://workers")
+
+          forever do
+            string <- unwrap (Zmq.Replier.receive receiver)
+            printf "Received request: [%s]\n" (ByteString.Char8.unpack string)
+            -- Do some 'work'
+            threadDelay 1_000_000
+            -- Send reply back to client
+            unwrap (Zmq.Replier.send receiver "World")
+      -- Connect work threads to client threads via a queue proxy
+      let items =
+            [ Zmq.canReceive clients [False],
+              Zmq.canReceive workers [True]
+            ]
+      forever do
+        results <- unwrap (Zmq.poll items)
+        when (elem False results) do
+          (identity, message) <- unwrap (Zmq.Router.receives clients)
+          unwrap (Zmq.Dealer.sends workers (List.NonEmpty.cons identity message))
+        when (elem True results) do
+          identity :| frame : frames <- unwrap (Zmq.Dealer.receives workers)
+          unwrap (Zmq.Router.sends clients identity (frame :| frames))
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Utils

@@ -6,7 +6,9 @@ module Zmq.Router
     connect,
     disconnect,
     send,
+    sends,
     receive,
+    receives,
     canSend,
     canReceive,
   )
@@ -17,7 +19,8 @@ import Data.ByteString (ByteString)
 import Data.ByteString qualified as ByteString
 import Data.Coerce (coerce)
 import Data.Functor ((<&>))
-import Data.List.NonEmpty (pattern (:|))
+import Data.List.NonEmpty as List (NonEmpty)
+import Data.List.NonEmpty as List.NonEmpty
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error)
@@ -77,6 +80,14 @@ send socket0 identity message =
   withSocket socket0 \socket ->
     Socket.send2 socket identity message
 
+-- | Send a __routed multiframe message__ on a __router__ to a peer.
+--
+-- If the peer no longer exists, the message is discarded.
+sends :: Router -> ByteString -> List.NonEmpty ByteString -> IO (Either Error ())
+sends socket0 identity message =
+  withSocket socket0 \socket ->
+    Socket.sends socket (List.NonEmpty.cons identity message)
+
 -- | Receive a __routed message__ on an __router__ from any peer (fair-queued).
 receive :: Router -> IO (Either Error (ByteString, ByteString))
 receive socket0 =
@@ -89,6 +100,20 @@ receive socket0 =
             case message0 of
               [] -> ByteString.empty
               message : _ -> message
+          )
+
+-- | Receive a __routed multiframe message__ on an __router__ from any peer (fair-queued).
+receives :: Router -> IO (Either Error (ByteString, List.NonEmpty ByteString))
+receives socket0 =
+  withSocket socket0 \socket ->
+    Socket.receives socket <&> \case
+      Left err -> Left err
+      Right (identity :| message0) ->
+        Right
+          ( identity,
+            case message0 of
+              [] -> ByteString.empty :| []
+              frame : frames -> frame :| frames
           )
 
 -- | /Alias/: 'Zmq.canSend'
