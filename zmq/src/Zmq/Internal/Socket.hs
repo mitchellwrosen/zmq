@@ -484,7 +484,7 @@ also socket =
 withPollitems :: [SomeSocket] -> ([Zmq_pollitem] -> IO a) -> IO a
 withPollitems events0 action =
   let go acc = \case
-        [] -> action (reverse acc)
+        [] -> action acc
         SomeSocket socket0 : zevents ->
           getSocket socket0 \socket ->
             go (Zmq_pollitem_socket socket ZMQ_POLLIN : acc) zevents
@@ -511,7 +511,6 @@ poll (Sockets sockets) =
     f :: IntSet -> [(Int, Zmq_events)] -> IntSet
     f !acc = \case
       (i, zevents) : xs ->
-        if zevents /= Zmq_events 0
-          then f (IntSet.insert i acc) xs
-          else f acc xs
+        let !acc1 = if zevents /= Zmq_events 0 then IntSet.insert i acc else acc
+         in f acc1 xs
       [] -> acc
