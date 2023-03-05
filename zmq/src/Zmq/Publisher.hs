@@ -5,7 +5,7 @@ module Zmq.Publisher
     unbind,
     connect,
     disconnect,
-    send,
+    sends,
     canSend,
   )
 where
@@ -63,13 +63,13 @@ disconnect :: Publisher -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
--- | Send a __message__ on a __publisher__ to all peers.
+-- | Send a __multiframe message__ on a __publisher__ to all peers.
 --
 -- This operation never blocks. If a peer has a full message queue, it will not receive the message.
-send :: Publisher -> ByteString -> [ByteString] -> IO (Either Error ())
-send socket0 topic message =
+sends :: Publisher -> ByteString -> [ByteString] -> IO (Either Error ())
+sends socket0 topic message =
   withSocket socket0 \socket ->
-    Socket.send socket (topic List.NonEmpty.:| message)
+    Socket.sends socket (topic List.NonEmpty.:| message)
 
 -- | /Alias/: 'Zmq.canSend'
 canSend :: Publisher -> a -> Event a

@@ -5,7 +5,7 @@ module Zmq.XPublisher
     unbind,
     connect,
     disconnect,
-    send,
+    sends,
     receive,
     canSend,
     canReceive,
@@ -68,13 +68,13 @@ disconnect :: XPublisher -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
--- | Send a __message__ on an __xpublisher__ to all peers.
+-- | Send a __multiframe message__ on an __xpublisher__ to all peers.
 --
 -- If a peer has a full message queue, it will not receive the message.
-send :: XPublisher -> ByteString -> [ByteString] -> IO (Either Error ())
-send socket0 topic message =
+sends :: XPublisher -> ByteString -> [ByteString] -> IO (Either Error ())
+sends socket0 topic message =
   withSocket socket0 \socket ->
-    Socket.send socket (topic List.NonEmpty.:| message)
+    Socket.sends socket (topic List.NonEmpty.:| message)
 
 -- | Receive a __message__ on an __xpublisher__ from any peer (fair-queued).
 receive :: XPublisher -> IO (Either Error (List.NonEmpty ByteString))

@@ -5,7 +5,7 @@ module Zmq.Dealer
     unbind,
     connect,
     disconnect,
-    send,
+    sends,
     receive,
     canSend,
     canReceive,
@@ -67,13 +67,13 @@ disconnect :: Dealer -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
--- | Send a __message__ on a __dealer__ to one peer (round-robin).
+-- | Send a __multiframe message__ on a __dealer__ to one peer (round-robin).
 --
 -- This operation blocks until a peer can receive the message.
-send :: Dealer -> List.NonEmpty ByteString -> IO (Either Error ())
-send socket0 message =
+sends :: Dealer -> List.NonEmpty ByteString -> IO (Either Error ())
+sends socket0 message =
   withSocket socket0 \socket ->
-    Socket.send socket message
+    Socket.sends socket message
 
 -- | Receive a __message__ on an __dealer__ from any peer (fair-queued).
 receive :: Dealer -> IO (Either Error (List.NonEmpty ByteString))

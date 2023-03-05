@@ -5,7 +5,7 @@ module Zmq.Replier
     unbind,
     connect,
     disconnect,
-    send,
+    sends,
     receive,
     canSend,
     canReceive,
@@ -66,12 +66,13 @@ disconnect :: Replier -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
--- | Send a __message__ on a __replier__ to the last peer received from.
+-- | Send a __multiframe message__ on a __replier__ to the last peer received from.
 --
 -- This operation never blocks. If the last peer received from no longer exists, the message is discarded.
-send :: Replier -> List.NonEmpty ByteString -> IO (Either Error ())
-send socket0 message =
-  withSocket socket0 \socket -> Socket.send socket message
+sends :: Replier -> List.NonEmpty ByteString -> IO (Either Error ())
+sends socket0 message =
+  withSocket socket0 \socket ->
+    Socket.sends socket message
 
 -- | Receive a __message__ on a __replier__ from any peer (fair-queued).
 receive :: Replier -> IO (Either Error (List.NonEmpty ByteString))

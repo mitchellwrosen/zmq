@@ -14,7 +14,7 @@ module Zmq.Internal.Socket
     unbind,
     connect,
     disconnect,
-    send,
+    sends,
     send1,
     receive,
     Event,
@@ -235,8 +235,8 @@ disconnect_ socket endpoint =
             _ -> unexpectedError err
     Right () -> pure ()
 
-send :: Zmq_socket -> List.NonEmpty ByteString -> IO (Either Error ())
-send socket message =
+sends :: Zmq_socket -> List.NonEmpty ByteString -> IO (Either Error ())
+sends socket message =
   let loop = \case
         [frame] -> sendf socket frame False
         frame : frames ->

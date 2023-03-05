@@ -5,7 +5,7 @@ module Zmq.Requester
     unbind,
     connect,
     disconnect,
-    send,
+    sends,
     receive,
     canSend,
     canReceive,
@@ -66,12 +66,13 @@ disconnect :: Requester -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
--- | Send a __message__ on a __requester__ to one peer (round-robin).
+-- | Send a __multiframe message__ on a __requester__ to one peer (round-robin).
 --
 -- This operation blocks until a peer can receive the message.
-send :: Requester -> List.NonEmpty ByteString -> IO (Either Error ())
-send socket0 message =
-  withSocket socket0 \socket -> Socket.send socket message
+sends :: Requester -> List.NonEmpty ByteString -> IO (Either Error ())
+sends socket0 message =
+  withSocket socket0 \socket ->
+    Socket.sends socket message
 
 -- | Receive a __message__ on a __requester__ from the last peer sent to.
 receive :: Requester -> IO (Either Error (List.NonEmpty ByteString))

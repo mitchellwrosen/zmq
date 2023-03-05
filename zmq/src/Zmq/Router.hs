@@ -5,7 +5,7 @@ module Zmq.Router
     unbind,
     connect,
     disconnect,
-    send,
+    sends,
     receive,
     canSend,
     canReceive,
@@ -67,13 +67,13 @@ disconnect :: Router -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
--- | Send a __message__ on a __router__ to the peer identified by the first frame.
+-- | Send a __multiframe message__ on a __router__ to the peer identified by the first frame.
 --
 -- If the peer identified by the first frame no longer exists, the message is discarded.
-send :: Router -> List.NonEmpty ByteString -> IO (Either Error ())
-send socket0 message =
+sends :: Router -> List.NonEmpty ByteString -> IO (Either Error ())
+sends socket0 message =
   withSocket socket0 \socket ->
-    Socket.send socket message
+    Socket.sends socket message
 
 -- | Receive a __message__ on an __router__ from any peer (fair-queued).
 receive :: Router -> IO (Either Error (List.NonEmpty ByteString))
