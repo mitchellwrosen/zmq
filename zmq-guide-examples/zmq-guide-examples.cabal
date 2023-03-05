@@ -3,8 +3,12 @@ cabal-version: 3.0
 name: zmq-guide-examples
 version: 0
 
-common component
-  build-depends: base, zmq
+executable example
+  build-depends:
+    base,
+    bytestring ^>= 0.11.4,
+    random ^>= 1.2.1,
+    zmq,
   default-extensions:
     BlockArguments
     DataKinds
@@ -35,61 +39,4 @@ common component
   if impl(ghc >= 9.2)
     ghc-options:
       -Wno-missing-kind-signatures
-
-common bytestring
-  build-depends: bytestring ^>= 0.11.4
-
-common random
-  build-depends: random ^>= 1.2.1
-
-executable hwserver
-  import: component
-  main-is: Hwserver.hs
-
-executable hwclient
-  import: component
-  main-is: Hwclient.hs
-
-executable version
-  import: component
-  main-is: Version.hs
-
-executable wuserver
-  import: component, bytestring, random
-  main-is: Wuserver.hs
-
-executable wuclient
-  import: component, bytestring
-  main-is: Wuclient.hs
-
-executable taskvent
-  import: component, bytestring, random
-  main-is: Taskvent.hs
-
-executable taskwork
-  import: component, bytestring
-  main-is: Taskwork.hs
-
-executable tasksink
-  import: component
-  main-is: Tasksink.hs
-
-executable mspoller
-  import: component
-  main-is: Mspoller.hs
-
-executable rrclient
-  import: component, bytestring
-  main-is: Rrclient.hs
-
-executable rrworker
-  import: component, bytestring
-  main-is: Rrworker.hs
-
-executable rrbroker
-  import: component
-  main-is: Rrbroker.hs
-
-executable wuproxy
-  import: component
-  main-is: Wuproxy.hs
+  main-is: Main.hs
