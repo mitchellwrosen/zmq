@@ -57,7 +57,7 @@ hwserver =
       _ <- unwrap (Zmq.Replier.receive responder)
       putStrLn "Received Hello"
       threadDelay 1_000_000 -- Do some work
-      unwrap (Zmq.Replier.send responder ("World" :| []))
+      unwrap (Zmq.Replier.send responder "World")
 
 -- Hello World client
 hwclient :: IO ()
@@ -69,7 +69,7 @@ hwclient =
 
     for_ [(0 :: Int) .. 9] \requestNbr -> do
       printf "Sending Hello %d...\n" requestNbr
-      unwrap (Zmq.Requester.send requester ("Hello" :| []))
+      unwrap (Zmq.Requester.send requester "Hello")
       _ <- unwrap (Zmq.Requester.receive requester)
       printf "Received World %d\n" requestNbr
 
@@ -97,7 +97,7 @@ wuserver =
 
       -- Send message to all subscribers
       let update = ByteString.Char8.pack (printf "%05d %d %d" zipcode temperature relhumidity)
-      unwrap (Zmq.Publisher.send publisher update [])
+      unwrap (Zmq.Publisher.send publisher update "")
 
 -- Weather update client
 -- Connects SUB socket to tcp://localhost:5556
@@ -144,14 +144,14 @@ taskvent =
     putStrLn "Sending tasks to workers..."
 
     -- The first message is "0" and signals start of batch
-    unwrap (Zmq.Pusher.send sink ("0" :| []))
+    unwrap (Zmq.Pusher.send sink "0")
 
     -- Send 100 tasks
     workloads <-
       replicateM 100 do
         -- Random workload from 1 to 100msecs
         workload <- uniformRM (1 :: Int, 100) globalStdGen
-        unwrap (Zmq.Pusher.send sender (ByteString.Char8.pack (printf "%d" workload) :| []))
+        unwrap (Zmq.Pusher.send sender (ByteString.Char8.pack (printf "%d" workload)))
         pure workload
     printf "Total expected cost: %d msec\n" (sum workloads)
 
@@ -177,7 +177,7 @@ taskwork =
       printf "%s." (ByteString.Char8.unpack string) -- Show progress
       hFlush stdout
       threadDelay (read (ByteString.Char8.unpack string) * 1_000) -- Do the work
-      unwrap (Zmq.Pusher.send sender ("" :| [])) -- Send results to sink
+      unwrap (Zmq.Pusher.send sender "")
 
 -- Task sink
 -- Binds PULL socket to tcp://localhost:5558
@@ -249,7 +249,7 @@ rrclient =
     unwrap (Zmq.connect requester "tcp://localhost:5559")
 
     for_ [(0 :: Int) .. 9] \requestNbr -> do
-      unwrap (Zmq.Requester.send requester ("Hello" :| []))
+      unwrap (Zmq.Requester.send requester "Hello")
       string :| _ <- unwrap (Zmq.Requester.receive requester)
       printf "Received reply %d [%s]\n" requestNbr (ByteString.Char8.unpack string)
 
@@ -272,7 +272,7 @@ rrworker =
       threadDelay 1_000_000
 
       -- Send reply back to client
-      unwrap (Zmq.Replier.send responder ("World" :| []))
+      unwrap (Zmq.Replier.send responder "World")
 
 -- Simple request-reply broker
 rrbroker :: IO ()
@@ -294,10 +294,10 @@ rrbroker =
       results <- unwrap (Zmq.poll items)
       when (elem False results) do
         message <- unwrap (Zmq.Router.receive frontend)
-        unwrap (Zmq.Dealer.send backend message)
+        unwrap (Zmq.Dealer.sends backend message)
       when (elem True results) do
         message <- unwrap (Zmq.Dealer.receive backend)
-        unwrap (Zmq.Router.send frontend message)
+        unwrap (Zmq.Router.sends frontend message)
 
 -- Weather proxy device
 wuproxy :: IO ()
@@ -319,10 +319,10 @@ wuproxy =
     forever do
       results <- unwrap (Zmq.poll items)
       when (elem False results) do
-        topic :| message <- unwrap (Zmq.XSubscriber.receive frontend)
+        topic :| message : _ <- unwrap (Zmq.XSubscriber.receive frontend)
         unwrap (Zmq.XPublisher.send backend topic message)
       when (elem True results) do
-        message <- unwrap (Zmq.XPublisher.receive backend)
+        message :| _ <- unwrap (Zmq.XPublisher.receive backend)
         unwrap (Zmq.XSubscriber.send frontend message)
 
 -- Task worker - design 2
@@ -355,7 +355,7 @@ taskwork2 =
             printf "%s." (ByteString.Char8.unpack string) -- Show progress
             hFlush stdout
             threadDelay (read (ByteString.Char8.unpack string) * 1_000) -- Do the work
-            unwrap (Zmq.Pusher.send sender ("" :| []))
+            unwrap (Zmq.Pusher.send sender "")
           -- Any waiting controller command acts as 'KILL'
           when (not (elem True results)) do
             loop
@@ -389,7 +389,7 @@ tasksink2 =
     printf "Total elapsed time: %d msec\n" ((stopTime - startTime) `div` 1_000_000)
 
     -- Send kill signal to workers
-    unwrap (Zmq.Publisher.send controller "KILL" [])
+    unwrap (Zmq.Publisher.send controller "KILL" "")
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Utils

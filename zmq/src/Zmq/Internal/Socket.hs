@@ -14,8 +14,9 @@ module Zmq.Internal.Socket
     unbind,
     connect,
     disconnect,
+    send,
+    send2,
     sends,
-    send1,
     receive,
     Event,
     canSend,
@@ -29,6 +30,7 @@ import Control.Concurrent.MVar
 import Control.Exception
 import Data.Bits ((.&.))
 import Data.ByteString (ByteString)
+import Data.ByteString qualified as ByteString
 import Data.Functor ((<&>))
 import Data.IORef
 import Data.List.NonEmpty qualified as List (NonEmpty)
@@ -235,6 +237,19 @@ disconnect_ socket endpoint =
             _ -> unexpectedError err
     Right () -> pure ()
 
+send :: Zmq_socket -> ByteString -> IO (Either Error ())
+send socket frame =
+  sendf socket frame False
+
+send2 :: Zmq_socket -> ByteString -> ByteString -> IO (Either Error ())
+send2 socket frame1 frame2 =
+  if ByteString.null frame2
+    then sendf socket frame1 False
+    else
+      sendf socket frame1 True >>= \case
+        Left err -> pure (Left err)
+        Right () -> sendf socket frame2 False
+
 sends :: Zmq_socket -> List.NonEmpty ByteString -> IO (Either Error ())
 sends socket message =
   let loop = \case
@@ -245,10 +260,6 @@ sends socket message =
             Right () -> loop frames
         [] -> undefined -- impossible
    in loop (List.NonEmpty.toList message)
-
-send1 :: Zmq_socket -> ByteString -> IO (Either Error ())
-send1 socket frame =
-  sendf socket frame False
 
 sendf :: Zmq_socket -> ByteString -> Bool -> IO (Either Error ())
 sendf socket frame more = do

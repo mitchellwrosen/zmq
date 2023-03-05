@@ -7,7 +7,7 @@ module Zmq.XSubscriber
     disconnect,
     subscribe,
     unsubscribe,
-    sends,
+    send,
     receive,
     canSend,
     canReceive,
@@ -90,15 +90,7 @@ unsubscribe xsubscriber prefix =
 send :: XSubscriber -> ByteString -> IO (Either Error ())
 send socket0 message =
   withSocket socket0 \socket ->
-    Socket.send1 socket message
-
--- | Send a __multiframe message__ on an __xsubscriber__ to all peers.
---
--- If a peer has a full message queue, it will not receive the message.
-sends :: XSubscriber -> List.NonEmpty ByteString -> IO (Either Error ())
-sends socket0 message =
-  withSocket socket0 \socket ->
-    Socket.sends socket message
+    Socket.send socket message
 
 -- | Receive a __message__ on an __xsubscriber__ from any peer (fair-queued).
 receive :: XSubscriber -> IO (Either Error (List.NonEmpty ByteString))

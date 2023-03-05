@@ -5,7 +5,7 @@ module Zmq.Pusher
     unbind,
     connect,
     disconnect,
-    sends,
+    send,
     canSend,
   )
 where
@@ -13,7 +13,6 @@ where
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
-import Data.List.NonEmpty qualified as List (NonEmpty)
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error)
@@ -63,13 +62,13 @@ disconnect :: Pusher -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
--- | Send a __multiframe message__ on a __pusher__ to one peer (round-robin).
+-- | Send a __message__ on a __pusher__ to one peer (round-robin).
 --
 -- This operation blocks until a peer can receive the message.
-sends :: Pusher -> List.NonEmpty ByteString -> IO (Either Error ())
-sends socket0 message =
+send :: Pusher -> ByteString -> IO (Either Error ())
+send socket0 message =
   withSocket socket0 \socket ->
-    Socket.sends socket message
+    Socket.send socket message
 
 -- | /Alias/: 'Zmq.canSend'
 canSend :: Pusher -> a -> Event a
