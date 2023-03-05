@@ -67,7 +67,7 @@ disconnect =
 
 -- | Send a __message__ on a __replier__ to the last peer received from.
 --
--- This operation never blocks. If the last peer received from no longer exists, the message is discarded.
+-- If the last peer received from no longer exists, the message is discarded.
 send :: Replier -> ByteString -> IO (Either Error ())
 send socket0 message =
   withSocket socket0 \socket ->

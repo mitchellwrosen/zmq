@@ -20,7 +20,7 @@ import Data.Coerce (coerce)
 import Data.List.NonEmpty qualified as List (NonEmpty)
 import Data.Text (Text)
 import Libzmq
-import Zmq.Error (Error)
+import Zmq.Error (Error (..))
 import Zmq.Internal.Socket (CanReceive, CanSend, Event, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
@@ -73,17 +73,33 @@ disconnect =
 --
 -- This operation blocks until a peer can receive the message.
 send :: Dealer -> ByteString -> IO (Either Error ())
-send socket0 message =
-  withSocket socket0 \socket ->
-    Socket.send socket message
+send socket0 message = do
+  let loop =
+        withSocket socket0 \socket ->
+          Socket.send socket message >>= \case
+            Left Error {errno = EAGAIN} -> do
+              Socket.blockUntilCanSend socket >>= \case
+                Left err -> pure (Left err)
+                Right () -> loop
+            Left err -> pure (Left err)
+            Right () -> pure (Right ())
+  loop
 
 -- | Send a __multiframe message__ on a __dealer__ to one peer (round-robin).
 --
 -- This operation blocks until a peer can receive the message.
 sends :: Dealer -> List.NonEmpty ByteString -> IO (Either Error ())
-sends socket0 message =
-  withSocket socket0 \socket ->
-    Socket.sends socket message
+sends socket0 message = do
+  let loop =
+        withSocket socket0 \socket ->
+          Socket.sends socket message >>= \case
+            Left Error {errno = EAGAIN} -> do
+              Socket.blockUntilCanSend socket >>= \case
+                Left err -> pure (Left err)
+                Right () -> loop
+            Left err -> pure (Left err)
+            Right () -> pure (Right ())
+  loop
 
 -- | Receive a __message__ on an __dealer__ from any peer (fair-queued).
 receive :: Dealer -> IO (Either Error ByteString)

@@ -20,6 +20,7 @@ module Zmq.Internal.Socket
     receive,
     receive2,
     receives,
+    blockUntilCanSend,
     Event,
     canSend,
     canReceive,
@@ -241,39 +242,41 @@ disconnect_ socket endpoint =
 
 send :: Zmq_socket -> ByteString -> IO (Either Error ())
 send socket frame =
-  sendf socket frame False
+  sendFrame socket frame False
 
 send2 :: Zmq_socket -> ByteString -> ByteString -> IO (Either Error ())
 send2 socket frame1 frame2 =
   if ByteString.null frame2
-    then sendf socket frame1 False
+    then send socket frame1
     else
-      sendf socket frame1 True >>= \case
+      sendInitFrame socket frame1 >>= \case
         Left err -> pure (Left err)
-        Right () -> sendf socket frame2 False
+        Right () -> send socket frame2
 
 sends :: Zmq_socket -> List.NonEmpty ByteString -> IO (Either Error ())
 sends socket message =
   let loop = \case
-        [frame] -> sendf socket frame False
+        [frame] -> send socket frame
         frame : frames ->
-          sendf socket frame True >>= \case
+          sendInitFrame socket frame >>= \case
             Left err -> pure (Left err)
             Right () -> loop frames
         [] -> undefined -- impossible
    in loop (List.NonEmpty.toList message)
 
-sendf :: Zmq_socket -> ByteString -> Bool -> IO (Either Error ())
-sendf socket frame more = do
+sendInitFrame :: Zmq_socket -> ByteString -> IO (Either Error ())
+sendInitFrame socket frame =
+  sendFrame socket frame True
+
+-- Send a single frame with ZMQ_DONTWAIT
+sendFrame :: Zmq_socket -> ByteString -> Bool -> IO (Either Error ())
+sendFrame socket frame more = do
   let loop =
         zmq_send_dontwait socket frame more >>= \case
           Left errno ->
             let err = enrichError "zmq_send" errno
              in case errno of
-                  EAGAIN ->
-                    blockUntilEvent socket Libzmq.Bindings._ZMQ_POLLOUT >>= \case
-                      Left err1 -> pure (Left err1)
-                      Right () -> loop
+                  EAGAIN -> pure (Left err)
                   EFSM -> throwIO err
                   EHOSTUNREACH -> pure (Left err)
                   EINVAL -> throwIO err
@@ -360,6 +363,10 @@ receivef socket =
                 False -> Right (NoMore bytes)
                 True -> Right (More bytes)
     loop
+
+blockUntilCanSend :: Zmq_socket -> IO (Either Error ())
+blockUntilCanSend socket =
+  blockUntilEvent socket Libzmq.Bindings._ZMQ_POLLOUT
 
 blockUntilEvent :: Zmq_socket -> CShort -> IO (Either Error ())
 blockUntilEvent socket event =

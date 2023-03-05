@@ -15,7 +15,7 @@ import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
 import Data.Text (Text)
 import Libzmq
-import Zmq.Error (Error)
+import Zmq.Error (Error (..))
 import Zmq.Internal.Socket (CanSend, Event, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
@@ -66,9 +66,17 @@ disconnect =
 --
 -- This operation blocks until a peer can receive the message.
 send :: Pusher -> ByteString -> IO (Either Error ())
-send socket0 message =
-  withSocket socket0 \socket ->
-    Socket.send socket message
+send socket0 message = do
+  let loop =
+        withSocket socket0 \socket ->
+          Socket.send socket message >>= \case
+            Left Error {errno = EAGAIN} -> do
+              Socket.blockUntilCanSend socket >>= \case
+                Left err -> pure (Left err)
+                Right () -> loop
+            Left err -> pure (Left err)
+            Right () -> pure (Right ())
+  loop
 
 -- | /Alias/: 'Zmq.canSend'
 canSend :: Pusher -> a -> Event a

@@ -17,7 +17,6 @@ where
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as ByteString
-import Data.Coerce (coerce)
 import Data.Functor ((<&>))
 import Data.List.NonEmpty as List (NonEmpty)
 import Data.List.NonEmpty as List.NonEmpty
@@ -41,8 +40,14 @@ instance CanReceive Router
 
 -- | Open a __router__.
 open :: IO (Either Error Router)
-open =
-  coerce (Socket.openThreadSafeSocket ZMQ_ROUTER)
+open = do
+  Socket.openThreadSafeSocket ZMQ_ROUTER >>= \case
+    Left err -> pure (Left err)
+    Right socketVar -> do
+      socket <- readMVar socketVar
+      Socket.setOption socket ZMQ_ROUTER_MANDATORY 1 <&> \case
+        Left err -> Left err
+        Right () -> Right (Router socketVar)
 
 -- | Bind a __router__ to an __endpoint__.
 --
@@ -74,7 +79,7 @@ disconnect =
 
 -- | Send a __routed message__ on a __router__ to a peer.
 --
--- If the peer no longer exists, the message is discarded.
+-- If the peer no longer exists, returns @EHOSTUNREACH@.
 send :: Router -> ByteString -> ByteString -> IO (Either Error ())
 send socket0 identity message =
   withSocket socket0 \socket ->
@@ -82,7 +87,7 @@ send socket0 identity message =
 
 -- | Send a __routed multiframe message__ on a __router__ to a peer.
 --
--- If the peer no longer exists, the message is discarded.
+-- If the peer no longer exists, returns @EHOSTUNREACH@.
 sends :: Router -> ByteString -> List.NonEmpty ByteString -> IO (Either Error ())
 sends socket0 identity message =
   withSocket socket0 \socket ->

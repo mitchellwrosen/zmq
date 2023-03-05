@@ -68,7 +68,7 @@ disconnect =
 
 -- | Send a __topic message__ on an __xpublisher__ to all peers.
 --
--- If a peer has a full message queue, it will not receive the message.
+-- This operation never blocks. If a peer has a full message queue, it will not receive the message.
 send :: XPublisher -> ByteString -> ByteString -> IO (Either Error ())
 send socket0 topic message =
   withSocket socket0 \socket ->
