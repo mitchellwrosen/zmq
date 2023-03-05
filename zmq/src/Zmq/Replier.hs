@@ -16,7 +16,7 @@ import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
 import Data.Text (Text)
 import Libzmq
-import Zmq.Error (Error)
+import Zmq.Error (Error, catchingOkErrors)
 import Zmq.Internal.Socket (CanReceive, CanSend, Event, Socket (withSocket), ThreadUnsafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
@@ -35,7 +35,7 @@ instance CanReceive Replier
 -- | Open a __replier__.
 open :: IO (Either Error Replier)
 open =
-  coerce (Socket.openThreadUnsafeSocket ZMQ_REP)
+  coerce (catchingOkErrors (Socket.openThreadUnsafeSocket ZMQ_REP))
 
 -- | Bind a __replier__ to an __endpoint__.
 --

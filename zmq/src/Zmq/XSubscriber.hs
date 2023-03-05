@@ -19,7 +19,7 @@ import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
 import Data.Text (Text)
 import Libzmq
-import Zmq.Error (Error)
+import Zmq.Error (Error, catchingOkErrors)
 import Zmq.Internal.Socket (CanReceive, CanSend, Event, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 import Zmq.Subscription (pattern Subscribe, pattern Unsubscribe)
@@ -39,7 +39,7 @@ instance CanReceive XSubscriber
 -- | Open an __xsubscriber__.
 open :: IO (Either Error XSubscriber)
 open =
-  coerce (Socket.openThreadSafeSocket ZMQ_XSUB)
+  coerce (catchingOkErrors (Socket.openThreadSafeSocket ZMQ_XSUB))
 
 -- | Bind an __xsubscriber__ to an __endpoint__.
 --

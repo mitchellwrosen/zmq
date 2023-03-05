@@ -32,7 +32,7 @@ instance CanReceive Puller
 -- | Open a __puller__.
 open :: IO (Either Error Puller)
 open =
-  coerce (Socket.openThreadSafeSocket ZMQ_PULL)
+  coerce (catchingOkErrors (Socket.openThreadSafeSocket ZMQ_PULL))
 
 -- | Bind a __puller__ to an __endpoint__.
 --

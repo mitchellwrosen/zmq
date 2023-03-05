@@ -16,7 +16,7 @@ import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
 import Data.Text (Text)
 import Libzmq
-import Zmq.Error (Error (..))
+import Zmq.Error (Error (..), catchingOkErrors)
 import Zmq.Internal.Socket (CanReceive, CanSend, Event, Socket (withSocket), ThreadUnsafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
@@ -35,7 +35,7 @@ instance CanReceive Requester
 -- | Open a __requester__.
 open :: IO (Either Error Requester)
 open =
-  coerce (Socket.openThreadUnsafeSocket ZMQ_REQ)
+  coerce (catchingOkErrors (Socket.openThreadUnsafeSocket ZMQ_REQ))
 
 -- | Bind a __requester__ to an __endpoint__.
 --

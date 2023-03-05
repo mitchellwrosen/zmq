@@ -20,7 +20,7 @@ import Data.Coerce (coerce)
 import Data.List.NonEmpty qualified as List (NonEmpty)
 import Data.Text (Text)
 import Libzmq
-import Zmq.Error (Error (..))
+import Zmq.Error (Error (..), catchingOkErrors)
 import Zmq.Internal.Socket (CanReceive, CanSend, Event, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
@@ -39,7 +39,7 @@ instance CanReceive Dealer
 -- | Open an __dealer__.
 open :: IO (Either Error Dealer)
 open =
-  coerce (Socket.openThreadSafeSocket ZMQ_DEALER)
+  coerce (catchingOkErrors (Socket.openThreadSafeSocket ZMQ_DEALER))
 
 -- | Bind a __dealer__ to an __endpoint__.
 --

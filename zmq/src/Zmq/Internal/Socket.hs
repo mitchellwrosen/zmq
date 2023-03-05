@@ -48,7 +48,7 @@ import GHC.STRef (STRef (..))
 import Libzmq
 import Libzmq.Bindings qualified
 import System.Posix.Types (Fd (..))
-import Zmq.Error (Error, enrichError, unexpectedError)
+import Zmq.Error (Error, enrichError, throwOkError, unexpectedError)
 import Zmq.Internal.Context (Context (..), globalContextRef)
 import Zmq.Internal.SocketFinalizer (makeSocketFinalizer)
 
@@ -92,13 +92,15 @@ instance Socket ThreadUnsafeSocket where
   withSocket (ThreadUnsafeSocket socket (IORef canary#)) action =
     IO \s -> keepAlive# canary# s (unIO (action socket))
 
-openThreadUnsafeSocket :: Zmq_socket_type -> IO (Either Error ThreadUnsafeSocket)
+-- Throws ok errors
+openThreadUnsafeSocket :: Zmq_socket_type -> IO ThreadUnsafeSocket
 openThreadUnsafeSocket =
   openSocket \socket -> do
     canary@(IORef (STRef canary#)) <- newIORef ()
     pure (ThingAndCanary (ThreadUnsafeSocket socket canary) canary#)
 
-openThreadSafeSocket :: Zmq_socket_type -> IO (Either Error (MVar Zmq_socket))
+-- Throws ok errors
+openThreadSafeSocket :: Zmq_socket_type -> IO (MVar Zmq_socket)
 openThreadSafeSocket =
   openSocket \socket -> do
     socketVar@(MVar canary#) <- newMVar socket
@@ -108,7 +110,8 @@ data ThingAndCanary a
   = forall (canary# :: TYPE UnliftedRep).
     ThingAndCanary !a canary#
 
-openSocket :: (Zmq_socket -> IO (ThingAndCanary a)) -> Zmq_socket_type -> IO (Either Error a)
+-- Throws ok errors
+openSocket :: (Zmq_socket -> IO (ThingAndCanary a)) -> Zmq_socket_type -> IO a
 openSocket wrap socketType = do
   Context context socketsRef <- readIORef globalContextRef
   mask_ do
@@ -118,28 +121,29 @@ openSocket wrap socketType = do
          in case errno of
               EFAULT -> throwIO err
               EINVAL -> throwIO err
-              EMFILE -> pure (Left err)
-              ETERM -> pure (Left err)
+              EMFILE -> throwOkError err
+              ETERM -> throwOkError err
               _ -> unexpectedError err
       Right socket -> do
         ThingAndCanary thing canary <- wrap socket
         finalizer <- makeSocketFinalizer (zmq_setsockopt socket) (zmq_close socket) canary
         atomicModifyIORef' socketsRef \finalizers -> (finalizer : finalizers, ())
-        pure (Right thing)
+        pure thing
 
-setOption :: Zmq_socket -> Zmq_socket_option a -> a -> IO (Either Error ())
+-- Throws ok errors
+setOption :: Zmq_socket -> Zmq_socket_option a -> a -> IO ()
 setOption socket option value = do
   let loop =
         zmq_setsockopt socket option value >>= \case
           Left errno ->
             let err = enrichError "zmq_setsockopt" errno
              in case errno of
-                  EINTR -> pure (Left err)
+                  EINTR -> throwOkError err
                   EINVAL -> throwIO err
                   ENOTSOCK -> throwIO err
-                  ETERM -> pure (Left err)
+                  ETERM -> throwOkError err
                   _ -> unexpectedError err
-          Right val -> pure (Right val)
+          Right val -> pure val
   loop
 
 getIntOption :: Zmq_socket -> CInt -> IO (Either Error Int)

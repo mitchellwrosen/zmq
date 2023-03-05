@@ -15,7 +15,7 @@ import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
 import Data.Text (Text)
 import Libzmq
-import Zmq.Error (Error (..))
+import Zmq.Error (Error (..), catchingOkErrors)
 import Zmq.Internal.Socket (CanSend, Event, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
@@ -32,7 +32,7 @@ instance CanSend Pusher
 -- | Open a __pusher__.
 open :: IO (Either Error Pusher)
 open =
-  coerce (Socket.openThreadSafeSocket ZMQ_PUSH)
+  coerce (catchingOkErrors (Socket.openThreadSafeSocket ZMQ_PUSH))
 
 -- | Bind a __pusher__ to an __endpoint__.
 --

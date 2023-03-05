@@ -22,7 +22,7 @@ import Data.List.NonEmpty as List (NonEmpty)
 import Data.List.NonEmpty as List.NonEmpty
 import Data.Text (Text)
 import Libzmq
-import Zmq.Error (Error)
+import Zmq.Error (Error, catchingOkErrors)
 import Zmq.Internal.Socket (CanReceive, CanSend, Event, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
@@ -40,14 +40,12 @@ instance CanReceive Router
 
 -- | Open a __router__.
 open :: IO (Either Error Router)
-open = do
-  Socket.openThreadSafeSocket ZMQ_ROUTER >>= \case
-    Left err -> pure (Left err)
-    Right socketVar -> do
-      socket <- readMVar socketVar
-      Socket.setOption socket ZMQ_ROUTER_MANDATORY 1 <&> \case
-        Left err -> Left err
-        Right () -> Right (Router socketVar)
+open =
+  catchingOkErrors do
+    socketVar <- Socket.openThreadSafeSocket ZMQ_ROUTER
+    socket <- readMVar socketVar
+    Socket.setOption socket ZMQ_ROUTER_MANDATORY 1
+    pure (Router socketVar)
 
 -- | Bind a __router__ to an __endpoint__.
 --

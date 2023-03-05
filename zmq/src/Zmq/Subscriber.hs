@@ -34,7 +34,7 @@ instance CanReceive Subscriber
 -- | Open a __subscriber__.
 open :: IO (Either Error Subscriber)
 open =
-  coerce (Socket.openThreadSafeSocket ZMQ_SUB)
+  coerce (catchingOkErrors (Socket.openThreadSafeSocket ZMQ_SUB))
 
 -- | Bind a __subscriber__ to an __endpoint__.
 --
@@ -69,14 +69,16 @@ disconnect =
 -- To subscribe to all topics, subscribe to the empty string.
 subscribe :: Subscriber -> ByteString -> IO (Either Error ())
 subscribe socket0 prefix =
-  withSocket socket0 \socket ->
-    Socket.setOption socket Libzmq.ZMQ_SUBSCRIBE prefix
+  catchingOkErrors do
+    withSocket socket0 \socket ->
+      Socket.setOption socket Libzmq.ZMQ_SUBSCRIBE prefix
 
 -- | Unsubscribe a __subscriber__ from a previously-subscribed __topic__.
 unsubscribe :: Subscriber -> ByteString -> IO (Either Error ())
 unsubscribe socket0 prefix =
-  withSocket socket0 \socket ->
-    Socket.setOption socket Libzmq.ZMQ_UNSUBSCRIBE prefix
+  catchingOkErrors do
+    withSocket socket0 \socket ->
+      Socket.setOption socket Libzmq.ZMQ_UNSUBSCRIBE prefix
 
 -- | Receive a __topic message__ on a __subscriber__ from any peer (fair-queued).
 receive :: Subscriber -> IO (Either Error (ByteString, ByteString))
