@@ -20,7 +20,7 @@ import Control.Monad (when)
 import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Libzmq
-import Zmq.Error (Error, catchingOkErrors)
+import Zmq.Error (Error, catchingOkErrors, enrichError, throwOkError)
 import Zmq.Internal.PublisherOptions (Options (..), defaultOptions, lossy)
 import Zmq.Internal.Socket (CanReceive, CanSend, Event, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
@@ -76,16 +76,24 @@ disconnect =
 
 -- | Send a __topic message__ on an __xpublisher__ to all peers.
 --
--- This operation never blocks. If a peer has a full message queue, it will not receive the message.
+-- This operation never blocks:
+--
+--     * If the 'lossy' option is set, then all peers with full message queues will not receive the message.
+--     * Otherwise, if the 'lossy' option is not set, and any peer has a full message queue, then the message will not
+--       be sent to any peer, and this function will return @EAGAIN@.
 send :: XPublisher -> ByteString -> ByteString -> IO (Either Error ())
 send socket0 topic message =
-  withSocket socket0 \socket ->
-    Socket.send2 socket topic message
+  catchingOkErrors do
+    withSocket socket0 \socket ->
+      Socket.sendTwoDontWait socket topic message >>= \case
+        True -> pure ()
+        False -> throwOkError (enrichError "zmq_send" EAGAIN)
 
 -- | Receive a __message__ on an __xpublisher__ from any peer (fair-queued).
 receive :: XPublisher -> IO (Either Error ByteString)
 receive socket =
-  withSocket socket Socket.receive
+  catchingOkErrors do
+    withSocket socket Socket.receive
 
 -- | /Alias/: 'Zmq.canSend'
 canSend :: XPublisher -> a -> Event a

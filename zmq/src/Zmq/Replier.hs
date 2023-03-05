@@ -70,13 +70,15 @@ disconnect =
 -- If the last peer received from no longer exists, the message is discarded.
 send :: Replier -> ByteString -> IO (Either Error ())
 send socket0 message =
-  withSocket socket0 \socket ->
-    Socket.send socket message
+  catchingOkErrors do
+    withSocket socket0 \socket ->
+      Socket.sendWontBlock socket message
 
 -- | Receive a __message__ on a __replier__ from any peer (fair-queued).
 receive :: Replier -> IO (Either Error ByteString)
 receive socket =
-  withSocket socket Socket.receive
+  catchingOkErrors do
+    withSocket socket Socket.receive
 
 -- | /Alias/: 'Zmq.canSend'
 canSend :: Replier -> a -> Event a

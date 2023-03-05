@@ -73,43 +73,43 @@ disconnect =
 --
 -- This operation blocks until a peer can receive the message.
 send :: Dealer -> ByteString -> IO (Either Error ())
-send socket0 message = do
-  let loop =
-        withSocket socket0 \socket ->
-          Socket.send socket message >>= \case
-            Left Error {errno = EAGAIN} -> do
-              Socket.blockUntilCanSend socket >>= \case
-                Left err -> pure (Left err)
-                Right () -> loop
-            Left err -> pure (Left err)
-            Right () -> pure (Right ())
-  loop
+send socket0 message =
+  catchingOkErrors do
+    let loop =
+          withSocket socket0 \socket ->
+            Socket.sendDontWait socket message >>= \case
+              True -> pure ()
+              False -> do
+                Socket.blockUntilCanSend socket
+                loop
+    loop
 
 -- | Send a __multiframe message__ on a __dealer__ to one peer (round-robin).
 --
 -- This operation blocks until a peer can receive the message.
 sends :: Dealer -> List.NonEmpty ByteString -> IO (Either Error ())
-sends socket0 message = do
-  let loop =
-        withSocket socket0 \socket ->
-          Socket.sends socket message >>= \case
-            Left Error {errno = EAGAIN} -> do
-              Socket.blockUntilCanSend socket >>= \case
-                Left err -> pure (Left err)
-                Right () -> loop
-            Left err -> pure (Left err)
-            Right () -> pure (Right ())
-  loop
+sends socket0 message =
+  catchingOkErrors do
+    let loop =
+          withSocket socket0 \socket ->
+            Socket.sendManyDontWait socket message >>= \case
+              True -> pure ()
+              False -> do
+                Socket.blockUntilCanSend socket
+                loop
+    loop
 
 -- | Receive a __message__ on an __dealer__ from any peer (fair-queued).
 receive :: Dealer -> IO (Either Error ByteString)
 receive socket =
-  withSocket socket Socket.receive
+  catchingOkErrors do
+    withSocket socket Socket.receive
 
 -- | Receive a __multiframe message__ on an __dealer__ from any peer (fair-queued).
 receives :: Dealer -> IO (Either Error (List.NonEmpty ByteString))
 receives socket =
-  withSocket socket Socket.receives
+  catchingOkErrors do
+    withSocket socket Socket.receives
 
 -- | /Alias/: 'Zmq.canSend'
 canSend :: Dealer -> a -> Event a

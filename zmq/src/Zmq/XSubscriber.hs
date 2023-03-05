@@ -85,16 +85,18 @@ unsubscribe xsubscriber prefix =
 --
 -- The message may not begin with the byte @0x00@ or @0x01@.
 --
--- If a peer has a full message queue, it will not receive the message.
+-- This operation never blocks. All peers with full messages queues will not receive the message.
 send :: XSubscriber -> ByteString -> IO (Either Error ())
 send socket0 message =
-  withSocket socket0 \socket ->
-    Socket.send socket message
+  catchingOkErrors do
+    withSocket socket0 \socket ->
+      Socket.sendWontBlock socket message
 
 -- | Receive a __topic message__ on an __xsubscriber__ from any peer (fair-queued).
 receive :: XSubscriber -> IO (Either Error (ByteString, ByteString))
 receive socket =
-  withSocket socket Socket.receive2
+  catchingOkErrors do
+    withSocket socket Socket.receive2
 
 -- | /Alias/: 'Zmq.canSend'
 canSend :: XSubscriber -> a -> Event a

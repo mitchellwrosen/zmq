@@ -15,8 +15,12 @@ module Zmq.Internal.Socket
     connect,
     disconnect,
     send,
-    send2,
-    sends,
+    sendTwo,
+    sendDontWait,
+    sendWontBlock,
+    sendTwoDontWait,
+    sendMany,
+    sendManyDontWait,
     receive,
     receive2,
     receives,
@@ -31,13 +35,14 @@ where
 import Control.Concurrent (threadWaitRead)
 import Control.Concurrent.MVar
 import Control.Exception
+import Control.Monad (when)
 import Data.Bits ((.&.))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as ByteString
 import Data.Functor ((<&>))
 import Data.IORef
+import Data.List.NonEmpty (pattern (:|))
 import Data.List.NonEmpty qualified as List (NonEmpty)
-import Data.List.NonEmpty qualified as List.NonEmpty
 import Data.Text (Text)
 import Foreign.C.Types (CInt, CShort)
 import GHC.Exts (TYPE, UnliftedRep, keepAlive#)
@@ -146,19 +151,20 @@ setOption socket option value = do
           Right val -> pure val
   loop
 
-getIntOption :: Zmq_socket -> CInt -> IO (Either Error Int)
+-- Throws ok errors
+getIntOption :: Zmq_socket -> CInt -> IO Int
 getIntOption socket option = do
   let loop = do
         zmq_getsockopt_int socket option >>= \case
           Left errno ->
             let err = enrichError "zmq_getsockopt" errno
              in case errno of
-                  EINTR -> pure (Left err)
+                  EINTR -> throwOkError err
                   EINVAL -> throwIO err
                   ENOTSOCK -> throwIO err
-                  ETERM -> pure (Left err)
+                  ETERM -> throwOkError err
                   _ -> unexpectedError err
-          Right val -> pure (Right val)
+          Right val -> pure val
   loop
 
 -- | Bind a __socket__ to an __endpoint__.
@@ -244,106 +250,185 @@ disconnect_ socket endpoint =
             _ -> unexpectedError err
     Right () -> pure ()
 
-send :: Zmq_socket -> ByteString -> IO (Either Error ())
+-- Send one frame
+-- Throws ok errors
+send :: Zmq_socket -> ByteString -> IO ()
 send socket frame =
-  sendFrame socket frame False
+  sendOne socket frame False
 
-send2 :: Zmq_socket -> ByteString -> ByteString -> IO (Either Error ())
-send2 socket frame1 frame2 =
+-- Send two frames
+-- Throws ok errors
+sendTwo :: Zmq_socket -> ByteString -> ByteString -> IO ()
+sendTwo socket frame1 frame2 =
   if ByteString.null frame2
     then send socket frame1
+    else do
+      sendOne socket frame1 True
+      sendWontBlock socket frame2
+
+-- Send one frame, returns whether it was sent
+-- Throws ok errors
+sendDontWait :: Zmq_socket -> ByteString -> IO Bool
+sendDontWait socket frame =
+  sendOneDontWait socket frame False
+
+-- Like sendDontWait, but for when we know EAGAIN is impossble (so we dont set ZMQ_DONTWAIT)
+-- Throws ok errors
+sendWontBlock :: Zmq_socket -> ByteString -> IO ()
+sendWontBlock socket frame =
+  sendOneWontBlock socket frame False
+
+-- Send two frames, returns whether they were sent
+-- Throws ok errors
+sendTwoDontWait :: Zmq_socket -> ByteString -> ByteString -> IO Bool
+sendTwoDontWait socket frame1 frame2 =
+  if ByteString.null frame2
+    then sendDontWait socket frame1
     else
-      sendInitFrame socket frame1 >>= \case
-        Left err -> pure (Left err)
-        Right () -> send socket frame2
+      sendOneDontWait socket frame1 True >>= \case
+        False -> pure False
+        True -> sendDontWait socket frame2
 
-sends :: Zmq_socket -> List.NonEmpty ByteString -> IO (Either Error ())
-sends socket message =
+-- Throws ok errors
+sendMany :: Zmq_socket -> List.NonEmpty ByteString -> IO ()
+sendMany socket = \case
+  frame :| [] -> send socket frame
+  frame :| frames -> do
+    sendOne socket frame True
+    sendManyWontBlock socket frames
+
+-- Throws ok errors
+sendManyDontWait :: Zmq_socket -> List.NonEmpty ByteString -> IO Bool
+sendManyDontWait socket = \case
+  frame :| [] -> sendDontWait socket frame
+  frame :| frames ->
+    sendOneDontWait socket frame True >>= \case
+      False -> pure False
+      True -> do
+        sendManyWontBlock socket frames
+        pure True
+
+-- Throws ok errors
+sendManyWontBlock :: Zmq_socket -> [ByteString] -> IO ()
+sendManyWontBlock socket =
   let loop = \case
-        [frame] -> send socket frame
-        frame : frames ->
-          sendInitFrame socket frame >>= \case
-            Left err -> pure (Left err)
-            Right () -> loop frames
+        [frame] -> sendWontBlock socket frame
+        frame : frames -> do
+          sendOneWontBlock socket frame True
+          loop frames
         [] -> undefined -- impossible
-   in loop (List.NonEmpty.toList message)
+   in loop
 
-sendInitFrame :: Zmq_socket -> ByteString -> IO (Either Error ())
-sendInitFrame socket frame =
-  sendFrame socket frame True
-
--- Send a single frame with ZMQ_DONTWAIT
-sendFrame :: Zmq_socket -> ByteString -> Bool -> IO (Either Error ())
-sendFrame socket frame more = do
+-- Send a single frame
+-- Throws ok errors
+sendOne :: Zmq_socket -> ByteString -> Bool -> IO ()
+sendOne socket frame more = do
   let loop =
-        zmq_send_dontwait socket frame more >>= \case
+        zmq_send socket frame (if more then ZMQ_SNDMORE else mempty) >>= \case
           Left errno ->
             let err = enrichError "zmq_send" errno
              in case errno of
-                  EAGAIN -> pure (Left err)
                   EFSM -> throwIO err
-                  EHOSTUNREACH -> pure (Left err)
+                  EHOSTUNREACH -> throwOkError err
                   EINVAL -> throwIO err
-                  EINTR -> pure (Left err)
+                  EINTR -> throwOkError err
                   ENOTSUP -> throwIO err
                   ENOTSOCK -> throwIO err
-                  ETERM -> pure (Left err)
+                  ETERM -> throwOkError err
                   _ -> unexpectedError err
-          Right _len -> pure (Right ())
+          Right _len -> pure ()
   loop
 
-receive :: Zmq_socket -> IO (Either Error ByteString)
+-- Send a single frame with ZMQ_DONTWAIT; on EAGAIN, returns False
+-- Throws ok errors
+sendOneDontWait :: Zmq_socket -> ByteString -> Bool -> IO Bool
+sendOneDontWait socket frame more = do
+  let loop =
+        zmq_send__unsafe socket frame (if more then ZMQ_DONTWAIT <> ZMQ_SNDMORE else ZMQ_DONTWAIT) >>= \case
+          Left errno ->
+            let err = enrichError "zmq_send" errno
+             in case errno of
+                  EAGAIN -> pure False
+                  EFSM -> throwIO err
+                  EHOSTUNREACH -> throwOkError err
+                  EINVAL -> throwIO err
+                  EINTR -> throwOkError err
+                  ENOTSUP -> throwIO err
+                  ENOTSOCK -> throwIO err
+                  ETERM -> throwOkError err
+                  _ -> unexpectedError err
+          Right _len -> pure True
+  loop
+
+-- Like sendOneDontWait, but for when we know EAGAIN is impossble (so we dont set ZMQ_DONTWAIT)
+-- Throws ok errors
+sendOneWontBlock :: Zmq_socket -> ByteString -> Bool -> IO ()
+sendOneWontBlock socket frame more = do
+  let loop =
+        zmq_send__unsafe socket frame (if more then ZMQ_SNDMORE else mempty) >>= \case
+          Left errno ->
+            let err = enrichError "zmq_send" errno
+             in case errno of
+                  EFSM -> throwIO err
+                  EHOSTUNREACH -> throwOkError err
+                  EINVAL -> throwIO err
+                  EINTR -> throwOkError err
+                  ENOTSUP -> throwIO err
+                  ENOTSOCK -> throwIO err
+                  ETERM -> throwOkError err
+                  _ -> unexpectedError err
+          Right _len -> pure ()
+  loop
+
+-- Throws ok errors
+receive :: Zmq_socket -> IO ByteString
 receive socket =
   receivef socket >>= \case
-    Left err -> pure (Left err)
-    Right (More frame) ->
-      receive_ socket <&> \case
-        Just err -> Left err
-        Nothing -> Right frame
-    Right (NoMore frame) -> pure (Right frame)
+    More frame -> do
+      receive_ socket
+      pure frame
+    NoMore frame -> pure frame
 
-receive2 :: Zmq_socket -> IO (Either Error (ByteString, ByteString))
+-- Throws ok errors
+receive2 :: Zmq_socket -> IO (ByteString, ByteString)
 receive2 socket =
   receivef socket >>= \case
-    Left err -> pure (Left err)
-    Right (More frame0) ->
-      receive socket <&> \case
-        Left err -> Left err
-        Right frame1 -> Right (frame0, frame1)
-    Right (NoMore frame) -> pure (Right (frame, ByteString.empty))
+    More frame0 -> do
+      frame1 <- receive socket
+      pure (frame0, frame1)
+    NoMore frame -> pure (frame, ByteString.empty)
 
-receive_ :: Zmq_socket -> IO (Maybe Error)
+-- Throws ok errors
+receive_ :: Zmq_socket -> IO ()
 receive_ socket =
   receivef socket >>= \case
-    Left err -> pure (Just err)
-    Right (More _) -> receive_ socket
-    Right (NoMore _) -> pure Nothing
+    More _ -> receive_ socket
+    NoMore _ -> pure ()
 
-receives :: Zmq_socket -> IO (Either Error (List.NonEmpty ByteString))
+-- Throws ok errors
+receives :: Zmq_socket -> IO (List.NonEmpty ByteString)
 receives socket =
   receivef socket >>= \case
-    Left err -> pure (Left err)
-    Right (More frame) ->
-      receives_ socket <&> \case
-        Left err -> Left err
-        Right frames -> Right (frame List.NonEmpty.:| frames)
-    Right (NoMore frame) -> pure (Right (frame List.NonEmpty.:| []))
+    More frame -> do
+      frames <- receives_ socket
+      pure (frame :| frames)
+    NoMore frame -> pure (frame :| [])
 
-receives_ :: Zmq_socket -> IO (Either Error [ByteString])
+-- Throws ok errors
+receives_ :: Zmq_socket -> IO [ByteString]
 receives_ socket =
   receivef socket >>= \case
-    Left err -> pure (Left err)
-    Right (More frame) ->
-      receives_ socket <&> \case
-        Left err -> Left err
-        Right frames -> Right (frame : frames)
-    Right (NoMore frame) -> pure (Right [frame])
+    More frame -> do
+      frames <- receives_ socket
+      pure (frame : frames)
+    NoMore frame -> pure [frame]
 
 data ReceiveF
   = More ByteString
   | NoMore ByteString
 
-receivef :: Zmq_socket -> IO (Either Error ReceiveF)
+-- Throws ok errors
+receivef :: Zmq_socket -> IO ReceiveF
 receivef socket =
   bracket zmq_msg_init zmq_msg_close \frame -> do
     let loop = do
@@ -351,41 +436,36 @@ receivef socket =
             Left errno ->
               let err = enrichError "zmq_msg_recv" errno
                in case errno of
-                    EAGAIN ->
-                      blockUntilEvent socket Libzmq.Bindings._ZMQ_POLLIN >>= \case
-                        Left err1 -> pure (Left err1)
-                        Right () -> loop
+                    EAGAIN -> do
+                      blockUntilEvent socket Libzmq.Bindings._ZMQ_POLLIN
+                      loop
                     EFSM -> throwIO err
-                    EINTR -> pure (Left err)
+                    EINTR -> throwOkError err
                     ENOTSOCK -> throwIO err
                     ENOTSUP -> throwIO err
-                    ETERM -> pure (Left err)
+                    ETERM -> throwOkError err
                     _ -> unexpectedError err
             Right _len -> do
               bytes <- zmq_msg_data frame
               zmq_msg_more frame <&> \case
-                False -> Right (NoMore bytes)
-                True -> Right (More bytes)
+                False -> NoMore bytes
+                True -> More bytes
     loop
 
-blockUntilCanSend :: Zmq_socket -> IO (Either Error ())
+-- Throws ok errors
+blockUntilCanSend :: Zmq_socket -> IO ()
 blockUntilCanSend socket =
   blockUntilEvent socket Libzmq.Bindings._ZMQ_POLLOUT
 
-blockUntilEvent :: Zmq_socket -> CShort -> IO (Either Error ())
-blockUntilEvent socket event =
-  getIntOption socket Libzmq.Bindings._ZMQ_FD >>= \case
-    Left err -> pure (Left err)
-    Right fd -> do
-      let loop = do
-            threadWaitRead (fromIntegral @Int @Fd fd)
-            getIntOption socket Libzmq.Bindings._ZMQ_EVENTS >>= \case
-              Left err1 -> pure (Left err1)
-              Right events ->
-                if events .&. fromIntegral @CShort @Int event == 0
-                  then loop
-                  else pure (Right ())
-      loop
+-- Throws ok errors
+blockUntilEvent :: Zmq_socket -> CShort -> IO ()
+blockUntilEvent socket event = do
+  fd <- getIntOption socket Libzmq.Bindings._ZMQ_FD
+  let loop = do
+        threadWaitRead (fromIntegral @Int @Fd fd)
+        events <- getIntOption socket Libzmq.Bindings._ZMQ_EVENTS
+        when (events .&. fromIntegral @CShort @Int event == 0) loop
+  loop
 
 data Event a
   = forall socket. Socket socket => Event !socket !Zmq_events !a

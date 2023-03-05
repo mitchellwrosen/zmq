@@ -65,7 +65,8 @@ disconnect =
 -- | Receive a __message__ on a __puller__ from one peer (fair-queued).
 receive :: Puller -> IO (Either Error ByteString)
 receive socket =
-  withSocket socket Socket.receive
+  catchingOkErrors do
+    withSocket socket Socket.receive
 
 -- | /Alias/: 'Zmq.canReceive'
 canReceive :: Puller -> a -> Event a

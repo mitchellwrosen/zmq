@@ -83,7 +83,8 @@ unsubscribe socket0 prefix =
 -- | Receive a __topic message__ on a __subscriber__ from any peer (fair-queued).
 receive :: Subscriber -> IO (Either Error (ByteString, ByteString))
 receive socket =
-  withSocket socket Socket.receive2
+  catchingOkErrors do
+    withSocket socket Socket.receive2
 
 -- | /Alias/: 'Zmq.canReceive'
 canReceive :: Subscriber -> a -> Event a

@@ -473,6 +473,50 @@ data Zmq_pollitems
   = Zmq_pollitems !(Ptr Libzmq.Bindings.Zmq_pollitem) !Int
   deriving stock (Eq, Ord, Show)
 
+-- | A ØMQ send option.
+newtype Zmq_send_option
+  = Zmq_send_option CInt
+  deriving stock (Eq, Ord)
+
+instance Monoid Zmq_send_option where
+  mempty = Zmq_send_option 0
+  mappend = (<>)
+
+instance Semigroup Zmq_send_option where
+  Zmq_send_option x <> Zmq_send_option y =
+    Zmq_send_option (x .|. y)
+
+instance Show Zmq_send_option where
+  show option =
+    [ "ZMQ_DONTWAIT" <$ guard (hasDontwait option),
+      "ZMQ_SNDMORE" <$ guard (hasSndmore option)
+    ]
+      & catMaybes
+      & List.intersperse "<>"
+      & \case
+        [] -> "mempty"
+        options -> unwords options
+
+pattern ZMQ_DONTWAIT :: Zmq_send_option
+pattern ZMQ_DONTWAIT <-
+  (hasDontwait -> True)
+  where
+    ZMQ_DONTWAIT = Zmq_send_option Libzmq.Bindings._ZMQ_DONTWAIT
+
+pattern ZMQ_SNDMORE :: Zmq_send_option
+pattern ZMQ_SNDMORE <-
+  (hasSndmore -> True)
+  where
+    ZMQ_SNDMORE = Zmq_send_option Libzmq.Bindings._ZMQ_SNDMORE
+
+hasDontwait :: Zmq_send_option -> Bool
+hasDontwait (Zmq_send_option n) =
+  n .&. Libzmq.Bindings._ZMQ_DONTWAIT /= 0
+
+hasSndmore :: Zmq_send_option -> Bool
+hasSndmore (Zmq_send_option n) =
+  n .&. Libzmq.Bindings._ZMQ_SNDMORE /= 0
+
 -- | A ØMQ socket.
 data Zmq_socket
   = Zmq_socket (Ptr ())

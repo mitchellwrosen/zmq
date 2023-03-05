@@ -27,6 +27,7 @@ import Libzmq.Internal.Types
     Zmq_msg_option (..),
     Zmq_pollitem (..),
     Zmq_pollitems (..),
+    Zmq_send_option (..),
     Zmq_socket (..),
     Zmq_socket_option (..),
     Zmq_socket_type (..),
@@ -356,48 +357,38 @@ zmq_recv_dontwait (Zmq_socket socket) bytes len =
 -- | Send a message on a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-send
-zmq_send :: Zmq_socket -> ByteString -> Bool -> IO (Either Zmq_error Int)
-zmq_send socket message more =
-  sendwith Libzmq.Bindings.zmq_send socket message (if more then Libzmq.Bindings._ZMQ_SNDMORE else 0)
+zmq_send :: Zmq_socket -> ByteString -> Zmq_send_option -> IO (Either Zmq_error Int)
+zmq_send =
+  sendwith Libzmq.Bindings.zmq_send
 
--- | Send a message on a ØMQ socket (non-blocking).
+-- | Send a message on a ØMQ socket (unsafe FFI).
 --
 -- http://api.zeromq.org/master:zmq-send
-zmq_send_dontwait :: Zmq_socket -> ByteString -> Bool -> IO (Either Zmq_error Int)
-zmq_send_dontwait socket message more =
-  sendwith Libzmq.Bindings.zmq_send__unsafe socket message flags
-  where
-    flags =
-      if more
-        then Libzmq.Bindings._ZMQ_DONTWAIT .|. Libzmq.Bindings._ZMQ_SNDMORE
-        else Libzmq.Bindings._ZMQ_DONTWAIT
+zmq_send__unsafe :: Zmq_socket -> ByteString -> Zmq_send_option -> IO (Either Zmq_error Int)
+zmq_send__unsafe =
+  sendwith Libzmq.Bindings.zmq_send__unsafe
 
 -- | Send a constant-memory message on a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-send-const
-zmq_send_const :: Zmq_socket -> ByteString -> Bool -> IO (Either Zmq_error Int)
-zmq_send_const socket message more =
-  sendwith Libzmq.Bindings.zmq_send_const socket message (if more then Libzmq.Bindings._ZMQ_SNDMORE else 0)
+zmq_send_const :: Zmq_socket -> ByteString -> Zmq_send_option -> IO (Either Zmq_error Int)
+zmq_send_const =
+  sendwith Libzmq.Bindings.zmq_send_const
 
--- | Send a constant-memory message on a ØMQ socket (non-blocking).
+-- | Send a constant-memory message on a ØMQ socket (unsafe FFI).
 --
 -- http://api.zeromq.org/master:zmq-send-const
-zmq_send_const_dontwait :: Zmq_socket -> ByteString -> Bool -> IO (Either Zmq_error Int)
-zmq_send_const_dontwait socket message more =
-  sendwith Libzmq.Bindings.zmq_send_const__unsafe socket message flags
-  where
-    flags =
-      if more
-        then Libzmq.Bindings._ZMQ_DONTWAIT .|. Libzmq.Bindings._ZMQ_SNDMORE
-        else Libzmq.Bindings._ZMQ_DONTWAIT
+zmq_send_const__unsafe :: Zmq_socket -> ByteString -> Zmq_send_option -> IO (Either Zmq_error Int)
+zmq_send_const__unsafe =
+  sendwith Libzmq.Bindings.zmq_send_const__unsafe
 
 sendwith ::
   (forall socket. Ptr socket -> Ptr CChar -> CSize -> CInt -> IO CInt) ->
   Zmq_socket ->
   ByteString ->
-  CInt ->
+  Zmq_send_option ->
   IO (Either Zmq_error Int)
-sendwith send0 (Zmq_socket socket) message flags =
+sendwith send0 (Zmq_socket socket) message (Zmq_send_option option) =
   send >>= \case
     -1 -> Left <$> zmq_errno
     n -> pure (Right (fromIntegral @CInt @Int n))
@@ -408,7 +399,7 @@ sendwith send0 (Zmq_socket socket) message flags =
           socket
           c_message
           (fromIntegral @Int @CSize len)
-          flags
+          option
 
 -- | Set a ØMQ socket option.
 --

@@ -67,16 +67,15 @@ disconnect =
 -- This operation blocks until a peer can receive the message.
 send :: Pusher -> ByteString -> IO (Either Error ())
 send socket0 message = do
-  let loop =
-        withSocket socket0 \socket ->
-          Socket.send socket message >>= \case
-            Left Error {errno = EAGAIN} -> do
-              Socket.blockUntilCanSend socket >>= \case
-                Left err -> pure (Left err)
-                Right () -> loop
-            Left err -> pure (Left err)
-            Right () -> pure (Right ())
-  loop
+  catchingOkErrors do
+    let loop =
+          withSocket socket0 \socket ->
+            Socket.sendDontWait socket message >>= \case
+              False -> do
+                Socket.blockUntilCanSend socket
+                loop
+              True -> pure ()
+    loop
 
 -- | /Alias/: 'Zmq.canSend'
 canSend :: Pusher -> a -> Event a

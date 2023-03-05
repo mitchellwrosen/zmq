@@ -70,21 +70,21 @@ disconnect =
 -- This operation blocks until a peer can receive the message.
 send :: Requester -> ByteString -> IO (Either Error ())
 send socket0 message = do
-  let loop =
-        withSocket socket0 \socket ->
-          Socket.send socket message >>= \case
-            Left Error {errno = EAGAIN} -> do
-              Socket.blockUntilCanSend socket >>= \case
-                Left err -> pure (Left err)
-                Right () -> loop
-            Left err -> pure (Left err)
-            Right () -> pure (Right ())
-  loop
+  catchingOkErrors do
+    let loop =
+          withSocket socket0 \socket ->
+            Socket.sendDontWait socket message >>= \case
+              False -> do
+                Socket.blockUntilCanSend socket
+                loop
+              True -> pure ()
+    loop
 
 -- | Receive a __message__ on a __requester__ from the last peer sent to.
 receive :: Requester -> IO (Either Error ByteString)
 receive socket =
-  withSocket socket Socket.receive
+  catchingOkErrors do
+    withSocket socket Socket.receive
 
 -- | /Alias/: 'Zmq.canSend'
 canSend :: Requester -> a -> Event a
