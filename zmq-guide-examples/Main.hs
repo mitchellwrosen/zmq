@@ -41,6 +41,8 @@ main =
     ["rrworker"] -> rrworker
     ["rrbroker"] -> rrbroker
     ["wuproxy"] -> wuproxy
+    ["taskwork2"] -> taskwork2
+    ["tasksink2"] -> tasksink2
     _ -> pure ()
 
 -- Hello World server
@@ -299,28 +301,95 @@ rrbroker =
 
 -- Weather proxy device
 wuproxy :: IO ()
-wuproxy = do
-  -- This is where the weather server sits
-  frontend <- zmq Zmq.XSubscriber.open
-  zmq (Zmq.connect frontend "tcp://192.168.55.210:5556")
+wuproxy =
+  Zmq.run Zmq.defaultOptions do
+    -- This is where the weather server sits
+    frontend <- zmq Zmq.XSubscriber.open
+    zmq (Zmq.connect frontend "tcp://192.168.55.210:5556")
 
-  -- This is our public endpoint for subscribers
-  backend <- zmq Zmq.XPublisher.open
-  zmq (Zmq.bind backend "tcp://10.1.1.0:8100")
+    -- This is our public endpoint for subscribers
+    backend <- zmq Zmq.XPublisher.open
+    zmq (Zmq.bind backend "tcp://10.1.1.0:8100")
 
-  -- Run the proxy until the user interrupts us
-  let items =
-        [ Zmq.canReceive frontend [False],
-          Zmq.canReceive backend [True]
-        ]
-  forever do
-    results <- zmq (Zmq.poll items)
-    when (elem False results) do
-      topic :| message <- zmq (Zmq.XSubscriber.receive frontend)
-      zmq (Zmq.XPublisher.send backend topic message)
-    when (elem True results) do
-      message <- zmq (Zmq.XPublisher.receive backend)
-      zmq (Zmq.XSubscriber.send frontend message)
+    -- Run the proxy until the user interrupts us
+    let items =
+          [ Zmq.canReceive frontend [False],
+            Zmq.canReceive backend [True]
+          ]
+    forever do
+      results <- zmq (Zmq.poll items)
+      when (elem False results) do
+        topic :| message <- zmq (Zmq.XSubscriber.receive frontend)
+        zmq (Zmq.XPublisher.send backend topic message)
+      when (elem True results) do
+        message <- zmq (Zmq.XPublisher.receive backend)
+        zmq (Zmq.XSubscriber.send frontend message)
+
+-- Task worker - design 2
+-- Adds pub-sub flow to receive and respond to kill signal
+taskwork2 :: IO ()
+taskwork2 =
+  Zmq.run Zmq.defaultOptions do
+    -- Socket to receive messages on
+    receiver <- zmq Zmq.Puller.open
+    zmq (Zmq.connect receiver "tcp://localhost:5557")
+
+    -- Socket to send messages to
+    sender <- zmq Zmq.Pusher.open
+    zmq (Zmq.connect sender "tcp://localhost:5558")
+
+    -- Socket for control input
+    controller <- zmq Zmq.Subscriber.open
+    zmq (Zmq.connect controller "tcp://localhost:5559")
+    zmq (Zmq.Subscriber.subscribe controller "")
+
+    -- Process messages from either socket
+    let loop = do
+          let items =
+                [ Zmq.canReceive receiver [False],
+                  Zmq.canReceive controller [True]
+                ]
+          results <- zmq (Zmq.poll items)
+          when (elem False results) do
+            string :| _ <- zmq (Zmq.Puller.receive receiver)
+            printf "%s." (ByteString.Char8.unpack string) -- Show progress
+            hFlush stdout
+            threadDelay (read (ByteString.Char8.unpack string) * 1_000) -- Do the work
+            zmq (Zmq.Pusher.send sender ("" :| []))
+          -- Any waiting controller command acts as 'KILL'
+          when (not (elem True results)) do
+            loop
+    loop
+
+-- Task sink - design 2
+-- Adds pub-sub flow to send kill signal to workers
+tasksink2 :: IO ()
+tasksink2 =
+  Zmq.run Zmq.defaultOptions do
+    -- Socket to receive messages on
+    receiver <- zmq Zmq.Puller.open
+    zmq (Zmq.bind receiver "tcp://*:5558")
+
+    -- Socket for worker control
+    controller <- zmq Zmq.Publisher.open
+    zmq (Zmq.bind controller "tcp://*:5559")
+
+    -- Wait for start of batch
+    _ <- zmq (Zmq.Puller.receive receiver)
+
+    -- Start our clock now
+    startTime <- getMonotonicTimeNSec
+
+    -- Process 100 confirmations
+    for_ [(0 :: Int) .. 99] \taskNbr -> do
+      _ <- zmq (Zmq.Puller.receive receiver)
+      putChar (if mod taskNbr 10 == 0 then ':' else '.')
+      hFlush stdout
+    stopTime <- getMonotonicTimeNSec
+    printf "Total elapsed time: %d msec\n" ((stopTime - startTime) `div` 1_000_000)
+
+    -- Send kill signal to workers
+    zmq (Zmq.Publisher.send controller "KILL" [])
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Utils
