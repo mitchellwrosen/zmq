@@ -1,5 +1,7 @@
 module Zmq.Dealer
   ( Dealer,
+    defaultOptions,
+    sendQueueSize,
     open,
     bind,
     unbind,
@@ -14,11 +16,13 @@ where
 
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
 import Data.List.NonEmpty qualified as List (NonEmpty)
 import Data.Text (Text)
 import Libzmq
+import Numeric.Natural (Natural)
 import Zmq.Error (Error (..), catchingOkErrors)
+import Zmq.Internal.Options (Options)
+import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
@@ -28,14 +32,28 @@ import Zmq.Internal.Socket qualified as Socket
 newtype Dealer
   = Dealer (MVar Zmq_socket)
   deriving stock (Eq)
+  deriving anyclass
+    ( CanReceive,
+      Options.CanSetSendQueueSize
+    )
   deriving (Socket) via (ThreadSafeSocket)
 
-instance CanReceive Dealer
+defaultOptions :: Options Dealer
+defaultOptions =
+  Options.defaultOptions
+
+sendQueueSize :: Natural -> Options Dealer
+sendQueueSize =
+  Options.sendQueueSize
 
 -- | Open an __dealer__.
-open :: IO (Either Error Dealer)
-open =
-  coerce (catchingOkErrors (Socket.openThreadSafeSocket ZMQ_DEALER))
+open :: Options Dealer -> IO (Either Error Dealer)
+open options =
+  catchingOkErrors do
+    socketVar <- Socket.openThreadSafeSocket ZMQ_DEALER
+    socket <- readMVar socketVar
+    Options.setSocketOptions socket options
+    pure (Dealer socketVar)
 
 -- | Bind a __dealer__ to an __endpoint__.
 --

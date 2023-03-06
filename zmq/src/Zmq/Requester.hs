@@ -1,5 +1,7 @@
 module Zmq.Requester
   ( Requester,
+    defaultOptions,
+    sendQueueSize,
     open,
     bind,
     unbind,
@@ -11,10 +13,12 @@ module Zmq.Requester
 where
 
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
 import Data.Text (Text)
 import Libzmq
+import Numeric.Natural (Natural)
 import Zmq.Error (Error (..), catchingOkErrors)
+import Zmq.Internal.Options (Options)
+import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadUnsafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
@@ -25,13 +29,26 @@ newtype Requester
   = Requester ThreadUnsafeSocket
   deriving stock (Eq)
   deriving newtype (Socket)
+  deriving anyclass
+    ( CanReceive,
+      Options.CanSetSendQueueSize
+    )
 
-instance CanReceive Requester
+defaultOptions :: Options Requester
+defaultOptions =
+  Options.defaultOptions
+
+sendQueueSize :: Natural -> Options Requester
+sendQueueSize =
+  Options.sendQueueSize
 
 -- | Open a __requester__.
-open :: IO (Either Error Requester)
-open =
-  coerce (catchingOkErrors (Socket.openThreadUnsafeSocket ZMQ_REQ))
+open :: Options Requester -> IO (Either Error Requester)
+open options =
+  catchingOkErrors do
+    socket@(ThreadUnsafeSocket zsocket _) <- Socket.openThreadUnsafeSocket ZMQ_REQ
+    Options.setSocketOptions zsocket options
+    pure (Requester socket)
 
 -- | Bind a __requester__ to an __endpoint__.
 --

@@ -1,5 +1,7 @@
 module Zmq.Pusher
   ( Pusher,
+    defaultOptions,
+    sendQueueSize,
     open,
     bind,
     unbind,
@@ -11,10 +13,12 @@ where
 
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
 import Data.Text (Text)
 import Libzmq
+import Numeric.Natural (Natural)
 import Zmq.Error (Error (..), catchingOkErrors)
+import Zmq.Internal.Options (Options)
+import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Socket (Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
@@ -24,12 +28,27 @@ import Zmq.Internal.Socket qualified as Socket
 newtype Pusher
   = Pusher (MVar Zmq_socket)
   deriving stock (Eq)
+  deriving anyclass
+    ( Options.CanSetSendQueueSize
+    )
   deriving (Socket) via (ThreadSafeSocket)
 
+defaultOptions :: Options Pusher
+defaultOptions =
+  Options.defaultOptions
+
+sendQueueSize :: Natural -> Options Pusher
+sendQueueSize =
+  Options.sendQueueSize
+
 -- | Open a __pusher__.
-open :: IO (Either Error Pusher)
-open =
-  coerce (catchingOkErrors (Socket.openThreadSafeSocket ZMQ_PUSH))
+open :: Options Pusher -> IO (Either Error Pusher)
+open options =
+  catchingOkErrors do
+    socketVar <- Socket.openThreadSafeSocket ZMQ_PUSH
+    socket <- readMVar socketVar
+    Options.setSocketOptions socket options
+    pure (Pusher socketVar)
 
 -- | Bind a __pusher__ to an __endpoint__.
 --

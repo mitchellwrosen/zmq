@@ -16,9 +16,11 @@ module Zmq
 
     -- ** Socket options
     lossy,
+    sendQueueSize,
 
     -- *** Socket options type classes
     CanSetLossy,
+    CanSetSendQueueSize,
 
     -- * IO multiplexing
     Sockets,
@@ -59,7 +61,17 @@ import Libzmq (Zmq_error (..), zmq_version)
 import Zmq.Dealer (Dealer)
 import Zmq.Error (Error (..))
 import Zmq.Internal.Context
-import Zmq.Internal.Options (CanSetLossy, Options, defaultOptions, ioThreads, lossy, maxMessageSize, maxSockets)
+import Zmq.Internal.Options
+  ( CanSetLossy,
+    CanSetSendQueueSize,
+    Options,
+    defaultOptions,
+    ioThreads,
+    lossy,
+    maxMessageSize,
+    maxSockets,
+    sendQueueSize,
+  )
 import Zmq.Internal.Socket (Socket, Sockets, also, bind, connect, disconnect, poll, the, unbind)
 import Zmq.Publisher (Publisher)
 import Zmq.Puller (Puller)

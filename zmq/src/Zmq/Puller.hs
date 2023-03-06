@@ -1,5 +1,7 @@
 module Zmq.Puller
   ( Puller,
+    defaultOptions,
+    sendQueueSize,
     open,
     bind,
     unbind,
@@ -11,10 +13,12 @@ where
 
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
 import Data.Text (Text)
 import Libzmq
+import Numeric.Natural (Natural)
 import Zmq.Error
+import Zmq.Internal.Options (Options)
+import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
@@ -24,14 +28,28 @@ import Zmq.Internal.Socket qualified as Socket
 newtype Puller
   = Puller (MVar Zmq_socket)
   deriving stock (Eq)
+  deriving anyclass
+    ( CanReceive,
+      Options.CanSetSendQueueSize
+    )
   deriving (Socket) via (ThreadSafeSocket)
 
-instance CanReceive Puller
+defaultOptions :: Options Puller
+defaultOptions =
+  Options.defaultOptions
+
+sendQueueSize :: Natural -> Options Puller
+sendQueueSize =
+  Options.sendQueueSize
 
 -- | Open a __puller__.
-open :: IO (Either Error Puller)
-open =
-  coerce (catchingOkErrors (Socket.openThreadSafeSocket ZMQ_PULL))
+open :: Options Puller -> IO (Either Error Puller)
+open options =
+  catchingOkErrors do
+    socketVar <- Socket.openThreadSafeSocket ZMQ_PULL
+    socket <- readMVar socketVar
+    Options.setSocketOptions socket options
+    pure (Puller socketVar)
 
 -- | Bind a __puller__ to an __endpoint__.
 --

@@ -1,5 +1,7 @@
 module Zmq.Router
   ( Router,
+    defaultOptions,
+    sendQueueSize,
     open,
     bind,
     unbind,
@@ -19,7 +21,9 @@ import Data.List.NonEmpty as List (NonEmpty)
 import Data.List.NonEmpty as List.NonEmpty
 import Data.Text (Text)
 import Libzmq
+import Numeric.Natural (Natural)
 import Zmq.Error (Error, catchingOkErrors)
+import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
@@ -31,16 +35,27 @@ newtype Router
   = Router (MVar Zmq_socket)
   deriving stock (Eq)
   deriving (Socket) via (ThreadSafeSocket)
+  deriving anyclass
+    ( CanReceive,
+      Options.CanSetSendQueueSize
+    )
 
-instance CanReceive Router
+defaultOptions :: Options Router
+defaultOptions =
+  Options.defaultOptions
+
+sendQueueSize :: Natural -> Options Router
+sendQueueSize =
+  Options.sendQueueSize
 
 -- | Open a __router__.
-open :: IO (Either Error Router)
-open =
+open :: Options Router -> IO (Either Error Router)
+open options =
   catchingOkErrors do
     socketVar <- Socket.openThreadSafeSocket ZMQ_ROUTER
     socket <- readMVar socketVar
     Options.setSocketOption socket ZMQ_ROUTER_MANDATORY 1
+    Options.setSocketOptions socket options
     pure (Router socketVar)
 
 -- | Bind a __router__ to an __endpoint__.

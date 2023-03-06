@@ -1,8 +1,8 @@
 module Zmq.Publisher
   ( Publisher,
-    Options,
     defaultOptions,
     lossy,
+    sendQueueSize,
     open,
     bind,
     unbind,
@@ -16,6 +16,7 @@ import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Libzmq
+import Numeric.Natural (Natural)
 import Zmq.Error (Error, catchingOkErrors, enrichError, throwOkError)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
@@ -28,7 +29,10 @@ import Zmq.Internal.Socket qualified as Socket
 newtype Publisher
   = Publisher (MVar Zmq_socket)
   deriving stock (Eq)
-  deriving anyclass (Options.CanSetLossy)
+  deriving anyclass
+    ( Options.CanSetLossy,
+      Options.CanSetSendQueueSize
+    )
   deriving (Socket) via (ThreadSafeSocket)
 
 defaultOptions :: Options Publisher
@@ -38,6 +42,10 @@ defaultOptions =
 lossy :: Options Publisher
 lossy =
   Options.lossy
+
+sendQueueSize :: Natural -> Options Publisher
+sendQueueSize =
+  Options.sendQueueSize
 
 -- | Open a __publisher__.
 open :: Options Publisher -> IO (Either Error Publisher)

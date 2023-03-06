@@ -1,5 +1,7 @@
 module Zmq.Subscriber
   ( Subscriber,
+    defaultOptions,
+    sendQueueSize,
     open,
     bind,
     unbind,
@@ -13,10 +15,11 @@ where
 
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
 import Data.Text (Text)
 import Libzmq
+import Numeric.Natural (Natural)
 import Zmq.Error
+import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
@@ -28,13 +31,27 @@ newtype Subscriber
   = Subscriber (MVar Zmq_socket)
   deriving stock (Eq)
   deriving (Socket) via (ThreadSafeSocket)
+  deriving anyclass
+    ( CanReceive,
+      Options.CanSetSendQueueSize
+    )
 
-instance CanReceive Subscriber
+defaultOptions :: Options Subscriber
+defaultOptions =
+  Options.defaultOptions
+
+sendQueueSize :: Natural -> Options Subscriber
+sendQueueSize =
+  Options.sendQueueSize
 
 -- | Open a __subscriber__.
-open :: IO (Either Error Subscriber)
-open =
-  coerce (catchingOkErrors (Socket.openThreadSafeSocket ZMQ_SUB))
+open :: Options Subscriber -> IO (Either Error Subscriber)
+open options =
+  catchingOkErrors do
+    socketVar <- Socket.openThreadSafeSocket ZMQ_SUB
+    socket <- readMVar socketVar
+    Options.setSocketOptions socket options
+    pure (Subscriber socketVar)
 
 -- | Bind a __subscriber__ to an __endpoint__.
 --

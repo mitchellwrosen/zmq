@@ -13,13 +13,16 @@ module Zmq.Internal.Options
 
     -- ** Socket options
     CanSetLossy,
+    CanSetSendQueueSize,
     setSocketOptions,
     setSocketOption,
     lossy,
+    sendQueueSize,
   )
 where
 
 import Control.Exception
+import Data.Int (Int32)
 import Libzmq
 import Numeric.Natural (Natural)
 import Zmq.Error (enrichError, throwOkError, unexpectedError)
@@ -38,6 +41,8 @@ instance Semigroup (Options socket) where
   _ <> _ = DefaultOptions -- type system should prevent this
 
 class CanSetLossy socket
+
+class CanSetSendQueueSize socket
 
 defaultOptions :: Options a
 defaultOptions =
@@ -71,17 +76,17 @@ setContextOptions context = \case
 ioThreads :: Natural -> Options Context
 ioThreads n =
   ContextOptions \context ->
-    setContextOption context ZMQ_IO_THREADS (fromIntegral @Natural @Int n)
+    setContextOption context ZMQ_IO_THREADS (natToInt n)
 
 maxMessageSize :: Natural -> Options Context
 maxMessageSize n =
   ContextOptions \context ->
-    setContextOption context ZMQ_MAX_MSGSZ (fromIntegral @Natural @Int n)
+    setContextOption context ZMQ_MAX_MSGSZ (natToInt n)
 
 maxSockets :: Natural -> Options Context
 maxSockets n =
   ContextOptions \context ->
-    setContextOption context ZMQ_MAX_SOCKETS (fromIntegral @Natural @Int n)
+    setContextOption context ZMQ_MAX_SOCKETS (natToInt n)
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Socket options
@@ -112,3 +117,23 @@ lossy :: CanSetLossy socket => Options socket
 lossy =
   SocketOptions \socket ->
     setSocketOption socket ZMQ_XPUB_NODROP 1
+
+sendQueueSize :: CanSetSendQueueSize socket => Natural -> Options socket
+sendQueueSize n =
+  SocketOptions \socket ->
+    setSocketOption socket ZMQ_SNDHWM (natToInt32 n)
+
+------------------------------------------------------------------------------------------------------------------------
+-- Utils
+
+natToInt :: Natural -> Int
+natToInt n =
+  if n > fromIntegral @Int @Natural maxBound
+    then maxBound @Int
+    else fromIntegral @Natural @Int n
+
+natToInt32 :: Natural -> Int32
+natToInt32 n =
+  if n > fromIntegral @Int32 @Natural maxBound
+    then maxBound @Int32
+    else fromIntegral @Natural @Int32 n

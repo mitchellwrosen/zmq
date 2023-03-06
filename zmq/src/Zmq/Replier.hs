@@ -1,5 +1,7 @@
 module Zmq.Replier
   ( Replier,
+    defaultOptions,
+    sendQueueSize,
     open,
     bind,
     unbind,
@@ -11,10 +13,12 @@ module Zmq.Replier
 where
 
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
 import Data.Text (Text)
 import Libzmq
+import Numeric.Natural (Natural)
 import Zmq.Error (Error, catchingOkErrors)
+import Zmq.Internal.Options (Options)
+import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadUnsafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
@@ -25,13 +29,26 @@ newtype Replier
   = Replier ThreadUnsafeSocket
   deriving stock (Eq)
   deriving newtype (Socket)
+  deriving anyclass
+    ( CanReceive,
+      Options.CanSetSendQueueSize
+    )
 
-instance CanReceive Replier
+defaultOptions :: Options Replier
+defaultOptions =
+  Options.defaultOptions
+
+sendQueueSize :: Natural -> Options Replier
+sendQueueSize =
+  Options.sendQueueSize
 
 -- | Open a __replier__.
-open :: IO (Either Error Replier)
-open =
-  coerce (catchingOkErrors (Socket.openThreadUnsafeSocket ZMQ_REP))
+open :: Options Replier -> IO (Either Error Replier)
+open options =
+  catchingOkErrors do
+    socket@(ThreadUnsafeSocket zsocket _) <- Socket.openThreadUnsafeSocket ZMQ_REP
+    Options.setSocketOptions zsocket options
+    pure (Replier socket)
 
 -- | Bind a __replier__ to an __endpoint__.
 --
