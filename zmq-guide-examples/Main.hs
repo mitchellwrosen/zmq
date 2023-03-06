@@ -11,6 +11,7 @@ import Data.List.NonEmpty (pattern (:|))
 import Data.List.NonEmpty qualified as List.NonEmpty
 import GHC.Clock (getMonotonicTimeNSec)
 import Ki qualified
+import Numeric.Natural (Natural)
 import System.Environment (getArgs)
 import System.IO (hFlush, stdout)
 import System.Random.Stateful (globalStdGen, uniformRM)
@@ -47,6 +48,8 @@ main =
     ["taskwork2"] -> taskwork2
     ["tasksink2"] -> tasksink2
     ["mtserver"] -> mtserver
+    ["syncpub"] -> syncpub
+    ["syncsub"] -> syncsub
     _ -> pure ()
 
 -- Hello World server
@@ -430,6 +433,66 @@ mtserver =
         when (ready 1) do
           identity :| frame : frames <- unwrap (Zmq.Dealer.receives workers)
           unwrap (Zmq.Router.sends clients identity (frame :| frames))
+
+-- Synchronized publisher
+syncpub :: IO ()
+syncpub = do
+  let subscribersExpected = 10 :: Int -- We wait for 10 subscribers
+  Zmq.run Zmq.defaultOptions do
+    -- Socket to talk to clients
+    let sndhwm = 1100000 :: Natural
+    publisher <- unwrap (Zmq.Publisher.open (Zmq.sendQueueSize sndhwm))
+
+    unwrap (Zmq.bind publisher "tcp://*:5561")
+
+    -- Socket to receive signals
+    syncservice <- unwrap (Zmq.Replier.open Zmq.defaultOptions)
+    unwrap (Zmq.bind syncservice "tcp://*:5562")
+
+    -- Get synchronization from subscribers
+    putStrLn "Waiting for subscribers"
+    replicateM_ subscribersExpected do
+      -- wait for synchronization request
+      _ <- unwrap (Zmq.Replier.receive syncservice)
+      -- send synchronization reply
+      unwrap (Zmq.Replier.send syncservice "")
+    -- Now broadcast exactly 1M updates followed by END
+    putStrLn "Broadcasting messages"
+    replicateM_ 1000000 do
+      unwrap (Zmq.Publisher.send publisher "Rhubarb" "")
+
+    unwrap (Zmq.Publisher.send publisher "END" "")
+
+-- Synchronized subscriber
+syncsub :: IO ()
+syncsub = do
+  Zmq.run Zmq.defaultOptions do
+    -- First, connect our subscriber socket
+    subscriber <- unwrap (Zmq.Subscriber.open Zmq.defaultOptions)
+    unwrap (Zmq.connect subscriber "tcp://localhost:5561")
+    unwrap (Zmq.Subscriber.subscribe subscriber "")
+
+    -- 0MQ is so fast, we need to wait a while...
+    threadDelay 1_000_000
+
+    -- Second, synchronize with publisher
+    syncclient <- unwrap (Zmq.Requester.open Zmq.defaultOptions)
+    unwrap (Zmq.connect syncclient "tcp://localhost:5562")
+
+    -- send a synchronization request
+    unwrap (Zmq.Requester.send syncclient "")
+
+    -- wait for synchronization reply
+    _ <- unwrap (Zmq.Requester.receive syncclient)
+
+    -- Third, get our updates and report how many we got
+    let loop updateNbr = do
+          (string, _) <- unwrap (Zmq.Subscriber.receive subscriber)
+          if string /= "END"
+            then loop (updateNbr + 1)
+            else pure updateNbr
+    updateNbr <- loop (0 :: Int)
+    printf "Received %d updates\n" updateNbr
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Utils
