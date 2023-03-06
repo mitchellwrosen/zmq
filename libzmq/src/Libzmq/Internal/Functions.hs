@@ -149,7 +149,7 @@ zmq_msg_data (Zmq_msg message) = do
   bytes <- Libzmq.Bindings.zmq_msg_data message
   ByteString.packCStringLen (bytes, fromIntegral @CSize @Int size)
 
--- | Free a ØMQ message.
+-- | Free a ØMQ message initialized by 'zmq_msg_init', 'zmq_msg_init_data', or 'zmq_msg_init_size'.
 zmq_msg_free :: Zmq_msg -> IO ()
 zmq_msg_free (Zmq_msg message) =
   free message

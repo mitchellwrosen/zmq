@@ -2,7 +2,7 @@ module Libzmq.Bindings.Internal.Functions (module Libzmq.Bindings.Internal.Funct
 
 import Foreign.C.String (CString)
 import Foreign.C.Types (CChar (..), CInt (..), CLong (..), CSize (..))
-import Foreign.Ptr (Ptr)
+import Foreign.Ptr (FunPtr, Ptr)
 import Libzmq.Bindings.Internal.Types (Zmq_msg, Zmq_pollitem)
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -65,10 +65,6 @@ foreign import capi interruptible "zmq.h zmq_ctx_term"
 ------------------------------------------------------------------------------------------------------------------------
 -- Message
 
--- TODO
--- typedef void(zmq_free_fn) (void *data_, void *hint_);
--- ZMQ_EXPORT int zmq_msg_init_data ( zmq_msg_t *msg_, void *data_, size_t size_, zmq_free_fn *ffn_, void *hint_);
-
 -- | Release a ØMQ message.
 --
 -- http://api.zeromq.org/master:zmq-msg-close
@@ -104,6 +100,12 @@ foreign import capi unsafe "zmq.h zmq_msg_get"
 -- http://api.zeromq.org/master:zmq-msg-init
 foreign import capi unsafe "zmq.h zmq_msg_init"
   zmq_msg_init :: Ptr Zmq_msg -> IO CInt
+
+-- | Initialise a ØMQ message from a buffer.
+--
+-- http://api.zeromq.org/master:zmq-msg-init-data
+foreign import capi unsafe "zmq.h zmq_msg_init_data"
+  zmq_msg_init_data :: Ptr Zmq_msg -> Ptr a -> CSize -> FunPtr (Ptr a -> Ptr b -> IO ()) -> Ptr b -> IO ()
 
 -- | Initialize an empty ØMQ message of a specified size.
 --

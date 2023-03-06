@@ -18,7 +18,7 @@ module Libzmq.Bindings
     -- ** Message
     zmq_msg_init,
     zmq_msg_init_size,
-    -- zmq_msg_init_data,
+    zmq_msg_init_data,
     zmq_msg_send,
     zmq_msg_send__unsafe,
     zmq_msg_recv,
