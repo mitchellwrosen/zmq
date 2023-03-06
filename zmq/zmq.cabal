@@ -57,8 +57,8 @@ library
   other-modules:
     Zmq.Internal.Context
     Zmq.Internal.Options
-    Zmq.Internal.PublisherOptions
     Zmq.Internal.Socket
+    Zmq.Internal.SocketOptions
     Zmq.Internal.SocketFinalizer
     Zmq.Error
     Zmq.Subscription

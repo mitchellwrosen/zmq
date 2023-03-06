@@ -14,14 +14,15 @@ module Zmq.XPublisher
 where
 
 import Control.Concurrent.MVar
-import Control.Monad (when)
 import Data.ByteString (ByteString)
+import Data.Coerce (coerce)
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error, catchingOkErrors, enrichError, throwOkError)
-import Zmq.Internal.PublisherOptions (Options (..), defaultOptions, lossy)
 import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
+import Zmq.Internal.SocketOptions (Options, defaultOptions, lossy)
+import Zmq.Internal.SocketOptions qualified as SocketOptions
 
 -- | A thread-safe __xpublisher__ socket.
 --
@@ -34,13 +35,12 @@ newtype XPublisher
 instance CanReceive XPublisher
 
 -- | Open an __xpublisher__.
-open :: Options -> IO (Either Error XPublisher)
-open Options {lossy_} =
+open :: Options XPublisher -> IO (Either Error XPublisher)
+open options =
   catchingOkErrors do
-    socketVar <- Socket.openThreadSafeSocket ZMQ_XPUB
-    socket <- readMVar socketVar
-    when lossy_ (Socket.setOption socket ZMQ_XPUB_NODROP 1)
-    pure (XPublisher socketVar)
+    socket <- coerce (Socket.openThreadSafeSocket ZMQ_XPUB)
+    SocketOptions.setOptions socket options
+    pure socket
 
 -- | Bind an __xpublisher__ to an __endpoint__.
 --

@@ -13,14 +13,15 @@ module Zmq.Publisher
 where
 
 import Control.Concurrent.MVar
-import Control.Monad (when)
 import Data.ByteString (ByteString)
+import Data.Coerce (coerce)
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error, catchingOkErrors, enrichError, throwOkError)
-import Zmq.Internal.PublisherOptions (Options (..), defaultOptions, lossy)
 import Zmq.Internal.Socket (Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
+import Zmq.Internal.SocketOptions (Options, defaultOptions, lossy)
+import Zmq.Internal.SocketOptions qualified as SocketOptions
 
 -- | A thread-safe __publisher__ socket.
 --
@@ -31,13 +32,12 @@ newtype Publisher
   deriving (Socket) via (ThreadSafeSocket)
 
 -- | Open a __publisher__.
-open :: Options -> IO (Either Error Publisher)
-open Options {lossy_} =
+open :: Options Publisher -> IO (Either Error Publisher)
+open options =
   catchingOkErrors do
-    socketVar <- Socket.openThreadSafeSocket ZMQ_PUB
-    socket <- readMVar socketVar
-    when lossy_ (Socket.setOption socket ZMQ_XPUB_NODROP 1)
-    pure (Publisher socketVar)
+    socket <- coerce (Socket.openThreadSafeSocket ZMQ_PUB)
+    SocketOptions.setOptions socket options
+    pure socket
 
 -- | Bind a __publisher__ to an __endpoint__.
 --

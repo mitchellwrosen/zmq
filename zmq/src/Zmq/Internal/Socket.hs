@@ -8,7 +8,6 @@ module Zmq.Internal.Socket
     ThreadUnsafeSocket (..),
     openThreadUnsafeSocket,
     openThreadSafeSocket,
-    setOption,
     bind,
     unbind,
     connect,
@@ -134,22 +133,6 @@ openSocket wrap socketType = do
         finalizer <- makeSocketFinalizer (zmq_setsockopt socket) (zmq_close socket) canary
         atomicModifyIORef' socketsRef \finalizers -> (finalizer : finalizers, ())
         pure thing
-
--- Throws ok errors
-setOption :: Zmq_socket -> Zmq_socket_option a -> a -> IO ()
-setOption socket option value = do
-  let loop =
-        zmq_setsockopt socket option value >>= \case
-          Left errno ->
-            let err = enrichError "zmq_setsockopt" errno
-             in case errno of
-                  EINTR -> throwOkError err
-                  EINVAL -> throwIO err
-                  ENOTSOCK -> throwIO err
-                  ETERM -> throwOkError err
-                  _ -> unexpectedError err
-          Right val -> pure val
-  loop
 
 -- Throws ok errors
 getIntOption :: Zmq_socket -> CInt -> IO Int
