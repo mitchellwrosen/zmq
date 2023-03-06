@@ -310,7 +310,7 @@ wuproxy =
     unwrap (Zmq.connect frontend "tcp://192.168.55.210:5556")
 
     -- This is our public endpoint for subscribers
-    backend <- unwrap (Zmq.XPublisher.open Zmq.Publisher.defaultOptions)
+    backend <- unwrap (Zmq.XPublisher.open Zmq.defaultOptions)
     unwrap (Zmq.bind backend "tcp://10.1.1.0:8100")
 
     -- Run the proxy until the user interrupts us

@@ -1,8 +1,11 @@
 module Zmq
   ( -- * Main
     run,
-    Options (..),
-    defaultOptions,
+
+    -- ** Main options
+    ioThreads,
+    maxMessageSize,
+    maxSockets,
 
     -- * Socket
     Socket,
@@ -10,6 +13,12 @@ module Zmq
     unbind,
     connect,
     disconnect,
+
+    -- ** Socket options
+    lossy,
+
+    -- *** Socket options type classes
+    CanSetLossy,
 
     -- * IO multiplexing
     Sockets,
@@ -33,6 +42,10 @@ module Zmq
     pattern Subscribe,
     pattern Unsubscribe,
 
+    -- * Options
+    Options,
+    defaultOptions,
+
     -- * Errors
     Error (..),
     Zmq_error (..),
@@ -46,7 +59,7 @@ import Libzmq (Zmq_error (..), zmq_version)
 import Zmq.Dealer (Dealer)
 import Zmq.Error (Error (..))
 import Zmq.Internal.Context
-import Zmq.Internal.Options (Options (..), defaultOptions)
+import Zmq.Internal.Options (CanSetLossy, Options, defaultOptions, ioThreads, lossy, maxMessageSize, maxSockets)
 import Zmq.Internal.Socket (Socket, Sockets, also, bind, connect, disconnect, poll, the, unbind)
 import Zmq.Publisher (Publisher)
 import Zmq.Puller (Puller)

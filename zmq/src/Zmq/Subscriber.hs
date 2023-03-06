@@ -17,9 +17,9 @@ import Data.Coerce (coerce)
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error
+import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
-import Zmq.Internal.SocketOptions qualified as SocketOptions
 
 -- | A thread-safe __subscriber__ socket.
 --
@@ -71,14 +71,14 @@ subscribe :: Subscriber -> ByteString -> IO (Either Error ())
 subscribe socket0 prefix =
   catchingOkErrors do
     withSocket socket0 \socket ->
-      SocketOptions.setOption socket Libzmq.ZMQ_SUBSCRIBE prefix
+      Options.setSocketOption socket Libzmq.ZMQ_SUBSCRIBE prefix
 
 -- | Unsubscribe a __subscriber__ from a previously-subscribed __topic__.
 unsubscribe :: Subscriber -> ByteString -> IO (Either Error ())
 unsubscribe socket0 prefix =
   catchingOkErrors do
     withSocket socket0 \socket ->
-      SocketOptions.setOption socket Libzmq.ZMQ_UNSUBSCRIBE prefix
+      Options.setSocketOption socket Libzmq.ZMQ_UNSUBSCRIBE prefix
 
 -- | Receive a __topic message__ on a __subscriber__ from any peer (fair-queued).
 receive :: Subscriber -> IO (Either Error (ByteString, ByteString))

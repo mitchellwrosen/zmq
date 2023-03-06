@@ -9,10 +9,10 @@ import Control.Exception
 import Data.Foldable (for_)
 import Data.IORef
 import Libzmq
-import Numeric.Natural (Natural)
 import System.IO.Unsafe (unsafePerformIO)
 import Zmq.Error (enrichError, unexpectedError)
-import Zmq.Internal.Options (Options (..))
+import Zmq.Internal.Options (Options)
+import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.SocketFinalizer (SocketFinalizer, runSocketFinalizer)
 
 data Context = Context
@@ -40,7 +40,7 @@ bogusContext =
 -- | Run a main function.
 --
 -- This function must be called exactly once, and must wrap all other calls to this library.
-run :: Options -> IO a -> IO a
+run :: Options Context -> IO a -> IO a
 run options action =
   mask \restore -> do
     context <- newContext options
@@ -52,18 +52,12 @@ run options action =
       Left (exception :: SomeException) -> throwIO exception
       Right value -> pure value
 
-newContext :: Options -> IO Context
+newContext :: Options Context -> IO Context
 newContext options = do
   context <- zmq_ctx_new
-  setContextOptions context options
+  Options.setContextOptions context options
   socketFinalizersRef <- newIORef []
   pure Context {context, socketFinalizersRef}
-
-setContextOptions :: Zmq_ctx -> Options -> IO ()
-setContextOptions context Options {ioThreads, maxMessageSize, maxSockets} = do
-  setContextOption context ZMQ_IO_THREADS (fromIntegral @Natural @Int ioThreads)
-  setContextOption context ZMQ_MAX_MSGSZ (fromIntegral @Natural @Int maxMessageSize)
-  setContextOption context ZMQ_MAX_SOCKETS (fromIntegral @Natural @Int maxSockets)
 
 -- Terminate a context.
 terminateContext :: Context -> IO ()
@@ -93,13 +87,3 @@ terminateContext Context {context, socketFinalizersRef} = do
                   _ -> unexpectedError err
           Right () -> pure ()
   loop
-
-setContextOption :: Zmq_ctx -> Zmq_ctx_option -> Int -> IO ()
-setContextOption context option value =
-  zmq_ctx_set context option value >>= \case
-    Left errno ->
-      let err = enrichError "zmq_ctx_set" errno
-       in case errno of
-            EINVAL -> throwIO err
-            _ -> unexpectedError err
-    Right () -> pure ()

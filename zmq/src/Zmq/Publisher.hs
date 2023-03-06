@@ -14,14 +14,13 @@ where
 
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error, catchingOkErrors, enrichError, throwOkError)
+import Zmq.Internal.Options (Options)
+import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Socket (Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
-import Zmq.Internal.SocketOptions (Options, defaultOptions, lossy)
-import Zmq.Internal.SocketOptions qualified as SocketOptions
 
 -- | A thread-safe __publisher__ socket.
 --
@@ -29,15 +28,25 @@ import Zmq.Internal.SocketOptions qualified as SocketOptions
 newtype Publisher
   = Publisher (MVar Zmq_socket)
   deriving stock (Eq)
+  deriving anyclass (Options.CanSetLossy)
   deriving (Socket) via (ThreadSafeSocket)
+
+defaultOptions :: Options Publisher
+defaultOptions =
+  Options.defaultOptions
+
+lossy :: Options Publisher
+lossy =
+  Options.lossy
 
 -- | Open a __publisher__.
 open :: Options Publisher -> IO (Either Error Publisher)
 open options =
   catchingOkErrors do
-    socket <- coerce (Socket.openThreadSafeSocket ZMQ_PUB)
-    SocketOptions.setOptions socket options
-    pure socket
+    socketVar <- Socket.openThreadSafeSocket ZMQ_PUB
+    socket <- readMVar socketVar
+    Options.setSocketOptions socket options
+    pure (Publisher socketVar)
 
 -- | Bind a __publisher__ to an __endpoint__.
 --

@@ -20,9 +20,9 @@ import Data.List.NonEmpty as List.NonEmpty
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error, catchingOkErrors)
+import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
-import Zmq.Internal.SocketOptions qualified as SocketOptions
 
 -- | A thread-safe __router__ socket.
 --
@@ -40,7 +40,7 @@ open =
   catchingOkErrors do
     socketVar <- Socket.openThreadSafeSocket ZMQ_ROUTER
     socket <- readMVar socketVar
-    SocketOptions.setOption socket ZMQ_ROUTER_MANDATORY 1
+    Options.setSocketOption socket ZMQ_ROUTER_MANDATORY 1
     pure (Router socketVar)
 
 -- | Bind a __router__ to an __endpoint__.

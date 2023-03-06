@@ -58,7 +58,6 @@ library
     Zmq.Internal.Context
     Zmq.Internal.Options
     Zmq.Internal.Socket
-    Zmq.Internal.SocketOptions
     Zmq.Internal.SocketFinalizer
     Zmq.Error
     Zmq.Subscription
