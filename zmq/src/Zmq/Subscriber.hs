@@ -50,6 +50,7 @@ open options =
   catchingOkErrors do
     socketVar <- Socket.openThreadSafeSocket ZMQ_SUB
     socket <- readMVar socketVar
+    Options.setSocketOption socket ZMQ_SNDHWM 0 -- don't drop subscriptions
     Options.setSocketOptions socket ZMQ_SUB options
     pure (Subscriber socketVar)
 
