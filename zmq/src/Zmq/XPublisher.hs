@@ -55,7 +55,7 @@ open options =
   catchingOkErrors do
     socketVar <- Socket.openThreadSafeSocket ZMQ_XPUB
     socket <- readMVar socketVar
-    Options.setSocketOptions socket options
+    Options.setSocketOptions socket ZMQ_XPUB options
     pure (XPublisher socketVar)
 
 -- | Bind an __xpublisher__ to an __endpoint__.

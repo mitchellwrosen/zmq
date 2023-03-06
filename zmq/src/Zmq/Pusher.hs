@@ -47,7 +47,7 @@ open options =
   catchingOkErrors do
     socketVar <- Socket.openThreadSafeSocket ZMQ_PUSH
     socket <- readMVar socketVar
-    Options.setSocketOptions socket options
+    Options.setSocketOptions socket ZMQ_PUSH options
     pure (Pusher socketVar)
 
 -- | Bind a __pusher__ to an __endpoint__.

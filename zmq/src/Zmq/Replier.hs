@@ -47,7 +47,7 @@ open :: Options Replier -> IO (Either Error Replier)
 open options =
   catchingOkErrors do
     socket@(ThreadUnsafeSocket zsocket _) <- Socket.openThreadUnsafeSocket ZMQ_REP
-    Options.setSocketOptions zsocket options
+    Options.setSocketOptions zsocket ZMQ_REP options
     pure (Replier socket)
 
 -- | Bind a __replier__ to an __endpoint__.

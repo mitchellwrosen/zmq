@@ -52,7 +52,7 @@ open options =
   catchingOkErrors do
     socketVar <- Socket.openThreadSafeSocket ZMQ_DEALER
     socket <- readMVar socketVar
-    Options.setSocketOptions socket options
+    Options.setSocketOptions socket ZMQ_DEALER options
     pure (Dealer socketVar)
 
 -- | Bind a __dealer__ to an __endpoint__.

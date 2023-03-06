@@ -47,7 +47,7 @@ open :: Options Requester -> IO (Either Error Requester)
 open options =
   catchingOkErrors do
     socket@(ThreadUnsafeSocket zsocket _) <- Socket.openThreadUnsafeSocket ZMQ_REQ
-    Options.setSocketOptions zsocket options
+    Options.setSocketOptions zsocket ZMQ_REQ options
     pure (Requester socket)
 
 -- | Bind a __requester__ to an __endpoint__.

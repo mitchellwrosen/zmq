@@ -50,7 +50,7 @@ open options =
   catchingOkErrors do
     socketVar <- Socket.openThreadSafeSocket ZMQ_SUB
     socket <- readMVar socketVar
-    Options.setSocketOptions socket options
+    Options.setSocketOptions socket ZMQ_SUB options
     pure (Subscriber socketVar)
 
 -- | Bind a __subscriber__ to an __endpoint__.

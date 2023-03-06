@@ -53,7 +53,7 @@ open options =
   catchingOkErrors do
     socketVar <- Socket.openThreadSafeSocket ZMQ_PUB
     socket <- readMVar socketVar
-    Options.setSocketOptions socket options
+    Options.setSocketOptions socket ZMQ_PUB options
     pure (Publisher socketVar)
 
 -- | Bind a __publisher__ to an __endpoint__.
@@ -89,8 +89,10 @@ disconnect =
 -- This operation never blocks:
 --
 --     * If the 'lossy' option is set, then all peers with full message queues will not receive the message.
---     * Otherwise, if the 'lossy' option is not set, and any peer has a full message queue, then the message will not
---       be sent to any peer, and this function will return @EAGAIN@.
+--
+--     * If the 'lossy' option is not set, and any peer has a full message queue, then the message will not be sent to
+--       any peer, and this function will return @EAGAIN@. It is not possible to block until no peer has a full message
+--       queue.
 send :: Publisher -> ByteString -> ByteString -> IO (Either Error ())
 send socket0 topic message =
   catchingOkErrors do

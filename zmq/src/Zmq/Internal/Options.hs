@@ -108,13 +108,38 @@ setSocketOption socket option value = do
   loop
 
 -- Throws ok errors
-setSocketOptions :: Zmq_socket -> Options socket -> IO ()
-setSocketOptions socket = \case
-  SocketOptions f -> f socket
-  _ -> pure ()
+setSocketOptions :: Zmq_socket -> Zmq_socket_type -> Options socket -> IO ()
+setSocketOptions socket socketType options =
+  case defaults <> options of
+    SocketOptions f -> f socket
+    _ -> pure ()
+  where
+    -- we flip some defaults:
+    --   1. pub/xpub are non-lossy
+    defaults :: Options socket
+    defaults =
+      case socketType of
+        ZMQ_DEALER -> defaultOptions
+        ZMQ_PAIR -> defaultOptions
+        ZMQ_PUB -> notLossy
+        ZMQ_PULL -> defaultOptions
+        ZMQ_PUSH -> defaultOptions
+        ZMQ_REP -> defaultOptions
+        ZMQ_REQ -> defaultOptions
+        ZMQ_ROUTER -> defaultOptions
+        ZMQ_STREAM -> defaultOptions
+        ZMQ_SUB -> defaultOptions
+        ZMQ_XPUB -> notLossy
+        ZMQ_XSUB -> defaultOptions
 
 lossy :: CanSetLossy socket => Options socket
 lossy =
+  SocketOptions \socket ->
+    setSocketOption socket ZMQ_XPUB_NODROP 0
+
+-- internal
+notLossy :: Options socket
+notLossy =
   SocketOptions \socket ->
     setSocketOption socket ZMQ_XPUB_NODROP 1
 

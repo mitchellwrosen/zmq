@@ -55,7 +55,7 @@ open options =
     socketVar <- Socket.openThreadSafeSocket ZMQ_ROUTER
     socket <- readMVar socketVar
     Options.setSocketOption socket ZMQ_ROUTER_MANDATORY 1
-    Options.setSocketOptions socket options
+    Options.setSocketOptions socket ZMQ_ROUTER options
     pure (Router socketVar)
 
 -- | Bind a __router__ to an __endpoint__.
