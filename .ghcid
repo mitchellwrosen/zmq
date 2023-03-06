@@ -1,1 +1,0 @@
--c "stack ghci" --restart zmq.cabal --restart src/Zmq/FFI.hsc

@@ -10,6 +10,7 @@ import Data.Functor ((<&>))
 import Data.List.NonEmpty (pattern (:|))
 import Data.List.NonEmpty qualified as List.NonEmpty
 import GHC.Clock (getMonotonicTimeNSec)
+import GHC.Conc (atomically)
 import Ki qualified
 import Numeric.Natural (Natural)
 import System.Environment (getArgs)
@@ -543,18 +544,19 @@ rtreq = do
       endTime <- (+ 5_000_000_000) <$> getMonotonicTimeNSec
       let loop workersFired = do
             -- Next message gives us least recently used worker
-            (identity, _) <- unwrap (Zmq.Router.receive broker)
+            (identity, requestId :| _) <- unwrap (Zmq.Router.receives broker)
             -- Encourage workers until it's time to fire them
             time <- getMonotonicTimeNSec
             if time < endTime
               then do
-                unwrap (Zmq.Router.sends broker identity ("" :| ["Work harder"]))
+                unwrap (Zmq.Router.sends broker identity (requestId :| ["", "Work harder"]))
                 loop workersFired
               else do
-                unwrap (Zmq.Router.sends broker identity ("" :| ["Fired!"]))
+                unwrap (Zmq.Router.sends broker identity (requestId :| ["", "Fired!"]))
                 when (workersFired + 1 < nbrWorkers) do
                   loop (workersFired + 1)
       loop 0
+      atomically (Ki.awaitAll scope)
   where
     workerTask :: IO ()
     workerTask = do
