@@ -50,6 +50,8 @@ main =
     ["mtserver"] -> mtserver
     ["syncpub"] -> syncpub
     ["syncsub"] -> syncsub
+    ["psenvpub"] -> psenvpub
+    ["psenvsub"] -> psenvsub
     _ -> pure ()
 
 -- Hello World server
@@ -493,6 +495,34 @@ syncsub = do
             else pure updateNbr
     updateNbr <- loop (0 :: Int)
     printf "Received %d updates\n" updateNbr
+
+-- Pubsub envelope publisher
+psenvpub :: IO ()
+psenvpub =
+  Zmq.run Zmq.defaultOptions do
+    -- Prepare our publisher
+    publisher <- unwrap (Zmq.Publisher.open Zmq.defaultOptions)
+    unwrap (Zmq.bind publisher "tcp://*:5563")
+
+    forever do
+      -- Write two messages, each with an envelope and content
+      unwrap (Zmq.Publisher.send publisher "A" "We don't want to see this")
+      unwrap (Zmq.Publisher.send publisher "B" "We would like to see this")
+      threadDelay 1_000_000
+
+-- Pubsub envelope subscriber
+psenvsub :: IO ()
+psenvsub =
+  Zmq.run Zmq.defaultOptions do
+    -- Prepare our subscriber
+    subscriber <- unwrap (Zmq.Subscriber.open Zmq.defaultOptions)
+    unwrap (Zmq.connect subscriber "tcp://localhost:5563")
+    unwrap (Zmq.Subscriber.subscribe subscriber "B")
+
+    forever do
+      -- Read envelope with address and message contents
+      (address, contents) <- unwrap (Zmq.Subscriber.receive subscriber)
+      printf "[%s] %s\n" (ByteString.Char8.unpack address) (ByteString.Char8.unpack contents)
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Utils
