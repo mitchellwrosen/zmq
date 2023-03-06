@@ -52,6 +52,7 @@ main =
     ["syncsub"] -> syncsub
     ["psenvpub"] -> psenvpub
     ["psenvsub"] -> psenvsub
+    ["rtreq"] -> rtreq
     _ -> pure ()
 
 -- Hello World server
@@ -523,6 +524,57 @@ psenvsub =
       -- Read envelope with address and message contents
       (address, contents) <- unwrap (Zmq.Subscriber.receive subscriber)
       printf "[%s] %s\n" (ByteString.Char8.unpack address) (ByteString.Char8.unpack contents)
+
+-- ROUTER-to-REQ example
+rtreq :: IO ()
+rtreq = do
+  let nbrWorkers = 10 :: Int
+
+  Zmq.run Zmq.defaultOptions do
+    broker <- unwrap (Zmq.Router.open Zmq.defaultOptions)
+
+    unwrap (Zmq.bind broker "tcp://*:5671")
+
+    Ki.scoped \scope -> do
+      replicateM_ nbrWorkers do
+        _ <- Ki.fork scope workerTask
+        pure ()
+      -- Run for five seconds and then tell workers to end
+      endTime <- (+ 5_000_000_000) <$> getMonotonicTimeNSec
+      let loop workersFired = do
+            -- Next message gives us least recently used worker
+            (identity, _) <- unwrap (Zmq.Router.receive broker)
+            -- Encourage workers until it's time to fire them
+            time <- getMonotonicTimeNSec
+            if time < endTime
+              then do
+                unwrap (Zmq.Router.sends broker identity ("" :| ["Work harder"]))
+                loop workersFired
+              else do
+                unwrap (Zmq.Router.sends broker identity ("" :| ["Fired!"]))
+                when (workersFired + 1 < nbrWorkers) do
+                  loop (workersFired + 1)
+      loop 0
+  where
+    workerTask :: IO ()
+    workerTask = do
+      worker <- unwrap (Zmq.Requester.open Zmq.defaultOptions)
+      unwrap (Zmq.connect worker "tcp://localhost:5671")
+
+      let loop total = do
+            -- Tell the broker we're ready for work
+            unwrap (Zmq.Requester.send worker "Hi Boss")
+
+            -- Get workload from broker, until finished
+            workload <- unwrap (Zmq.Requester.receive worker)
+            let finished = workload == "Fired!"
+            if finished
+              then printf "Completed: %d tasks\n" total
+              else do
+                -- Do some random work
+                threadDelay =<< uniformRM (1_000, 500_000) globalStdGen
+                loop (total + 1)
+      loop (0 :: Int)
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Utils
