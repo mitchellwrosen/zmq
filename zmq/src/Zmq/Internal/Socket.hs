@@ -349,14 +349,14 @@ sendOneWontBlock socket frame more = do
   loop
 
 -- Throws ok errors
--- TODO mask
 receiveOne :: Zmq_socket -> IO ByteString
 receiveOne socket =
-  receiveFrame socket >>= \case
-    More frame -> do
-      receiveOne_ socket
-      pure frame
-    NoMore frame -> pure frame
+  mask_ do
+    receiveFrame socket >>= \case
+      More frame -> do
+        receiveOne_ socket
+        pure frame
+      NoMore frame -> pure frame
 
 -- Throws ok errors
 receiveOne_ :: Zmq_socket -> IO ()
@@ -366,14 +366,14 @@ receiveOne_ socket =
     NoMore _ -> pure ()
 
 -- Throws ok errors
--- TODO mask
 receiveMany :: Zmq_socket -> IO (List.NonEmpty ByteString)
 receiveMany socket =
-  receiveFrame socket >>= \case
-    More frame -> do
-      frames <- receiveMany_ socket
-      pure (frame :| frames)
-    NoMore frame -> pure (frame :| [])
+  mask_ do
+    receiveFrame socket >>= \case
+      More frame -> do
+        frames <- receiveMany_ socket
+        pure (frame :| frames)
+      NoMore frame -> pure (frame :| [])
 
 -- Throws ok errors
 receiveMany_ :: Zmq_socket -> IO [ByteString]
