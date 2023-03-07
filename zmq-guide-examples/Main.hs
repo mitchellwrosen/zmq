@@ -52,6 +52,7 @@ main =
     ["psenvpub"] -> psenvpub
     ["psenvsub"] -> psenvsub
     ["rtreq"] -> rtreq
+    ["lbbroker"] -> lbbroker
     _ -> pure ()
 
 -- Hello World server
@@ -576,6 +577,124 @@ rtreq = do
                 threadDelay =<< uniformRM (1_000, 500_000) globalStdGen
                 loop (total + 1)
       loop (0 :: Int)
+
+-- Load-balancing broker
+-- This is the main task. It starts the clients and workers, and then
+-- routes requests between the two layers. Workers signal READY when
+-- they start; after that we treat them as ready when they reply with
+-- a response back to a client. The load-balancing data structure is
+-- just a queue of next available workers.
+lbbroker :: IO ()
+lbbroker =
+  Zmq.run Zmq.defaultOptions do
+    let nbrClients = 10 :: Int
+    let nbrWorkers = 3 :: Int
+
+    -- Prepare our sockets
+    frontend <- unwrap (Zmq.Router.open Zmq.defaultOptions)
+    backend <- unwrap (Zmq.Router.open Zmq.defaultOptions)
+
+    unwrap (Zmq.bind frontend "ipc://frontend.ipc")
+    unwrap (Zmq.bind backend "ipc://backend.ipc")
+
+    Ki.scoped \scope -> do
+      replicateM_ nbrClients do
+        _ <- Ki.fork scope clientTask
+        pure ()
+      replicateM_ nbrWorkers do
+        _ <- Ki.fork scope workerTask
+        pure ()
+      -- Here is the main loop for the least-recently-used queue. It has two
+      -- sockets; a frontend for clients and a backend for workers. It polls
+      -- the backend in all cases, and polls the frontend only when there are
+      -- one or more workers ready. This is a neat way to use 0MQ's own queues
+      -- to hold messages we're not ready to process yet. When we get a client
+      -- request, we pop the next available worker and send the request to it,
+      -- including the originating client identity. When a worker replies, we
+      -- requeue that worker and forward the reply to the original client
+      -- using the reply envelope.
+
+      let loop clientNbr workerQueue = do
+            let items =
+                  Zmq.the backend
+                    -- Poll frontend only if we have available workers
+                    & if not (null workerQueue) then Zmq.also frontend else id
+            Zmq.poll items >>= \case
+              Left _ -> pure () -- Interrupted
+              Right ready -> do
+                -- Handle worker activity on backend
+                (clientNbr1, workerQueue1) <-
+                  if ready 0
+                    then do
+                      -- Queue worker identity for load-balancing
+                      -- Second frame is request id (ZMQ_REQ_CORRELATE)
+                      -- Third frame is empty
+                      -- Fourth frame is READY or else a client reply identity
+                      unwrap (Zmq.Router.receives backend) >>= \case
+                        [workerId, workerRequestId, "", "READY"] ->
+                          pure (clientNbr, (workerId, workerRequestId) : workerQueue)
+                        -- If client reply, send rest back to frontend
+                        [workerId, workerRequestId, "", clientId, clientRequestId, "", reply] -> do
+                          unwrap (Zmq.Router.sends frontend [clientId, clientRequestId, "", reply])
+                          pure (clientNbr - 1, (workerId, workerRequestId) : workerQueue)
+                        _ -> pure (clientNbr, workerQueue)
+                    else pure (clientNbr, workerQueue)
+
+                when (clientNbr1 > 0) do
+                  workerQueue2 <-
+                    case (ready 1, workerQueue1) of
+                      -- Here is how we handle a client request:
+                      (True, (workerId, workerRequestId) : workerQueue2) -> do
+                        -- Now get next client request, route to last-used worker
+                        -- Client request is [identity][messageid][empty][request]
+                        unwrap (Zmq.Router.receives frontend) >>= \case
+                          [clientId, clientRequestId, "", request] -> do
+                            unwrap $
+                              Zmq.Router.sends
+                                backend
+                                [ workerId,
+                                  workerRequestId,
+                                  "",
+                                  clientId,
+                                  clientRequestId,
+                                  "",
+                                  request
+                                ]
+                            pure workerQueue2
+                          _ -> pure workerQueue1
+                      _ -> pure workerQueue1
+                  loop clientNbr1 workerQueue2
+      loop nbrClients []
+  where
+    -- Basic request-reply client using REQ socket
+    clientTask :: IO ()
+    clientTask = do
+      client <- unwrap (Zmq.Requester.open Zmq.defaultOptions)
+      unwrap (Zmq.connect client "ipc://frontend.ipc")
+
+      -- Send request, get reply
+      unwrap (Zmq.Requester.send client "HELLO")
+      reply <- unwrap (Zmq.Requester.receive client)
+      printf "Client: %s\n" (ByteString.Char8.unpack reply)
+
+    -- This is the worker task, using a REQ socket to do load-balancing.
+    workerTask :: IO ()
+    workerTask = do
+      worker <- unwrap (Zmq.Requester.open Zmq.defaultOptions)
+      unwrap (Zmq.connect worker "ipc://backend.ipc")
+
+      -- Tell broker we're ready for work
+      unwrap (Zmq.Requester.send worker "READY")
+
+      forever do
+        -- Read and save all frames until we get an empty frame
+        -- In this example there are only 2, but there could be more
+        unwrap (Zmq.Requester.receives worker) >>= \case
+          [clientId, clientRequestId, "", request] -> do
+            -- Send reply
+            printf "Worker: %s\n" (ByteString.Char8.unpack request)
+            unwrap (Zmq.Requester.sends worker [clientId, clientRequestId, "", "OK"])
+          _ -> pure ()
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Utils
