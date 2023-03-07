@@ -32,18 +32,17 @@ import Control.Monad (when)
 import Data.Bits ((.&.))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as ByteString
-import Data.Foldable (fold)
 import Data.Functor ((<&>))
 import Data.IORef
+import Data.List qualified as List
 import Data.List.NonEmpty (pattern (:|))
 import Data.List.NonEmpty qualified as List (NonEmpty)
-import Data.List.NonEmpty qualified as List.NonEmpty
 import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
 import Data.Text.Lazy qualified as Text.Lazy
 import Data.Text.Lazy.Builder qualified as Text (Builder)
 import Data.Text.Lazy.Builder qualified as Text.Builder
-import Data.Text.Lazy.Builder.Int qualified as Text.Builder (decimal)
+import Data.Word (Word8)
 import Foreign.C.Types (CInt, CShort)
 import GHC.Exts (TYPE, UnliftedRep, keepAlive#)
 import GHC.IO (IO (..), unIO)
@@ -52,6 +51,7 @@ import GHC.MVar (MVar (..))
 import GHC.STRef (STRef (..))
 import Libzmq
 import Libzmq.Bindings qualified
+import Numeric (showHex)
 import System.IO qualified as IO
 import System.IO.Unsafe (unsafePerformIO)
 import System.Posix.Types (Fd (..))
@@ -490,19 +490,33 @@ debugPrintFrames (Zmq_socket socket) direction frames = do
         Text.encodeUtf8 $
           Text.Lazy.toStrict $
             Text.Builder.toLazyText $
-              "== "
+              "== Socket "
                 <> Text.Builder.fromString (show socket)
                 <> " ==\n"
-                <> fold (map formatFrame (zip [0 ..] (List.NonEmpty.toList frames)))
+                <> foldMap formatFrame frames
                 <> "\n\n"
   withMVar lock \_ -> ByteString.hPut IO.stderr message
   where
-    formatFrame :: (Int, ByteString) -> Text.Builder
-    formatFrame (n, frame) =
+    formatFrame :: ByteString -> Text.Builder
+    formatFrame frame =
       (case direction of Outgoing -> "  >> "; Incoming -> "  << ")
-        <> "Frame "
-        <> Text.Builder.decimal n
-        <> " | "
-        <> case Text.decodeUtf8' frame of
-          Left _ -> Text.Builder.fromString (show frame)
-          Right frame1 -> Text.Builder.fromText frame1
+        <> if ByteString.null frame
+          then "\n"
+          else
+            formatBytes frame
+              <> case Text.decodeUtf8' frame of
+                Left _ -> mempty
+                Right frame1 -> " " <> Text.Builder.fromText frame1
+              <> "\n"
+
+    formatBytes :: ByteString -> Text.Builder
+    formatBytes bytes =
+      "0x" <> List.foldl' f mempty (ByteString.unpack bytes)
+      where
+        f :: Text.Builder -> Word8 -> Text.Builder
+        f acc w =
+          if w < 15
+            then acc <> "0" <> x
+            else acc <> x
+          where
+            x = Text.Builder.fromString (showHex w "")
