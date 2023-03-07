@@ -3,7 +3,8 @@
 
 module Zmq.Internal.Socket
   ( Socket (..),
-    CanReceive,
+    CanReceive (..),
+    CanPoll,
     ThreadSafeSocket (..),
     ThreadUnsafeSocket (..),
     openThreadUnsafeSocket,
@@ -18,7 +19,7 @@ module Zmq.Internal.Socket
     sendMany,
     sendManyDontWait,
     sendManyWontBlock,
-    receive,
+    receiveOne,
     receiveMany,
     blockUntilCanSend,
     Sockets,
@@ -62,7 +63,11 @@ class Socket socket where
   withSocket :: socket -> (Zmq_socket -> IO a) -> IO a
   withSocket = undefined -- hide "minimal complete definition" haddock
 
-class Socket socket => CanReceive socket
+class Socket socket => CanPoll socket
+
+class Socket socket => CanReceive socket where
+  receive_ :: socket -> IO (Either Error ByteString)
+  receive_ = undefined -- hide "minimal complete definition" haddock
 
 newtype ThreadSafeSocket
   = ThreadSafeSocket (MVar Zmq_socket)
@@ -339,36 +344,38 @@ sendOneWontBlock socket frame more = do
   loop
 
 -- Throws ok errors
-receive :: Zmq_socket -> IO ByteString
-receive socket =
-  receivef socket >>= \case
+-- TODO mask
+receiveOne :: Zmq_socket -> IO ByteString
+receiveOne socket =
+  receiveFrame socket >>= \case
     More frame -> do
-      receive_ socket
+      receiveOne_ socket
       pure frame
     NoMore frame -> pure frame
 
 -- Throws ok errors
-receive_ :: Zmq_socket -> IO ()
-receive_ socket =
-  receivef socket >>= \case
-    More _ -> receive_ socket
+receiveOne_ :: Zmq_socket -> IO ()
+receiveOne_ socket =
+  receiveFrame socket >>= \case
+    More _ -> receiveOne_ socket
     NoMore _ -> pure ()
 
 -- Throws ok errors
+-- TODO mask
 receiveMany :: Zmq_socket -> IO (List.NonEmpty ByteString)
 receiveMany socket =
-  receivef socket >>= \case
+  receiveFrame socket >>= \case
     More frame -> do
-      frames <- receives_ socket
+      frames <- receiveMany_ socket
       pure (frame :| frames)
     NoMore frame -> pure (frame :| [])
 
 -- Throws ok errors
-receives_ :: Zmq_socket -> IO [ByteString]
-receives_ socket =
-  receivef socket >>= \case
+receiveMany_ :: Zmq_socket -> IO [ByteString]
+receiveMany_ socket =
+  receiveFrame socket >>= \case
     More frame -> do
-      frames <- receives_ socket
+      frames <- receiveMany_ socket
       pure (frame : frames)
     NoMore frame -> pure [frame]
 
@@ -377,8 +384,8 @@ data ReceiveF
   | NoMore ByteString
 
 -- Throws ok errors
-receivef :: Zmq_socket -> IO ReceiveF
-receivef socket =
+receiveFrame :: Zmq_socket -> IO ReceiveF
+receiveFrame socket =
   bracket zmq_msg_init zmq_msg_close \frame -> do
     let loop = do
           zmq_msg_recv_dontwait frame socket >>= \case
@@ -422,11 +429,11 @@ newtype Sockets
 data SomeSocket
   = forall socket. Socket socket => SomeSocket socket
 
-the :: CanReceive socket => socket -> Sockets
+the :: CanPoll socket => socket -> Sockets
 the socket =
   also socket (Sockets [])
 
-also :: CanReceive socket => socket -> Sockets -> Sockets
+also :: CanPoll socket => socket -> Sockets -> Sockets
 also socket =
   coerce (SomeSocket socket :)
 

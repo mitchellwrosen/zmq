@@ -22,7 +22,7 @@ import Numeric.Natural (Natural)
 import Zmq.Error (Error, catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadUnsafeSocket (..))
+import Zmq.Internal.Socket (CanPoll, CanReceive, Socket (withSocket), ThreadUnsafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A __replier__ socket.
@@ -33,9 +33,12 @@ newtype Replier
   deriving stock (Eq)
   deriving newtype (Socket)
   deriving anyclass
-    ( CanReceive,
+    ( CanPoll,
       Options.CanSetSendQueueSize
     )
+
+instance CanReceive Replier where
+  receive_ = receive
 
 defaultOptions :: Options Replier
 defaultOptions =
@@ -102,10 +105,12 @@ sends socket0 = \case
         Socket.sendManyWontBlock socket (frame :| frames)
 
 -- | Receive a __message__ on a __replier__ from any peer (fair-queued).
+--
+-- /Alias/: 'Zmq.receive'
 receive :: Replier -> IO (Either Error ByteString)
 receive socket =
   catchingOkErrors do
-    withSocket socket Socket.receive
+    withSocket socket Socket.receiveOne
 
 -- | Receive a __multiframe message__ on a __replier__ from any peer (fair-queued).
 receives :: Replier -> IO (Either Error [ByteString])

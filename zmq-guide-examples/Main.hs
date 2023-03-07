@@ -64,7 +64,7 @@ hwserver =
     unwrap (Zmq.bind responder "tcp://*:5555")
 
     forever do
-      _ <- unwrap (Zmq.Replier.receive responder)
+      _ <- unwrap (Zmq.receive responder)
       putStrLn "Received Hello"
       threadDelay 1_000_000 -- Do some work
       unwrap (Zmq.Replier.send responder "World")
@@ -80,7 +80,7 @@ hwclient =
     for_ [(0 :: Int) .. 9] \requestNbr -> do
       printf "Sending Hello %d...\n" requestNbr
       unwrap (Zmq.Requester.send requester "Hello")
-      _ <- unwrap (Zmq.Requester.receive requester)
+      _ <- unwrap (Zmq.receive requester)
       printf "Received World %d\n" requestNbr
 
 -- Report 0MQ version
@@ -130,7 +130,7 @@ wuclient =
     -- Process 100 updates
     temps <-
       replicateM 100 do
-        string <- unwrap (Zmq.Subscriber.receive subscriber)
+        string <- unwrap (Zmq.receive subscriber)
         let [_zipcode :: Int, temperature, _relhumidity] = map read (words (ByteString.Char8.unpack string))
         pure (realToFrac @Int @Double temperature)
     printf "Average temperature for zipcode '%s' was %dF\n" filter (floor (sum temps / 100) :: Int)
@@ -183,7 +183,7 @@ taskwork =
 
     -- Process tasks forever
     forever do
-      string <- unwrap (Zmq.Puller.receive receiver)
+      string <- unwrap (Zmq.receive receiver)
       printf "%s." (ByteString.Char8.unpack string) -- Show progress
       hFlush stdout
       threadDelay (read (ByteString.Char8.unpack string) * 1_000) -- Do the work
@@ -200,14 +200,14 @@ tasksink =
     unwrap (Zmq.bind receiver "tcp//*:5558")
 
     -- Wait for start of batch
-    _ <- unwrap (Zmq.Puller.receive receiver)
+    _ <- unwrap (Zmq.receive receiver)
 
     -- Start our clock now
     startTime <- getMonotonicTimeNSec
 
     -- Process 100 confirmations
     for_ [(0 :: Int) .. 99] \taskNbr -> do
-      _ <- unwrap (Zmq.Puller.receive receiver)
+      _ <- unwrap (Zmq.receive receiver)
       putChar (if mod taskNbr 10 == 0 then ':' else '.')
       hFlush stdout
     -- Calculate and report duration of batch
@@ -235,13 +235,13 @@ mspoller =
               & Zmq.also subscriber
       ready <- unwrap (Zmq.poll items)
       when (ready 0) do
-        Zmq.Puller.receive receiver >>= \case
+        Zmq.receive receiver >>= \case
           Left _ -> pure ()
           Right _ ->
             -- Process task
             pure ()
       when (ready 1) do
-        Zmq.Subscriber.receive subscriber >>= \case
+        Zmq.receive subscriber >>= \case
           Left _ -> pure ()
           Right _ ->
             -- Process weather update
@@ -259,7 +259,7 @@ rrclient =
 
     for_ [(0 :: Int) .. 9] \requestNbr -> do
       unwrap (Zmq.Requester.send requester "Hello")
-      string <- unwrap (Zmq.Requester.receive requester)
+      string <- unwrap (Zmq.receive requester)
       printf "Received reply %d [%s]\n" requestNbr (ByteString.Char8.unpack string)
 
 -- Hello World worker
@@ -274,7 +274,7 @@ rrworker =
 
     forever do
       -- Wait for next request from client
-      string <- unwrap (Zmq.Replier.receive responder)
+      string <- unwrap (Zmq.receive responder)
       printf "Received request: [%s]\n" (ByteString.Char8.unpack string)
 
       -- Do some 'work'
@@ -357,7 +357,7 @@ taskwork2 =
                   & Zmq.also controller
           ready <- unwrap (Zmq.poll items)
           when (ready 0) do
-            string <- unwrap (Zmq.Puller.receive receiver)
+            string <- unwrap (Zmq.receive receiver)
             printf "%s." (ByteString.Char8.unpack string) -- Show progress
             hFlush stdout
             threadDelay (read (ByteString.Char8.unpack string) * 1_000) -- Do the work
@@ -381,14 +381,14 @@ tasksink2 =
     unwrap (Zmq.bind controller "tcp://*:5559")
 
     -- Wait for start of batch
-    _ <- unwrap (Zmq.Puller.receive receiver)
+    _ <- unwrap (Zmq.receive receiver)
 
     -- Start our clock now
     startTime <- getMonotonicTimeNSec
 
     -- Process 100 confirmations
     for_ [(0 :: Int) .. 99] \taskNbr -> do
-      _ <- unwrap (Zmq.Puller.receive receiver)
+      _ <- unwrap (Zmq.receive receiver)
       putChar (if mod taskNbr 10 == 0 then ':' else '.')
       hFlush stdout
     stopTime <- getMonotonicTimeNSec
@@ -418,7 +418,7 @@ mtserver =
           unwrap (Zmq.connect receiver "inproc://workers")
 
           forever do
-            string <- unwrap (Zmq.Replier.receive receiver)
+            string <- unwrap (Zmq.receive receiver)
             printf "Received request: [%s]\n" (ByteString.Char8.unpack string)
             -- Do some 'work'
             threadDelay 1_000_000
@@ -456,7 +456,7 @@ syncpub = do
     putStrLn "Waiting for subscribers"
     replicateM_ subscribersExpected do
       -- wait for synchronization request
-      _ <- unwrap (Zmq.Replier.receive syncservice)
+      _ <- unwrap (Zmq.receive syncservice)
       -- send synchronization reply
       unwrap (Zmq.Replier.send syncservice "")
     -- Now broadcast exactly 1M updates followed by END
@@ -486,11 +486,11 @@ syncsub = do
     unwrap (Zmq.Requester.send syncclient "")
 
     -- wait for synchronization reply
-    _ <- unwrap (Zmq.Requester.receive syncclient)
+    _ <- unwrap (Zmq.receive syncclient)
 
     -- Third, get our updates and report how many we got
     let loop updateNbr = do
-          string <- unwrap (Zmq.Subscriber.receive subscriber)
+          string <- unwrap (Zmq.receive subscriber)
           if string /= "END"
             then loop (updateNbr + 1)
             else pure updateNbr
@@ -568,7 +568,7 @@ rtreq = do
             unwrap (Zmq.Requester.send worker "Hi Boss")
 
             -- Get workload from broker, until finished
-            workload <- unwrap (Zmq.Requester.receive worker)
+            workload <- unwrap (Zmq.receive worker)
             let finished = workload == "Fired!"
             if finished
               then printf "Completed: %d tasks\n" total
@@ -674,7 +674,7 @@ lbbroker =
 
       -- Send request, get reply
       unwrap (Zmq.Requester.send client "HELLO")
-      reply <- unwrap (Zmq.Requester.receive client)
+      reply <- unwrap (Zmq.receive client)
       printf "Client: %s\n" (ByteString.Char8.unpack reply)
 
     -- This is the worker task, using a REQ socket to do load-balancing.

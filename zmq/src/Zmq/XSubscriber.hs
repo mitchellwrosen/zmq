@@ -23,7 +23,7 @@ import Libzmq
 import Zmq.Error (Error, catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadSafeSocket)
+import Zmq.Internal.Socket (CanPoll, CanReceive, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 import Zmq.Subscription (pattern Subscribe, pattern Unsubscribe)
 
@@ -33,8 +33,11 @@ import Zmq.Subscription (pattern Subscribe, pattern Unsubscribe)
 newtype XSubscriber
   = XSubscriber (MVar Zmq_socket)
   deriving stock (Eq)
-  deriving anyclass (CanReceive)
+  deriving anyclass (CanPoll)
   deriving (Socket) via (ThreadSafeSocket)
+
+instance CanReceive XSubscriber where
+  receive_ = receive
 
 defaultOptions :: Options XSubscriber
 defaultOptions =
@@ -111,10 +114,12 @@ sends socket0 = \case
         Socket.sendManyWontBlock socket (frame :| frames)
 
 -- | Receive a __message__ on an __xsubscriber__ from any peer (fair-queued).
+--
+-- /Alias/: 'Zmq.receive'
 receive :: XSubscriber -> IO (Either Error ByteString)
 receive socket =
   catchingOkErrors do
-    withSocket socket Socket.receive
+    withSocket socket Socket.receiveOne
 
 -- | Receive a __multiframe message__ on an __xsubscriber__ from any peer (fair-queued).
 receives :: XSubscriber -> IO (Either Error [ByteString])

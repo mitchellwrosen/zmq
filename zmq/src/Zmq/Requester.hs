@@ -22,7 +22,7 @@ import Numeric.Natural (Natural)
 import Zmq.Error (Error (..), catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadUnsafeSocket (..))
+import Zmq.Internal.Socket (CanPoll, CanReceive, Socket (withSocket), ThreadUnsafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A __requester__ socket.
@@ -33,9 +33,12 @@ newtype Requester
   deriving stock (Eq)
   deriving newtype (Socket)
   deriving anyclass
-    ( CanReceive,
+    ( CanPoll,
       Options.CanSetSendQueueSize
     )
+
+instance CanReceive Requester where
+  receive_ = receive
 
 defaultOptions :: Options Requester
 defaultOptions =
@@ -116,10 +119,12 @@ sends socket0 = \case
         loop
 
 -- | Receive a __message__ on a __requester__ from the last peer sent to.
+--
+-- /Alias/: 'Zmq.receive'
 receive :: Requester -> IO (Either Error ByteString)
 receive socket =
   catchingOkErrors do
-    withSocket socket Socket.receive
+    withSocket socket Socket.receiveOne
 
 -- | Receive a __multiframe message__ on a __requester__ from the last peer sent to.
 receives :: Requester -> IO (Either Error [ByteString])

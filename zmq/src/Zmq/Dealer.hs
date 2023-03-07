@@ -23,7 +23,7 @@ import Numeric.Natural (Natural)
 import Zmq.Error (Error (..), catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadSafeSocket)
+import Zmq.Internal.Socket (CanPoll, CanReceive, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __dealer__ socket.
@@ -33,10 +33,13 @@ newtype Dealer
   = Dealer (MVar Zmq_socket)
   deriving stock (Eq)
   deriving anyclass
-    ( CanReceive,
+    ( CanPoll,
       Options.CanSetSendQueueSize
     )
   deriving (Socket) via (ThreadSafeSocket)
+
+instance CanReceive Dealer where
+  receive_ = receive
 
 defaultOptions :: Options Dealer
 defaultOptions =
@@ -116,10 +119,12 @@ sends socket0 = \case
         loop
 
 -- | Receive a __message__ on an __dealer__ from any peer (fair-queued).
+--
+-- /Alias/: 'Zmq.receive'
 receive :: Dealer -> IO (Either Error ByteString)
 receive socket =
   catchingOkErrors do
-    withSocket socket Socket.receive
+    withSocket socket Socket.receiveOne
 
 -- | Receive a __multiframe message__ on an __dealer__ from any peer (fair-queued).
 receives :: Dealer -> IO (Either Error [ByteString])

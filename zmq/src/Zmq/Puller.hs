@@ -21,7 +21,7 @@ import Numeric.Natural (Natural)
 import Zmq.Error
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadSafeSocket)
+import Zmq.Internal.Socket (CanPoll, CanReceive, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __puller__ socket.
@@ -31,10 +31,13 @@ newtype Puller
   = Puller (MVar Zmq_socket)
   deriving stock (Eq)
   deriving anyclass
-    ( CanReceive,
+    ( CanPoll,
       Options.CanSetSendQueueSize
     )
   deriving (Socket) via (ThreadSafeSocket)
+
+instance CanReceive Puller where
+  receive_ = receive
 
 defaultOptions :: Options Puller
 defaultOptions =
@@ -82,10 +85,12 @@ disconnect =
   Socket.disconnect
 
 -- | Receive a __message__ on a __puller__ from one peer (fair-queued).
+--
+-- /Alias/: 'Zmq.receive'
 receive :: Puller -> IO (Either Error ByteString)
 receive socket =
   catchingOkErrors do
-    withSocket socket Socket.receive
+    withSocket socket Socket.receiveOne
 
 -- | Receive a __multiframe message__ on a __puller__ from one peer (fair-queued).
 receives :: Puller -> IO (Either Error [ByteString])

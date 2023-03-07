@@ -24,7 +24,7 @@ import Numeric.Natural (Natural)
 import Zmq.Error (Error, catchingOkErrors, enrichError, throwOkError)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadSafeSocket)
+import Zmq.Internal.Socket (CanPoll, CanReceive, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __xpublisher__ socket.
@@ -34,11 +34,14 @@ newtype XPublisher
   = XPublisher (MVar Zmq_socket)
   deriving stock (Eq)
   deriving anyclass
-    ( CanReceive,
+    ( CanPoll,
       Options.CanSetLossy,
       Options.CanSetSendQueueSize
     )
   deriving (Socket) via (ThreadSafeSocket)
+
+instance CanReceive XPublisher where
+  receive_ = receive
 
 defaultOptions :: Options XPublisher
 defaultOptions =
@@ -127,10 +130,12 @@ sends socket0 = \case
           False -> throwOkError (enrichError "zmq_send" EAGAIN)
 
 -- | Receive a __message__ on an __xpublisher__ from any peer (fair-queued).
+--
+-- /Alias/: 'Zmq.receive'
 receive :: XPublisher -> IO (Either Error ByteString)
 receive socket =
   catchingOkErrors do
-    withSocket socket Socket.receive
+    withSocket socket Socket.receiveOne
 
 -- | Receive a __multiframe message__ on an __xpublisher__ from any peer (fair-queued).
 receives :: XPublisher -> IO (Either Error [ByteString])

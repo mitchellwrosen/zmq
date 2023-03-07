@@ -23,7 +23,7 @@ import Numeric.Natural (Natural)
 import Zmq.Error
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadSafeSocket)
+import Zmq.Internal.Socket (CanPoll, CanReceive, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __subscriber__ socket.
@@ -34,9 +34,12 @@ newtype Subscriber
   deriving stock (Eq)
   deriving (Socket) via (ThreadSafeSocket)
   deriving anyclass
-    ( CanReceive,
+    ( CanPoll,
       Options.CanSetSendQueueSize
     )
+
+instance CanReceive Subscriber where
+  receive_ = receive
 
 defaultOptions :: Options Subscriber
 defaultOptions =
@@ -101,12 +104,16 @@ unsubscribe socket0 prefix =
       Options.setSocketOption socket Libzmq.ZMQ_UNSUBSCRIBE prefix
 
 -- | Receive a __message__ on a __subscriber__ from any peer (fair-queued).
+--
+-- /Alias/: 'Zmq.receive'
 receive :: Subscriber -> IO (Either Error ByteString)
 receive socket =
   catchingOkErrors do
-    withSocket socket Socket.receive
+    withSocket socket Socket.receiveOne
 
 -- | Receive a __multiframe message__ on a __subscriber__ from any peer (fair-queued).
+--
+-- /Alias/: 'Zmq.receives'
 receives :: Subscriber -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do
