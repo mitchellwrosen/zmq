@@ -242,12 +242,12 @@ send socket frame =
 -- Send two frames
 -- Throws ok errors
 sendTwo :: Zmq_socket -> ByteString -> ByteString -> IO ()
-sendTwo socket frame1 frame2 =
-  if ByteString.null frame2
-    then send socket frame1
-    else do
-      sendOne socket frame1 True
-      sendWontBlock socket frame2
+sendTwo socket frame1 frame2
+  | ByteString.null frame2 = send socket frame1
+  | otherwise =
+      mask_ do
+        sendOne socket frame1 True
+        sendWontBlock socket frame2
 
 -- Send one frame, returns whether it was sent
 -- Throws ok errors
@@ -264,32 +264,34 @@ sendWontBlock socket frame =
 -- Send two frames, returns whether they were sent
 -- Throws ok errors
 sendTwoDontWait :: Zmq_socket -> ByteString -> ByteString -> IO Bool
-sendTwoDontWait socket frame1 frame2 =
-  if ByteString.null frame2
-    then sendDontWait socket frame1
-    else
-      sendOneDontWait socket frame1 True >>= \case
-        False -> pure False
-        True -> sendDontWait socket frame2
+sendTwoDontWait socket frame1 frame2
+  | ByteString.null frame2 = sendDontWait socket frame1
+  | otherwise =
+      mask_ do
+        sendOneDontWait socket frame1 True >>= \case
+          False -> pure False
+          True -> sendDontWait socket frame2
 
 -- Throws ok errors
 sendMany :: Zmq_socket -> List.NonEmpty ByteString -> IO ()
 sendMany socket = \case
   frame :| [] -> send socket frame
-  frame :| frames -> do
-    sendOne socket frame True
-    sendManyWontBlock socket frames
+  frame :| frames ->
+    mask_ do
+      sendOne socket frame True
+      sendManyWontBlock socket frames
 
 -- Throws ok errors
 sendManyDontWait :: Zmq_socket -> List.NonEmpty ByteString -> IO Bool
 sendManyDontWait socket = \case
   frame :| [] -> sendDontWait socket frame
   frame :| frames ->
-    sendOneDontWait socket frame True >>= \case
-      False -> pure False
-      True -> do
-        sendManyWontBlock socket frames
-        pure True
+    mask_ do
+      sendOneDontWait socket frame True >>= \case
+        False -> pure False
+        True -> do
+          sendManyWontBlock socket frames
+          pure True
 
 -- Throws ok errors
 sendManyWontBlock :: Zmq_socket -> [ByteString] -> IO ()
