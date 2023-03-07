@@ -8,11 +8,13 @@ module Zmq.Puller
     connect,
     disconnect,
     receive,
+    receives,
   )
 where
 
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
+import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
 import Numeric.Natural (Natural)
@@ -84,3 +86,10 @@ receive :: Puller -> IO (Either Error ByteString)
 receive socket =
   catchingOkErrors do
     withSocket socket Socket.receive
+
+-- | Receive a __multiframe message__ on a __puller__ from one peer (fair-queued).
+receives :: Puller -> IO (Either Error [ByteString])
+receives socket = do
+  catchingOkErrors do
+    frame :| frames <- withSocket socket Socket.receiveMany
+    pure (frame : frames)

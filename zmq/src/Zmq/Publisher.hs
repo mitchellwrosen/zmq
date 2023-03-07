@@ -9,11 +9,13 @@ module Zmq.Publisher
     connect,
     disconnect,
     send,
+    sends,
   )
 where
 
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
+import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
 import Numeric.Natural (Natural)
@@ -85,7 +87,7 @@ disconnect :: Publisher -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
--- | Send a __topic message__ on a __publisher__ to all peers.
+-- | Send a __message__ on a __publisher__ to all peers.
 --
 -- This operation never blocks:
 --
@@ -94,10 +96,29 @@ disconnect =
 --     * If the 'lossy' option is not set, and any peer has a full message queue, then the message will not be sent to
 --       any peer, and this function will return @EAGAIN@. It is not possible to block until no peer has a full message
 --       queue.
-send :: Publisher -> ByteString -> ByteString -> IO (Either Error ())
-send socket0 topic message =
+send :: Publisher -> ByteString -> IO (Either Error ())
+send socket0 frame =
   catchingOkErrors do
     withSocket socket0 \socket ->
-      Socket.sendTwoDontWait socket topic message >>= \case
+      Socket.sendDontWait socket frame >>= \case
         True -> pure ()
         False -> throwOkError (enrichError "zmq_send" EAGAIN)
+
+-- | Send a __multiframe message__ on a __publisher__ to all peers.
+--
+-- This operation never blocks:
+--
+--     * If the 'lossy' option is set, then all peers with full message queues will not receive the message.
+--
+--     * If the 'lossy' option is not set, and any peer has a full message queue, then the message will not be sent to
+--       any peer, and this function will return @EAGAIN@. It is not possible to block until no peer has a full message
+--       queue.
+sends :: Publisher -> [ByteString] -> IO (Either Error ())
+sends socket0 = \case
+  [] -> pure (Right ())
+  frame : frames ->
+    catchingOkErrors do
+      withSocket socket0 \socket ->
+        Socket.sendManyDontWait socket (frame :| frames) >>= \case
+          True -> pure ()
+          False -> throwOkError (enrichError "zmq_send" EAGAIN)

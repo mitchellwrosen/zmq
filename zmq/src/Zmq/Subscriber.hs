@@ -10,11 +10,13 @@ module Zmq.Subscriber
     subscribe,
     unsubscribe,
     receive,
+    receives,
   )
 where
 
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
+import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
 import Numeric.Natural (Natural)
@@ -98,8 +100,15 @@ unsubscribe socket0 prefix =
     withSocket socket0 \socket ->
       Options.setSocketOption socket Libzmq.ZMQ_UNSUBSCRIBE prefix
 
--- | Receive a __topic message__ on a __subscriber__ from any peer (fair-queued).
-receive :: Subscriber -> IO (Either Error (ByteString, ByteString))
+-- | Receive a __message__ on a __subscriber__ from any peer (fair-queued).
+receive :: Subscriber -> IO (Either Error ByteString)
 receive socket =
   catchingOkErrors do
-    withSocket socket Socket.receiveTwo
+    withSocket socket Socket.receive
+
+-- | Receive a __multiframe message__ on a __subscriber__ from any peer (fair-queued).
+receives :: Subscriber -> IO (Either Error [ByteString])
+receives socket =
+  catchingOkErrors do
+    frame :| frames <- withSocket socket Socket.receiveMany
+    pure (frame : frames)

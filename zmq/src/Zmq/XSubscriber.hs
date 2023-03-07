@@ -9,12 +9,15 @@ module Zmq.XSubscriber
     subscribe,
     unsubscribe,
     send,
+    sends,
     receive,
+    receives,
   )
 where
 
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
+import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
 import Zmq.Error (Error, catchingOkErrors)
@@ -89,17 +92,33 @@ unsubscribe xsubscriber prefix =
 
 -- | Send a __message__ on an __xsubscriber__ to all peers.
 --
--- The message may not begin with the byte @0x00@ or @0x01@.
---
 -- This operation never blocks. All peers with full messages queues will not receive the message.
 send :: XSubscriber -> ByteString -> IO (Either Error ())
-send socket0 message =
+send socket0 frame =
   catchingOkErrors do
     withSocket socket0 \socket ->
-      Socket.sendWontBlock socket message
+      Socket.sendWontBlock socket frame
 
--- | Receive a __topic message__ on an __xsubscriber__ from any peer (fair-queued).
-receive :: XSubscriber -> IO (Either Error (ByteString, ByteString))
+-- | Send a __multiframe message__ on an __xsubscriber__ to all peers.
+--
+-- This operation never blocks. All peers with full messages queues will not receive the message.
+sends :: XSubscriber -> [ByteString] -> IO (Either Error ())
+sends socket0 = \case
+  [] -> pure (Right ())
+  frame : frames ->
+    catchingOkErrors do
+      withSocket socket0 \socket ->
+        Socket.sendManyWontBlock socket (frame :| frames)
+
+-- | Receive a __message__ on an __xsubscriber__ from any peer (fair-queued).
+receive :: XSubscriber -> IO (Either Error ByteString)
 receive socket =
   catchingOkErrors do
-    withSocket socket Socket.receiveTwo
+    withSocket socket Socket.receive
+
+-- | Receive a __multiframe message__ on an __xsubscriber__ from any peer (fair-queued).
+receives :: XSubscriber -> IO (Either Error [ByteString])
+receives socket =
+  catchingOkErrors do
+    frame :| frames <- withSocket socket Socket.receiveMany
+    pure (frame : frames)

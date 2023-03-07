@@ -8,11 +8,14 @@ module Zmq.Replier
     connect,
     disconnect,
     send,
+    sends,
     receive,
+    receives,
   )
 where
 
 import Data.ByteString (ByteString)
+import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
 import Numeric.Natural (Natural)
@@ -82,13 +85,31 @@ disconnect =
 --
 -- If the last peer received from no longer exists, the message is discarded.
 send :: Replier -> ByteString -> IO (Either Error ())
-send socket0 message =
+send socket0 frame =
   catchingOkErrors do
     withSocket socket0 \socket ->
-      Socket.sendWontBlock socket message
+      Socket.sendWontBlock socket frame
+
+-- | Send a __multiframe message__ on a __replier__ to the last peer received from.
+--
+-- If the last peer received from no longer exists, the message is discarded.
+sends :: Replier -> [ByteString] -> IO (Either Error ())
+sends socket0 = \case
+  [] -> pure (Right ())
+  frame : frames ->
+    catchingOkErrors do
+      withSocket socket0 \socket ->
+        Socket.sendManyWontBlock socket (frame :| frames)
 
 -- | Receive a __message__ on a __replier__ from any peer (fair-queued).
 receive :: Replier -> IO (Either Error ByteString)
 receive socket =
   catchingOkErrors do
     withSocket socket Socket.receive
+
+-- | Receive a __multiframe message__ on a __replier__ from any peer (fair-queued).
+receives :: Replier -> IO (Either Error [ByteString])
+receives socket =
+  catchingOkErrors do
+    frame :| frames <- withSocket socket Socket.receiveMany
+    pure (frame : frames)

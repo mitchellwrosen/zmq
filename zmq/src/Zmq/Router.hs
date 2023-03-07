@@ -7,18 +7,14 @@ module Zmq.Router
     unbind,
     connect,
     disconnect,
-    send,
     sends,
-    receive,
     receives,
   )
 where
 
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
-import Data.ByteString qualified as ByteString
-import Data.List.NonEmpty as List (NonEmpty)
-import Data.List.NonEmpty as List.NonEmpty
+import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
 import Numeric.Natural (Natural)
@@ -86,58 +82,28 @@ disconnect :: Router -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
--- | Send a __routed message__ on a __router__ to a peer.
+-- | Send a __multiframe message__ on a __router__ to a peer.
 --
 -- If the peer no longer exists, returns @EHOSTUNREACH@.
-send :: Router -> ByteString -> ByteString -> IO (Either Error ())
-send socket0 identity message =
-  catchingOkErrors do
-    withSocket socket0 \socket ->
-      -- First try a non-blocking send, but if that doesn't work, try a blocking send. We'll get EAGAIN if the peer we
-      -- are we are trying to send to has reached its high-water mark. In this case, waiting for the socket to become
-      -- writable is not useful for a router - we want to block until we can send to *this* peer. So we do that with
-      -- a safe FFI call to zmq_send without ZMQ_DONTWAIT.
-      Socket.sendTwoDontWait socket identity message >>= \case
-        True -> pure ()
-        False -> Socket.sendTwo socket identity message
+sends :: Router -> [ByteString] -> IO (Either Error ())
+sends socket0 = \case
+  [] -> pure (Right ())
+  frame : frames -> do
+    let message = frame :| frames
+    catchingOkErrors do
+      withSocket socket0 \socket ->
+        -- First try a non-blocking send, but if that doesn't work, try a blocking send. We'll get EAGAIN if the peer we
+        -- are we are trying to send to has reached its high-water mark. In this case, waiting for the socket to become
+        -- writable is not useful for a router - we want to block until we can send to *this* peer. So we do that with
+        -- a safe FFI call to zmq_send without ZMQ_DONTWAIT.
+        Socket.sendManyDontWait socket message >>= \case
+          True -> pure ()
+          False -> Socket.sendMany socket message
 
--- | Send a __routed multiframe message__ on a __router__ to a peer.
---
--- If the peer no longer exists, returns @EHOSTUNREACH@.
-sends :: Router -> ByteString -> List.NonEmpty ByteString -> IO (Either Error ())
-sends socket0 identity message =
-  catchingOkErrors do
-    withSocket socket0 \socket ->
-      -- See above comment
-      Socket.sendManyDontWait socket message1 >>= \case
-        True -> pure ()
-        False -> Socket.sendMany socket message1
-  where
-    message1 =
-      List.NonEmpty.cons identity message
-
--- | Receive a __routed message__ on an __router__ from any peer (fair-queued).
-receive :: Router -> IO (Either Error (ByteString, ByteString))
-receive socket0 =
-  catchingOkErrors do
-    withSocket socket0 \socket -> do
-      identity :| message0 <- Socket.receiveMany socket
-      pure
-        ( identity,
-          case message0 of
-            [] -> ByteString.empty
-            message : _ -> message
-        )
-
--- | Receive a __routed multiframe message__ on an __router__ from any peer (fair-queued).
-receives :: Router -> IO (Either Error (ByteString, List.NonEmpty ByteString))
+-- | Receive a __multiframe message__ on an __router__ from any peer (fair-queued).
+receives :: Router -> IO (Either Error [ByteString])
 receives socket0 =
   catchingOkErrors do
     withSocket socket0 \socket -> do
-      identity :| message0 <- Socket.receiveMany socket
-      pure
-        ( identity,
-          case message0 of
-            [] -> ByteString.empty :| []
-            frame : frames -> frame :| frames
-        )
+      frame :| frames <- Socket.receiveMany socket
+      pure (frame : frames)

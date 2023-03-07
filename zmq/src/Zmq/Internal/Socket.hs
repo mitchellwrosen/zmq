@@ -13,14 +13,12 @@ module Zmq.Internal.Socket
     connect,
     disconnect,
     send,
-    sendTwo,
     sendDontWait,
     sendWontBlock,
-    sendTwoDontWait,
     sendMany,
     sendManyDontWait,
+    sendManyWontBlock,
     receive,
-    receiveTwo,
     receiveMany,
     blockUntilCanSend,
     Sockets,
@@ -36,7 +34,6 @@ import Control.Exception
 import Control.Monad (when)
 import Data.Bits ((.&.))
 import Data.ByteString (ByteString)
-import Data.ByteString qualified as ByteString
 import Data.Coerce (coerce)
 import Data.Functor ((<&>))
 import Data.IORef
@@ -239,16 +236,6 @@ send :: Zmq_socket -> ByteString -> IO ()
 send socket frame =
   sendOne socket frame False
 
--- Send two frames
--- Throws ok errors
-sendTwo :: Zmq_socket -> ByteString -> ByteString -> IO ()
-sendTwo socket frame1 frame2
-  | ByteString.null frame2 = send socket frame1
-  | otherwise =
-      mask_ do
-        sendOne socket frame1 True
-        sendWontBlock socket frame2
-
 -- Send one frame, returns whether it was sent
 -- Throws ok errors
 sendDontWait :: Zmq_socket -> ByteString -> IO Bool
@@ -261,17 +248,6 @@ sendWontBlock :: Zmq_socket -> ByteString -> IO ()
 sendWontBlock socket frame =
   sendOneWontBlock socket frame False
 
--- Send two frames, returns whether they were sent
--- Throws ok errors
-sendTwoDontWait :: Zmq_socket -> ByteString -> ByteString -> IO Bool
-sendTwoDontWait socket frame1 frame2
-  | ByteString.null frame2 = sendDontWait socket frame1
-  | otherwise =
-      mask_ do
-        sendOneDontWait socket frame1 True >>= \case
-          False -> pure False
-          True -> sendDontWait socket frame2
-
 -- Throws ok errors
 sendMany :: Zmq_socket -> List.NonEmpty ByteString -> IO ()
 sendMany socket = \case
@@ -279,7 +255,7 @@ sendMany socket = \case
   frame :| frames ->
     mask_ do
       sendOne socket frame True
-      sendManyWontBlock socket frames
+      sendManyWontBlock_ socket frames
 
 -- Throws ok errors
 sendManyDontWait :: Zmq_socket -> List.NonEmpty ByteString -> IO Bool
@@ -290,12 +266,21 @@ sendManyDontWait socket = \case
       sendOneDontWait socket frame True >>= \case
         False -> pure False
         True -> do
-          sendManyWontBlock socket frames
+          sendManyWontBlock_ socket frames
           pure True
 
 -- Throws ok errors
-sendManyWontBlock :: Zmq_socket -> [ByteString] -> IO ()
-sendManyWontBlock socket =
+sendManyWontBlock :: Zmq_socket -> List.NonEmpty ByteString -> IO ()
+sendManyWontBlock socket = \case
+  frame :| [] -> sendWontBlock socket frame
+  frame :| frames ->
+    mask_ do
+      sendWontBlock socket frame
+      sendManyWontBlock_ socket frames
+
+-- Throws ok errors
+sendManyWontBlock_ :: Zmq_socket -> [ByteString] -> IO ()
+sendManyWontBlock_ socket =
   let loop = \case
         [frame] -> sendWontBlock socket frame
         frame : frames -> do
@@ -373,15 +358,6 @@ receive socket =
       receive_ socket
       pure frame
     NoMore frame -> pure frame
-
--- Throws ok errors
-receiveTwo :: Zmq_socket -> IO (ByteString, ByteString)
-receiveTwo socket =
-  receivef socket >>= \case
-    More frame0 -> do
-      frame1 <- receive socket
-      pure (frame0, frame1)
-    NoMore frame -> pure (frame, ByteString.empty)
 
 -- Throws ok errors
 receive_ :: Zmq_socket -> IO ()

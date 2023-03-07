@@ -8,11 +8,13 @@ module Zmq.Pusher
     connect,
     disconnect,
     send,
+    sends,
   )
 where
 
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
+import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
 import Numeric.Natural (Natural)
@@ -82,13 +84,30 @@ disconnect =
 --
 -- This operation blocks until a peer can receive the message.
 send :: Pusher -> ByteString -> IO (Either Error ())
-send socket0 message = do
+send socket0 frame = do
   catchingOkErrors do
     let loop =
           withSocket socket0 \socket ->
-            Socket.sendDontWait socket message >>= \case
+            Socket.sendDontWait socket frame >>= \case
               False -> do
                 Socket.blockUntilCanSend socket
                 loop
               True -> pure ()
     loop
+
+-- | Send a __multiframe message__ on a __pusher__ to one peer (round-robin).
+--
+-- This operation blocks until a peer can receive the message.
+sends :: Pusher -> [ByteString] -> IO (Either Error ())
+sends socket0 = \case
+  [] -> pure (Right ())
+  frame : frames ->
+    catchingOkErrors do
+      let loop =
+            withSocket socket0 \socket ->
+              Socket.sendManyDontWait socket (frame :| frames) >>= \case
+                False -> do
+                  Socket.blockUntilCanSend socket
+                  loop
+                True -> pure ()
+      loop

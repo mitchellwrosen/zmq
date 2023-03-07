@@ -16,7 +16,7 @@ where
 
 import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
-import Data.List.NonEmpty qualified as List (NonEmpty)
+import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
 import Numeric.Natural (Natural)
@@ -87,11 +87,11 @@ disconnect =
 --
 -- This operation blocks until a peer can receive the message.
 send :: Dealer -> ByteString -> IO (Either Error ())
-send socket0 message =
+send socket0 frame =
   catchingOkErrors do
     let loop =
           withSocket socket0 \socket ->
-            Socket.sendDontWait socket message >>= \case
+            Socket.sendDontWait socket frame >>= \case
               True -> pure ()
               False -> do
                 Socket.blockUntilCanSend socket
@@ -101,17 +101,19 @@ send socket0 message =
 -- | Send a __multiframe message__ on a __dealer__ to one peer (round-robin).
 --
 -- This operation blocks until a peer can receive the message.
-sends :: Dealer -> List.NonEmpty ByteString -> IO (Either Error ())
-sends socket0 message =
-  catchingOkErrors do
-    let loop =
-          withSocket socket0 \socket ->
-            Socket.sendManyDontWait socket message >>= \case
-              True -> pure ()
-              False -> do
-                Socket.blockUntilCanSend socket
-                loop
-    loop
+sends :: Dealer -> [ByteString] -> IO (Either Error ())
+sends socket0 = \case
+  [] -> pure (Right ())
+  frame : frames ->
+    catchingOkErrors do
+      let loop =
+            withSocket socket0 \socket ->
+              Socket.sendManyDontWait socket (frame :| frames) >>= \case
+                True -> pure ()
+                False -> do
+                  Socket.blockUntilCanSend socket
+                  loop
+      loop
 
 -- | Receive a __message__ on an __dealer__ from any peer (fair-queued).
 receive :: Dealer -> IO (Either Error ByteString)
@@ -120,7 +122,8 @@ receive socket =
     withSocket socket Socket.receive
 
 -- | Receive a __multiframe message__ on an __dealer__ from any peer (fair-queued).
-receives :: Dealer -> IO (Either Error (List.NonEmpty ByteString))
+receives :: Dealer -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do
-    withSocket socket Socket.receiveMany
+    frame :| frames <- withSocket socket Socket.receiveMany
+    pure (frame : frames)

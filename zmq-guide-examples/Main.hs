@@ -7,8 +7,6 @@ import Data.ByteString.Char8 qualified as ByteString.Char8
 import Data.Foldable (for_)
 import Data.Function ((&))
 import Data.Functor ((<&>))
-import Data.List.NonEmpty (pattern (:|))
-import Data.List.NonEmpty qualified as List.NonEmpty
 import GHC.Clock (getMonotonicTimeNSec)
 import GHC.Conc (atomically)
 import Ki qualified
@@ -108,7 +106,7 @@ wuserver =
 
       -- Send message to all subscribers
       let update = ByteString.Char8.pack (printf "%05d %d %d" zipcode temperature relhumidity)
-      unwrap (Zmq.Publisher.send publisher update "")
+      unwrap (Zmq.Publisher.send publisher update)
 
 -- Weather update client
 -- Connects SUB socket to tcp://localhost:5556
@@ -131,7 +129,7 @@ wuclient =
     -- Process 100 updates
     temps <-
       replicateM 100 do
-        (string, _) <- unwrap (Zmq.Subscriber.receive subscriber)
+        string <- unwrap (Zmq.Subscriber.receive subscriber)
         let [_zipcode :: Int, temperature, _relhumidity] = map read (words (ByteString.Char8.unpack string))
         pure (realToFrac @Int @Double temperature)
     printf "Average temperature for zipcode '%s' was %dF\n" filter (floor (sum temps / 100) :: Int)
@@ -302,11 +300,11 @@ rrbroker =
     forever do
       ready <- unwrap (Zmq.poll items)
       when (ready 0) do
-        (identity, message) <- unwrap (Zmq.Router.receive frontend)
-        unwrap (Zmq.Dealer.sends backend (identity :| [message]))
+        message <- unwrap (Zmq.Router.receives frontend)
+        unwrap (Zmq.Dealer.sends backend message)
       when (ready 1) do
-        identity :| message : _ <- unwrap (Zmq.Dealer.receives backend)
-        unwrap (Zmq.Router.send frontend identity message)
+        message <- unwrap (Zmq.Dealer.receives backend)
+        unwrap (Zmq.Router.sends frontend message)
 
 -- Weather proxy device
 wuproxy :: IO ()
@@ -327,11 +325,11 @@ wuproxy =
     forever do
       ready <- unwrap (Zmq.poll items)
       when (ready 0) do
-        (topic, message) <- unwrap (Zmq.XSubscriber.receive frontend)
-        unwrap (Zmq.XPublisher.send backend topic message)
+        message <- unwrap (Zmq.XSubscriber.receives frontend)
+        unwrap (Zmq.XPublisher.sends backend message)
       when (ready 1) do
-        message <- unwrap (Zmq.XPublisher.receive backend)
-        unwrap (Zmq.XSubscriber.send frontend message)
+        message <- unwrap (Zmq.XPublisher.receives backend)
+        unwrap (Zmq.XSubscriber.sends frontend message)
 
 -- Task worker - design 2
 -- Adds pub-sub flow to receive and respond to kill signal
@@ -396,7 +394,7 @@ tasksink2 =
     printf "Total elapsed time: %d msec\n" ((stopTime - startTime) `div` 1_000_000)
 
     -- Send kill signal to workers
-    unwrap (Zmq.Publisher.send controller "KILL" "")
+    unwrap (Zmq.Publisher.send controller "KILL")
 
 -- Multithreaded Hello World server
 mtserver :: IO ()
@@ -432,11 +430,11 @@ mtserver =
       forever do
         ready <- unwrap (Zmq.poll items)
         when (ready 0) do
-          (identity, message) <- unwrap (Zmq.Router.receives clients)
-          unwrap (Zmq.Dealer.sends workers (List.NonEmpty.cons identity message))
+          message <- unwrap (Zmq.Router.receives clients)
+          unwrap (Zmq.Dealer.sends workers message)
         when (ready 1) do
-          identity :| frame : frames <- unwrap (Zmq.Dealer.receives workers)
-          unwrap (Zmq.Router.sends clients identity (frame :| frames))
+          message <- unwrap (Zmq.Dealer.receives workers)
+          unwrap (Zmq.Router.sends clients message)
 
 -- Synchronized publisher
 syncpub :: IO ()
@@ -463,9 +461,9 @@ syncpub = do
     -- Now broadcast exactly 1M updates followed by END
     putStrLn "Broadcasting messages"
     replicateM_ 1000000 do
-      unwrap (Zmq.Publisher.send publisher "Rhubarb" "")
+      unwrap (Zmq.Publisher.send publisher "Rhubarb")
 
-    unwrap (Zmq.Publisher.send publisher "END" "")
+    unwrap (Zmq.Publisher.send publisher "END")
 
 -- Synchronized subscriber
 syncsub :: IO ()
@@ -491,7 +489,7 @@ syncsub = do
 
     -- Third, get our updates and report how many we got
     let loop updateNbr = do
-          (string, _) <- unwrap (Zmq.Subscriber.receive subscriber)
+          string <- unwrap (Zmq.Subscriber.receive subscriber)
           if string /= "END"
             then loop (updateNbr + 1)
             else pure updateNbr
@@ -508,8 +506,8 @@ psenvpub =
 
     forever do
       -- Write two messages, each with an envelope and content
-      unwrap (Zmq.Publisher.send publisher "A" "We don't want to see this")
-      unwrap (Zmq.Publisher.send publisher "B" "We would like to see this")
+      unwrap (Zmq.Publisher.sends publisher ["A", "We don't want to see this"])
+      unwrap (Zmq.Publisher.sends publisher ["B", "We would like to see this"])
       threadDelay 1_000_000
 
 -- Pubsub envelope subscriber
@@ -523,8 +521,9 @@ psenvsub =
 
     forever do
       -- Read envelope with address and message contents
-      (address, contents) <- unwrap (Zmq.Subscriber.receive subscriber)
-      printf "[%s] %s\n" (ByteString.Char8.unpack address) (ByteString.Char8.unpack contents)
+      unwrap (Zmq.Subscriber.receives subscriber) >>= \case
+        [address, contents] -> printf "[%s] %s\n" (ByteString.Char8.unpack address) (ByteString.Char8.unpack contents)
+        _ -> pure ()
 
 -- ROUTER-to-REQ example
 rtreq :: IO ()
@@ -544,15 +543,15 @@ rtreq = do
       endTime <- (+ 5_000_000_000) <$> getMonotonicTimeNSec
       let loop workersFired = do
             -- Next message gives us least recently used worker
-            (identity, requestId :| _) <- unwrap (Zmq.Router.receives broker)
+            message <- unwrap (Zmq.Router.receives broker)
             -- Encourage workers until it's time to fire them
             time <- getMonotonicTimeNSec
             if time < endTime
               then do
-                unwrap (Zmq.Router.sends broker identity (requestId :| ["", "Work harder"]))
+                unwrap (Zmq.Router.sends broker (take 2 message ++ ["", "Work harder"]))
                 loop workersFired
               else do
-                unwrap (Zmq.Router.sends broker identity (requestId :| ["", "Fired!"]))
+                unwrap (Zmq.Router.sends broker (take 2 message ++ ["", "Fired!"]))
                 when (workersFired + 1 < nbrWorkers) do
                   loop (workersFired + 1)
       loop 0
