@@ -13,6 +13,7 @@ module Zmq
     unbind,
     connect,
     disconnect,
+    send,
     receive,
 
     -- ** Socket options
@@ -74,7 +75,19 @@ import Zmq.Internal.Options
     maxSockets,
     sendQueueSize,
   )
-import Zmq.Internal.Socket (CanReceive (receive_), Socket, Sockets, also, bind, connect, disconnect, poll, the, unbind)
+import Zmq.Internal.Socket
+  ( CanReceive (receive_),
+    CanSend (send_),
+    Socket,
+    Sockets,
+    also,
+    bind,
+    connect,
+    disconnect,
+    poll,
+    the,
+    unbind,
+  )
 import Zmq.Publisher (Publisher)
 import Zmq.Puller (Puller)
 import Zmq.Pusher (Pusher)
@@ -85,6 +98,10 @@ import Zmq.Subscriber (Subscriber)
 import Zmq.Subscription (pattern Subscribe, pattern Unsubscribe)
 import Zmq.XPublisher (XPublisher)
 import Zmq.XSubscriber (XSubscriber)
+
+send :: CanSend socket => socket -> ByteString -> IO (Either Error ())
+send =
+  send_
 
 receive :: CanReceive socket => socket -> IO (Either Error ByteString)
 receive =

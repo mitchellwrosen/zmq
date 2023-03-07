@@ -21,7 +21,7 @@ import Numeric.Natural (Natural)
 import Zmq.Error (Error (..), catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Socket (Socket (withSocket), ThreadSafeSocket)
+import Zmq.Internal.Socket (CanSend, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __pusher__ socket.
@@ -34,6 +34,9 @@ newtype Pusher
     ( Options.CanSetSendQueueSize
     )
   deriving (Socket) via (ThreadSafeSocket)
+
+instance CanSend Pusher where
+  send_ = send
 
 defaultOptions :: Options Pusher
 defaultOptions =
@@ -83,6 +86,8 @@ disconnect =
 -- | Send a __message__ on a __pusher__ to one peer (round-robin).
 --
 -- This operation blocks until a peer can receive the message.
+--
+-- /Alias/: 'Zmq.send'
 send :: Pusher -> ByteString -> IO (Either Error ())
 send socket0 frame = do
   catchingOkErrors do

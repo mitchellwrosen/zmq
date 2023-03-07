@@ -3,8 +3,9 @@
 
 module Zmq.Internal.Socket
   ( Socket (..),
-    CanReceive (..),
     CanPoll,
+    CanReceive (..),
+    CanSend (..),
     ThreadSafeSocket (..),
     ThreadUnsafeSocket (..),
     openThreadUnsafeSocket,
@@ -68,6 +69,10 @@ class Socket socket => CanPoll socket
 class Socket socket => CanReceive socket where
   receive_ :: socket -> IO (Either Error ByteString)
   receive_ = undefined -- hide "minimal complete definition" haddock
+
+class Socket socket => CanSend socket where
+  send_ :: socket -> ByteString -> IO (Either Error ())
+  send_ = undefined -- hide "minimal complete definition" haddock
 
 newtype ThreadSafeSocket
   = ThreadSafeSocket (MVar Zmq_socket)

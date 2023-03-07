@@ -22,7 +22,7 @@ import Numeric.Natural (Natural)
 import Zmq.Error (Error (..), catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Socket (CanPoll, CanReceive, Socket (withSocket), ThreadUnsafeSocket (..))
+import Zmq.Internal.Socket (CanPoll, CanReceive, CanSend, Socket (withSocket), ThreadUnsafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A __requester__ socket.
@@ -39,6 +39,9 @@ newtype Requester
 
 instance CanReceive Requester where
   receive_ = receive
+
+instance CanSend Requester where
+  send_ = send
 
 defaultOptions :: Options Requester
 defaultOptions =
@@ -89,6 +92,8 @@ disconnect =
 -- | Send a __message__ on a __requester__ to one peer (round-robin).
 --
 -- This operation blocks until a peer can receive the message.
+--
+-- /Alias/: 'Zmq.send'
 send :: Requester -> ByteString -> IO (Either Error ())
 send socket0 frame = do
   catchingOkErrors do

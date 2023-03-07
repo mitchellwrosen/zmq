@@ -67,7 +67,7 @@ hwserver =
       _ <- unwrap (Zmq.receive responder)
       putStrLn "Received Hello"
       threadDelay 1_000_000 -- Do some work
-      unwrap (Zmq.Replier.send responder "World")
+      unwrap (Zmq.send responder "World")
 
 -- Hello World client
 hwclient :: IO ()
@@ -79,7 +79,7 @@ hwclient =
 
     for_ [(0 :: Int) .. 9] \requestNbr -> do
       printf "Sending Hello %d...\n" requestNbr
-      unwrap (Zmq.Requester.send requester "Hello")
+      unwrap (Zmq.send requester "Hello")
       _ <- unwrap (Zmq.receive requester)
       printf "Received World %d\n" requestNbr
 
@@ -107,7 +107,7 @@ wuserver =
 
       -- Send message to all subscribers
       let update = ByteString.Char8.pack (printf "%05d %d %d" zipcode temperature relhumidity)
-      unwrap (Zmq.Publisher.send publisher update)
+      unwrap (Zmq.send publisher update)
 
 -- Weather update client
 -- Connects SUB socket to tcp://localhost:5556
@@ -154,14 +154,14 @@ taskvent =
     putStrLn "Sending tasks to workers..."
 
     -- The first message is "0" and signals start of batch
-    unwrap (Zmq.Pusher.send sink "0")
+    unwrap (Zmq.send sink "0")
 
     -- Send 100 tasks
     workloads <-
       replicateM 100 do
         -- Random workload from 1 to 100msecs
         workload <- uniformRM (1 :: Int, 100) globalStdGen
-        unwrap (Zmq.Pusher.send sender (ByteString.Char8.pack (printf "%d" workload)))
+        unwrap (Zmq.send sender (ByteString.Char8.pack (printf "%d" workload)))
         pure workload
     printf "Total expected cost: %d msec\n" (sum workloads)
 
@@ -187,7 +187,7 @@ taskwork =
       printf "%s." (ByteString.Char8.unpack string) -- Show progress
       hFlush stdout
       threadDelay (read (ByteString.Char8.unpack string) * 1_000) -- Do the work
-      unwrap (Zmq.Pusher.send sender "")
+      unwrap (Zmq.send sender "")
 
 -- Task sink
 -- Binds PULL socket to tcp://localhost:5558
@@ -258,7 +258,7 @@ rrclient =
     unwrap (Zmq.connect requester "tcp://localhost:5559")
 
     for_ [(0 :: Int) .. 9] \requestNbr -> do
-      unwrap (Zmq.Requester.send requester "Hello")
+      unwrap (Zmq.send requester "Hello")
       string <- unwrap (Zmq.receive requester)
       printf "Received reply %d [%s]\n" requestNbr (ByteString.Char8.unpack string)
 
@@ -281,7 +281,7 @@ rrworker =
       threadDelay 1_000_000
 
       -- Send reply back to client
-      unwrap (Zmq.Replier.send responder "World")
+      unwrap (Zmq.send responder "World")
 
 -- Simple request-reply broker
 rrbroker :: IO ()
@@ -361,7 +361,7 @@ taskwork2 =
             printf "%s." (ByteString.Char8.unpack string) -- Show progress
             hFlush stdout
             threadDelay (read (ByteString.Char8.unpack string) * 1_000) -- Do the work
-            unwrap (Zmq.Pusher.send sender "")
+            unwrap (Zmq.send sender "")
           -- Any waiting controller command acts as 'KILL'
           when (not (ready 1)) do
             loop
@@ -395,7 +395,7 @@ tasksink2 =
     printf "Total elapsed time: %d msec\n" ((stopTime - startTime) `div` 1_000_000)
 
     -- Send kill signal to workers
-    unwrap (Zmq.Publisher.send controller "KILL")
+    unwrap (Zmq.send controller "KILL")
 
 -- Multithreaded Hello World server
 mtserver :: IO ()
@@ -423,7 +423,7 @@ mtserver =
             -- Do some 'work'
             threadDelay 1_000_000
             -- Send reply back to client
-            unwrap (Zmq.Replier.send receiver "World")
+            unwrap (Zmq.send receiver "World")
       -- Connect work threads to client threads via a queue proxy
       let items =
             Zmq.the clients
@@ -458,13 +458,13 @@ syncpub = do
       -- wait for synchronization request
       _ <- unwrap (Zmq.receive syncservice)
       -- send synchronization reply
-      unwrap (Zmq.Replier.send syncservice "")
+      unwrap (Zmq.send syncservice "")
     -- Now broadcast exactly 1M updates followed by END
     putStrLn "Broadcasting messages"
     replicateM_ 1000000 do
-      unwrap (Zmq.Publisher.send publisher "Rhubarb")
+      unwrap (Zmq.send publisher "Rhubarb")
 
-    unwrap (Zmq.Publisher.send publisher "END")
+    unwrap (Zmq.send publisher "END")
 
 -- Synchronized subscriber
 syncsub :: IO ()
@@ -483,7 +483,7 @@ syncsub = do
     unwrap (Zmq.connect syncclient "tcp://localhost:5562")
 
     -- send a synchronization request
-    unwrap (Zmq.Requester.send syncclient "")
+    unwrap (Zmq.send syncclient "")
 
     -- wait for synchronization reply
     _ <- unwrap (Zmq.receive syncclient)
@@ -565,7 +565,7 @@ rtreq = do
 
       let loop total = do
             -- Tell the broker we're ready for work
-            unwrap (Zmq.Requester.send worker "Hi Boss")
+            unwrap (Zmq.send worker "Hi Boss")
 
             -- Get workload from broker, until finished
             workload <- unwrap (Zmq.receive worker)
@@ -673,7 +673,7 @@ lbbroker =
       unwrap (Zmq.connect client "ipc://frontend.ipc")
 
       -- Send request, get reply
-      unwrap (Zmq.Requester.send client "HELLO")
+      unwrap (Zmq.send client "HELLO")
       reply <- unwrap (Zmq.receive client)
       printf "Client: %s\n" (ByteString.Char8.unpack reply)
 
@@ -684,7 +684,7 @@ lbbroker =
       unwrap (Zmq.connect worker "ipc://backend.ipc")
 
       -- Tell broker we're ready for work
-      unwrap (Zmq.Requester.send worker "READY")
+      unwrap (Zmq.send worker "READY")
 
       forever do
         -- Read and save all frames until we get an empty frame

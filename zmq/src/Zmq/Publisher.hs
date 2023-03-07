@@ -22,7 +22,7 @@ import Numeric.Natural (Natural)
 import Zmq.Error (Error, catchingOkErrors, enrichError, throwOkError)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Socket (Socket (withSocket), ThreadSafeSocket)
+import Zmq.Internal.Socket (CanSend, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __publisher__ socket.
@@ -36,6 +36,9 @@ newtype Publisher
       Options.CanSetSendQueueSize
     )
   deriving (Socket) via (ThreadSafeSocket)
+
+instance CanSend Publisher where
+  send_ = send
 
 defaultOptions :: Options Publisher
 defaultOptions =
@@ -96,6 +99,8 @@ disconnect =
 --     * If the 'lossy' option is not set, and any peer has a full message queue, then the message will not be sent to
 --       any peer, and this function will return @EAGAIN@. It is not possible to block until no peer has a full message
 --       queue.
+--
+-- /Alias/: 'Zmq.send'
 send :: Publisher -> ByteString -> IO (Either Error ())
 send socket0 frame =
   catchingOkErrors do

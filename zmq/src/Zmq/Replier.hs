@@ -22,7 +22,7 @@ import Numeric.Natural (Natural)
 import Zmq.Error (Error, catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Socket (CanPoll, CanReceive, Socket (withSocket), ThreadUnsafeSocket (..))
+import Zmq.Internal.Socket (CanPoll, CanReceive, CanSend, Socket (withSocket), ThreadUnsafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A __replier__ socket.
@@ -39,6 +39,9 @@ newtype Replier
 
 instance CanReceive Replier where
   receive_ = receive
+
+instance CanSend Replier where
+  send_ = send
 
 defaultOptions :: Options Replier
 defaultOptions =
@@ -87,6 +90,8 @@ disconnect =
 -- | Send a __message__ on a __replier__ to the last peer received from.
 --
 -- If the last peer received from no longer exists, the message is discarded.
+--
+-- /Alias/: 'Zmq.send'
 send :: Replier -> ByteString -> IO (Either Error ())
 send socket0 frame =
   catchingOkErrors do

@@ -23,7 +23,7 @@ import Numeric.Natural (Natural)
 import Zmq.Error (Error (..), catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Socket (CanPoll, CanReceive, Socket (withSocket), ThreadSafeSocket)
+import Zmq.Internal.Socket (CanPoll, CanReceive, CanSend, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __dealer__ socket.
@@ -40,6 +40,9 @@ newtype Dealer
 
 instance CanReceive Dealer where
   receive_ = receive
+
+instance CanSend Dealer where
+  send_ = send
 
 defaultOptions :: Options Dealer
 defaultOptions =
@@ -89,6 +92,8 @@ disconnect =
 -- | Send a __message__ on a __dealer__ to one peer (round-robin).
 --
 -- This operation blocks until a peer can receive the message.
+--
+-- /Alias/: 'Zmq.send'
 send :: Dealer -> ByteString -> IO (Either Error ())
 send socket0 frame =
   catchingOkErrors do
