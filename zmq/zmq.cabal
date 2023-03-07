@@ -57,6 +57,7 @@ library
   other-modules:
     Zmq.Internal.Context
     Zmq.Internal.Options
+    Zmq.Internal.Poll
     Zmq.Internal.Socket
     Zmq.Internal.SocketFinalizer
     Zmq.Error

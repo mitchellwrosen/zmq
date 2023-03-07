@@ -20,10 +20,6 @@ module Zmq
     lossy,
     sendQueueSize,
 
-    -- *** Socket options type classes
-    CanSetLossy,
-    CanSetSendQueueSize,
-
     -- * IO multiplexing
     Sockets,
     the,
@@ -54,6 +50,15 @@ module Zmq
     Error (..),
     Zmq_error (..),
 
+    -- * Socket subclasses
+    CanSend,
+    CanReceive,
+    CanPoll,
+
+    -- ** Options
+    CanSetLossy,
+    CanSetSendQueueSize,
+
     -- * Version
     version,
   )
@@ -75,17 +80,14 @@ import Zmq.Internal.Options
     maxSockets,
     sendQueueSize,
   )
+import Zmq.Internal.Poll (CanPoll, Sockets, also, poll, the)
 import Zmq.Internal.Socket
   ( CanReceive (receive_),
     CanSend (send_),
     Socket,
-    Sockets,
-    also,
     bind,
     connect,
     disconnect,
-    poll,
-    the,
     unbind,
   )
 import Zmq.Publisher (Publisher)

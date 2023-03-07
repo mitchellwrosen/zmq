@@ -3,7 +3,6 @@
 
 module Zmq.Internal.Socket
   ( Socket (..),
-    CanPoll,
     CanReceive (..),
     CanSend (..),
     ThreadSafeSocket (..),
@@ -23,10 +22,6 @@ module Zmq.Internal.Socket
     receiveOne,
     receiveMany,
     blockUntilCanSend,
-    Sockets,
-    the,
-    also,
-    poll,
   )
 where
 
@@ -36,11 +31,8 @@ import Control.Exception
 import Control.Monad (when)
 import Data.Bits ((.&.))
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
 import Data.Functor ((<&>))
 import Data.IORef
-import Data.IntSet (IntSet)
-import Data.IntSet qualified as IntSet
 import Data.List.NonEmpty (pattern (:|))
 import Data.List.NonEmpty qualified as List (NonEmpty)
 import Data.Text (Text)
@@ -63,8 +55,6 @@ class Socket socket where
 
   withSocket :: socket -> (Zmq_socket -> IO a) -> IO a
   withSocket = undefined -- hide "minimal complete definition" haddock
-
-class Socket socket => CanPoll socket
 
 class Socket socket => CanReceive socket where
   receive_ :: socket -> IO (Either Error ByteString)
@@ -427,51 +417,3 @@ blockUntilEvent socket event = do
         events <- getIntOption socket Libzmq.Bindings._ZMQ_EVENTS
         when (events .&. fromIntegral @CShort @Int event == 0) loop
   loop
-
-newtype Sockets
-  = Sockets [SomeSocket]
-
-data SomeSocket
-  = forall socket. Socket socket => SomeSocket socket
-
-the :: CanPoll socket => socket -> Sockets
-the socket =
-  also socket (Sockets [])
-
-also :: CanPoll socket => socket -> Sockets -> Sockets
-also socket =
-  coerce (SomeSocket socket :)
-
-withPollitems :: [SomeSocket] -> ([Zmq_pollitem] -> IO a) -> IO a
-withPollitems events0 action =
-  let go acc = \case
-        [] -> action acc
-        SomeSocket socket0 : zevents ->
-          getSocket socket0 \socket ->
-            go (Zmq_pollitem_socket socket ZMQ_POLLIN : acc) zevents
-   in go [] events0
-
-poll :: Sockets -> IO (Either Error (Int -> Bool))
-poll (Sockets sockets) =
-  withPollitems sockets \items0 ->
-    zmq_pollitems items0 \items -> do
-      let loop =
-            zmq_poll items (-1) >>= \case
-              Left errno ->
-                let err = enrichError "zmq_poll" errno
-                 in case errno of
-                      EINTR -> pure (Left err)
-                      EFAULT -> throwIO err
-                      ETERM -> pure (Left err)
-                      _ -> unexpectedError err
-              Right zevents ->
-                let indices = f IntSet.empty (zip [0 ..] zevents)
-                 in pure (Right (`IntSet.member` indices))
-      loop
-  where
-    f :: IntSet -> [(Int, Zmq_events)] -> IntSet
-    f !acc = \case
-      (i, zevents) : xs ->
-        let !acc1 = if zevents /= Zmq_events 0 then IntSet.insert i acc else acc
-         in f acc1 xs
-      [] -> acc

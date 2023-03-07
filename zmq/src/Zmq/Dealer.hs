@@ -23,7 +23,8 @@ import Numeric.Natural (Natural)
 import Zmq.Error (Error (..), catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Socket (CanPoll, CanReceive, CanSend, Socket (withSocket), ThreadSafeSocket)
+import Zmq.Internal.Poll (CanPoll)
+import Zmq.Internal.Socket (CanReceive, CanSend, Socket (withSocket), ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __dealer__ socket.
