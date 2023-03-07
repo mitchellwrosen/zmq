@@ -12,9 +12,9 @@ module Zmq.Internal.Socket
     unbind,
     connect,
     disconnect,
-    send,
-    sendDontWait,
-    sendWontBlock,
+    sendOne,
+    sendOneDontWait,
+    sendOneWontBlock,
     sendMany,
     sendManyDontWait,
     sendManyWontBlock,
@@ -230,28 +230,16 @@ disconnect_ socket endpoint =
             _ -> unexpectedError err
     Right () -> pure ()
 
--- Send one frame
--- Throws ok errors
-send :: Zmq_socket -> ByteString -> IO ()
-send socket frame =
-  sendOne socket frame False
-
 -- Send one frame, returns whether it was sent
 -- Throws ok errors
 sendDontWait :: Zmq_socket -> ByteString -> IO Bool
 sendDontWait socket frame =
   sendOneDontWait socket frame False
 
--- Like sendDontWait, but for when we know EAGAIN is impossble (so we dont set ZMQ_DONTWAIT)
--- Throws ok errors
-sendWontBlock :: Zmq_socket -> ByteString -> IO ()
-sendWontBlock socket frame =
-  sendOneWontBlock socket frame False
-
 -- Throws ok errors
 sendMany :: Zmq_socket -> List.NonEmpty ByteString -> IO ()
 sendMany socket = \case
-  frame :| [] -> send socket frame
+  frame :| [] -> sendOne socket frame False
   frame :| frames ->
     mask_ do
       sendOne socket frame True
@@ -272,17 +260,17 @@ sendManyDontWait socket = \case
 -- Throws ok errors
 sendManyWontBlock :: Zmq_socket -> List.NonEmpty ByteString -> IO ()
 sendManyWontBlock socket = \case
-  frame :| [] -> sendWontBlock socket frame
+  frame :| [] -> sendOneWontBlock socket frame False
   frame :| frames ->
     mask_ do
-      sendWontBlock socket frame
+      sendOneWontBlock socket frame False
       sendManyWontBlock_ socket frames
 
 -- Throws ok errors
 sendManyWontBlock_ :: Zmq_socket -> [ByteString] -> IO ()
 sendManyWontBlock_ socket =
   let loop = \case
-        [frame] -> sendWontBlock socket frame
+        frame : [] -> sendOneWontBlock socket frame False
         frame : frames -> do
           sendOneWontBlock socket frame True
           loop frames

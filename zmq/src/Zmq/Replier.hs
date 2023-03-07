@@ -88,7 +88,7 @@ send :: Replier -> ByteString -> IO (Either Error ())
 send socket0 frame =
   catchingOkErrors do
     withSocket socket0 \socket ->
-      Socket.sendWontBlock socket frame
+      Socket.sendOneWontBlock socket frame False
 
 -- | Send a __multiframe message__ on a __replier__ to the last peer received from.
 --

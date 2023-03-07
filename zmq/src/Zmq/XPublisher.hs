@@ -103,7 +103,7 @@ send :: XPublisher -> ByteString -> IO (Either Error ())
 send socket0 frame =
   catchingOkErrors do
     withSocket socket0 \socket ->
-      Socket.sendDontWait socket frame >>= \case
+      Socket.sendOneDontWait socket frame False >>= \case
         True -> pure ()
         False -> throwOkError (enrichError "zmq_send" EAGAIN)
 

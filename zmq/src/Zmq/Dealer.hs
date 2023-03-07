@@ -89,14 +89,14 @@ disconnect =
 send :: Dealer -> ByteString -> IO (Either Error ())
 send socket0 frame =
   catchingOkErrors do
-    let loop =
-          withSocket socket0 \socket ->
-            Socket.sendDontWait socket frame >>= \case
+    withSocket socket0 \socket -> do
+      let loop =
+            Socket.sendOneDontWait socket frame False >>= \case
               True -> pure ()
               False -> do
                 Socket.blockUntilCanSend socket
                 loop
-    loop
+      loop
 
 -- | Send a __multiframe message__ on a __dealer__ to one peer (round-robin).
 --
@@ -106,14 +106,14 @@ sends socket0 = \case
   [] -> pure (Right ())
   frame : frames ->
     catchingOkErrors do
-      let loop =
-            withSocket socket0 \socket ->
+      withSocket socket0 \socket -> do
+        let loop =
               Socket.sendManyDontWait socket (frame :| frames) >>= \case
                 True -> pure ()
                 False -> do
                   Socket.blockUntilCanSend socket
                   loop
-      loop
+        loop
 
 -- | Receive a __message__ on an __dealer__ from any peer (fair-queued).
 receive :: Dealer -> IO (Either Error ByteString)

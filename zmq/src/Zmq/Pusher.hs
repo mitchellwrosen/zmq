@@ -86,14 +86,14 @@ disconnect =
 send :: Pusher -> ByteString -> IO (Either Error ())
 send socket0 frame = do
   catchingOkErrors do
-    let loop =
-          withSocket socket0 \socket ->
-            Socket.sendDontWait socket frame >>= \case
+    withSocket socket0 \socket -> do
+      let loop =
+            Socket.sendOneDontWait socket frame False >>= \case
               False -> do
                 Socket.blockUntilCanSend socket
                 loop
               True -> pure ()
-    loop
+      loop
 
 -- | Send a __multiframe message__ on a __pusher__ to one peer (round-robin).
 --
@@ -103,11 +103,11 @@ sends socket0 = \case
   [] -> pure (Right ())
   frame : frames ->
     catchingOkErrors do
-      let loop =
-            withSocket socket0 \socket ->
+      withSocket socket0 \socket -> do
+        let loop =
               Socket.sendManyDontWait socket (frame :| frames) >>= \case
                 False -> do
                   Socket.blockUntilCanSend socket
                   loop
                 True -> pure ()
-      loop
+        loop
