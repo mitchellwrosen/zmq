@@ -443,7 +443,7 @@ syncpub = do
   let subscribersExpected = 10 :: Int -- We wait for 10 subscribers
   Zmq.run Zmq.defaultOptions do
     -- Socket to talk to clients
-    let sndhwm = 1100000 :: Natural
+    let sndhwm = 1_100_000 :: Natural
     publisher <- unwrap (Zmq.Publisher.open (Zmq.sendQueueSize sndhwm))
 
     unwrap (Zmq.bind publisher "tcp://*:5561")
@@ -461,7 +461,7 @@ syncpub = do
       unwrap (Zmq.send syncservice "")
     -- Now broadcast exactly 1M updates followed by END
     putStrLn "Broadcasting messages"
-    replicateM_ 1000000 do
+    replicateM_ 1_000_000 do
       unwrap (Zmq.send publisher "Rhubarb")
 
     unwrap (Zmq.send publisher "END")

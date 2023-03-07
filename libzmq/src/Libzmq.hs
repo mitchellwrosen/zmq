@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-duplicate-exports #-}
+
 module Libzmq
   ( -- * Functions
 
@@ -58,8 +60,7 @@ module Libzmq
 
     -- * Types
     Zmq_ctx_option
-      ( Zmq_ctx_option,
-        ZMQ_BLOCKY,
+      ( ZMQ_BLOCKY,
         ZMQ_IO_THREADS,
         ZMQ_IPV6,
         ZMQ_MAX_MSGSZ,
@@ -71,8 +72,7 @@ module Libzmq
       ),
     Zmq_ctx,
     Zmq_error
-      ( Zmq_error,
-        EADDRINUSE,
+      ( EADDRINUSE,
         EADDRNOTAVAIL,
         EAFNOSUPPORT,
         EAGAIN,
@@ -104,28 +104,26 @@ module Libzmq
         ETERM,
         ETIMEDOUT
       ),
-    Zmq_events (..),
+    Zmq_events,
     pattern ZMQ_POLLIN,
     pattern ZMQ_POLLOUT,
     pattern ZMQ_POLLERR,
     pattern ZMQ_POLLPRI,
     Libzmq.Bindings.Zmq_fd,
     Zmq_msg_option
-      ( Zmq_msg_option,
-        ZMQ_MORE,
+      ( ZMQ_MORE,
         ZMQ_SHARED
       ),
     Zmq_msg,
     Zmq_pollitem (..),
     Zmq_pollitems,
-    Zmq_send_option (..),
+    Zmq_send_option,
     pattern ZMQ_DONTWAIT,
     pattern ZMQ_SNDMORE,
     Zmq_socket,
     Zmq_socket_option (..),
     Zmq_socket_type
-      ( Zmq_socket_type,
-        ZMQ_DEALER,
+      ( ZMQ_DEALER,
         ZMQ_PAIR,
         ZMQ_PUB,
         ZMQ_PULL,
@@ -138,6 +136,17 @@ module Libzmq
         ZMQ_XPUB,
         ZMQ_XSUB
       ),
+
+    -- ** Internals
+    Zmq_ctx_option (Zmq_ctx_option),
+    Zmq_ctx (Zmq_ctx),
+    Zmq_error (Zmq_error),
+    Zmq_events (Zmq_events),
+    Zmq_msg_option (Zmq_msg_option),
+    Zmq_msg (Zmq_msg),
+    Zmq_send_option (Zmq_send_option),
+    Zmq_socket (Zmq_socket),
+    Zmq_socket_type (Zmq_socket_type),
   )
 where
 
