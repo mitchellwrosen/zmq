@@ -22,14 +22,14 @@ import Numeric.Natural (Natural)
 import Zmq.Error (Error (..), catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Socket (CanSend, Socket (withSocket), ThreadSafeSocket)
+import Zmq.Internal.Socket (CanSend, Socket (withSocket), ThreadSafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __pusher__ socket.
 --
 -- Valid peers: __puller__
 newtype Pusher
-  = Pusher (MVar Zmq_socket)
+  = Pusher ThreadSafeSocket
   deriving stock (Eq)
   deriving anyclass
     ( Options.CanSetSendQueueSize
@@ -54,7 +54,7 @@ open options =
     socketVar <- Socket.openThreadSafeSocket ZMQ_PUSH
     socket <- readMVar socketVar
     Options.setSocketOptions socket ZMQ_PUSH options
-    pure (Pusher socketVar)
+    pure (Pusher (ThreadSafeSocket socketVar (Options.optionsName options)))
 
 -- | Bind a __pusher__ to an __endpoint__.
 --
@@ -96,7 +96,7 @@ send socket0 frame =
     loop =
       join do
         withSocket socket0 \socket -> do
-          sent <- Socket.sendOneDontWait socket frame False
+          sent <- Socket.sendOneDontWait socket (Socket.socketName socket0) frame False
           pure
             if sent
               then pure ()
@@ -114,7 +114,7 @@ sends socket0 = \case
     let loop =
           join do
             withSocket socket0 \socket -> do
-              sent <- Socket.sendManyDontWait socket (frame :| frames)
+              sent <- Socket.sendManyDontWait socket (Socket.socketName socket0) (frame :| frames)
               pure
                 if sent
                   then pure ()

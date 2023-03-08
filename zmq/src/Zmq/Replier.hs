@@ -97,7 +97,7 @@ send :: Replier -> ByteString -> IO (Either Error ())
 send socket0 frame =
   catchingOkErrors do
     withSocket socket0 \socket ->
-      Socket.sendOneWontBlock socket frame False
+      Socket.sendOneWontBlock socket (Socket.socketName socket0) frame False
 
 -- | Send a __multiframe message__ on a __replier__ to the last peer received from.
 --
@@ -108,7 +108,7 @@ sends socket0 = \case
   frame : frames ->
     catchingOkErrors do
       withSocket socket0 \socket ->
-        Socket.sendManyWontBlock socket (frame :| frames)
+        Socket.sendManyWontBlock socket (Socket.socketName socket0) (frame :| frames)
 
 -- | Receive a __message__ on a __replier__ from any peer (fair-queued).
 --
@@ -121,5 +121,5 @@ receive socket =
 receives :: Replier -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do
-    frame :| frames <- (Socket.receiveMany socket)
+    frame :| frames <- Socket.receiveMany socket
     pure (frame : frames)

@@ -25,14 +25,14 @@ import Zmq.Error (Error, catchingOkErrors, enrichError, throwOkError)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll)
-import Zmq.Internal.Socket (CanReceive, CanSend, Socket (withSocket), ThreadSafeSocket)
+import Zmq.Internal.Socket (CanReceive, CanSend, Socket (withSocket), ThreadSafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __xpublisher__ socket.
 --
 -- Valid peers: __subscriber__, __xsubscriber__
 newtype XPublisher
-  = XPublisher (MVar Zmq_socket)
+  = XPublisher ThreadSafeSocket
   deriving stock (Eq)
   deriving anyclass
     ( CanPoll,
@@ -67,7 +67,7 @@ open options =
     socket <- readMVar socketVar
     Options.setSocketOption socket ZMQ_RCVHWM 0 -- don't drop subscriptions
     Options.setSocketOptions socket ZMQ_XPUB options
-    pure (XPublisher socketVar)
+    pure (XPublisher (ThreadSafeSocket socketVar (Options.optionsName options)))
 
 -- | Bind an __xpublisher__ to an __endpoint__.
 --
@@ -112,7 +112,7 @@ send :: XPublisher -> ByteString -> IO (Either Error ())
 send socket0 frame =
   catchingOkErrors do
     withSocket socket0 \socket ->
-      Socket.sendOneDontWait socket frame False >>= \case
+      Socket.sendOneDontWait socket (Socket.socketName socket0) frame False >>= \case
         True -> pure ()
         False -> throwOkError (enrichError "zmq_send" EAGAIN)
 
@@ -131,7 +131,7 @@ sends socket0 = \case
   frame : frames ->
     catchingOkErrors do
       withSocket socket0 \socket ->
-        Socket.sendManyDontWait socket (frame :| frames) >>= \case
+        Socket.sendManyDontWait socket (Socket.socketName socket0) (frame :| frames) >>= \case
           True -> pure ()
           False -> throwOkError (enrichError "zmq_send" EAGAIN)
 
@@ -146,5 +146,5 @@ receive socket =
 receives :: XPublisher -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do
-    frame :| frames <- (Socket.receiveMany socket)
+    frame :| frames <- Socket.receiveMany socket
     pure (frame : frames)

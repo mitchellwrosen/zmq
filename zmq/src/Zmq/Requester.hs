@@ -100,7 +100,7 @@ send socket0 frame = do
   catchingOkErrors do
     withSocket socket0 \socket -> do
       let loop =
-            Socket.sendOneDontWait socket frame False >>= \case
+            Socket.sendOneDontWait socket (Socket.socketName socket0) frame False >>= \case
               False -> do
                 Socket.blockUntilCanSend socket
                 loop
@@ -117,7 +117,7 @@ sends socket0 = \case
     catchingOkErrors do
       withSocket socket0 \socket -> do
         let loop =
-              Socket.sendManyDontWait socket (frame :| frames) >>= \case
+              Socket.sendManyDontWait socket (Socket.socketName socket0) (frame :| frames) >>= \case
                 False -> do
                   Socket.blockUntilCanSend socket
                   loop
@@ -135,5 +135,5 @@ receive socket =
 receives :: Requester -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do
-    frame :| frames <- (Socket.receiveMany socket)
+    frame :| frames <- Socket.receiveMany socket
     pure (frame : frames)

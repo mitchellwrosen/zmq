@@ -22,14 +22,14 @@ import Zmq.Error (Error, catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll)
-import Zmq.Internal.Socket (Socket (withSocket), ThreadSafeSocket)
+import Zmq.Internal.Socket (Socket (withSocket), ThreadSafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __router__ socket.
 --
 -- Valid peers: __dealer__, __requester__, __router__
 newtype Router
-  = Router (MVar Zmq_socket)
+  = Router (ThreadSafeSocket)
   deriving stock (Eq)
   deriving (Socket) via (ThreadSafeSocket)
   deriving anyclass
@@ -53,7 +53,7 @@ open options =
     socket <- readMVar socketVar
     Options.setSocketOption socket ZMQ_ROUTER_MANDATORY 1
     Options.setSocketOptions socket ZMQ_ROUTER options
-    pure (Router socketVar)
+    pure (Router (ThreadSafeSocket socketVar (Options.optionsName options)))
 
 -- | Bind a __router__ to an __endpoint__.
 --
@@ -98,13 +98,13 @@ sends socket0 = \case
         -- writable is not useful for a router - we want to block until we can send to *this* peer. So we do that with
         -- a safe FFI call to zmq_send without ZMQ_DONTWAIT. Note that this means while we're blocking in send, other
         -- threads can't receive on this router.
-        Socket.sendManyDontWait socket message >>= \case
+        Socket.sendManyDontWait socket (Socket.socketName socket0) message >>= \case
           True -> pure ()
-          False -> Socket.sendMany socket message
+          False -> Socket.sendMany socket (Socket.socketName socket0) message
 
 -- | Receive a __multiframe message__ on an __router__ from any peer (fair-queued).
 receives :: Router -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do
-    frame :| frames <- (Socket.receiveMany socket)
+    frame :| frames <- Socket.receiveMany socket
     pure (frame : frames)

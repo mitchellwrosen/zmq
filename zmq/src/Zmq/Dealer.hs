@@ -25,14 +25,14 @@ import Zmq.Error (Error (..), catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll)
-import Zmq.Internal.Socket (CanReceive, CanSend, Socket (withSocket), ThreadSafeSocket)
+import Zmq.Internal.Socket (CanReceive, CanSend, Socket (withSocket), ThreadSafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __dealer__ socket.
 --
 -- Valid peers: __dealer__, __replier__, __router__
 newtype Dealer
-  = Dealer (MVar Zmq_socket)
+  = Dealer ThreadSafeSocket
   deriving stock (Eq)
   deriving anyclass
     ( CanPoll,
@@ -61,7 +61,7 @@ open options =
     socketVar <- Socket.openThreadSafeSocket ZMQ_DEALER
     socket <- readMVar socketVar
     Options.setSocketOptions socket ZMQ_DEALER options
-    pure (Dealer socketVar)
+    pure (Dealer (ThreadSafeSocket socketVar (Options.optionsName options)))
 
 -- | Bind a __dealer__ to an __endpoint__.
 --
@@ -103,7 +103,7 @@ send socket0 frame =
     loop = do
       join do
         withSocket socket0 \socket -> do
-          sent <- Socket.sendOneDontWait socket frame False
+          sent <- Socket.sendOneDontWait socket (Socket.socketName socket0) frame False
           pure
             if sent
               then pure ()
@@ -121,7 +121,7 @@ sends socket0 = \case
     let loop = do
           join do
             withSocket socket0 \socket -> do
-              sent <- Socket.sendManyDontWait socket (frame :| frames)
+              sent <- Socket.sendManyDontWait socket (Socket.socketName socket0) (frame :| frames)
               pure
                 if sent
                   then pure ()
@@ -141,5 +141,5 @@ receive socket =
 receives :: Dealer -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do
-    frame :| frames <- (Socket.receiveMany socket)
+    frame :| frames <- Socket.receiveMany socket
     pure (frame : frames)

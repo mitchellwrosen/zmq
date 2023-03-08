@@ -18,6 +18,7 @@ module Zmq
 
     -- ** Socket options
     lossy,
+    name,
     sendQueueSize,
 
     -- * IO multiplexing
@@ -78,6 +79,7 @@ import Zmq.Internal.Options
     lossy,
     maxMessageSize,
     maxSockets,
+    name,
     sendQueueSize,
   )
 import Zmq.Internal.Poll (CanPoll, Sockets, also, poll, the)

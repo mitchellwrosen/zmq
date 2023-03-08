@@ -1,4 +1,5 @@
 -- TODO Zmq.Internal.Error
+-- TODO include socket name in error (if error can be associated with a socket)
 module Zmq.Error
   ( Error (..),
     enrichError,

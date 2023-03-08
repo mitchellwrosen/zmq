@@ -22,14 +22,14 @@ import Zmq.Error
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll)
-import Zmq.Internal.Socket (CanReceive, Socket, ThreadSafeSocket)
+import Zmq.Internal.Socket (CanReceive, Socket, ThreadSafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __puller__ socket.
 --
 -- Valid peers: __pusher__
 newtype Puller
-  = Puller (MVar Zmq_socket)
+  = Puller ThreadSafeSocket
   deriving stock (Eq)
   deriving anyclass
     ( CanPoll,
@@ -55,7 +55,7 @@ open options =
     socketVar <- Socket.openThreadSafeSocket ZMQ_PULL
     socket <- readMVar socketVar
     Options.setSocketOptions socket ZMQ_PULL options
-    pure (Puller socketVar)
+    pure (Puller (ThreadSafeSocket socketVar (Options.optionsName options)))
 
 -- | Bind a __puller__ to an __endpoint__.
 --
@@ -96,5 +96,5 @@ receive socket =
 receives :: Puller -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do
-    frame :| frames <- (Socket.receiveMany socket)
+    frame :| frames <- Socket.receiveMany socket
     pure (frame : frames)

@@ -24,14 +24,14 @@ import Zmq.Error
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll)
-import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadSafeSocket)
+import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadSafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __subscriber__ socket.
 --
 -- Valid peers: __publisher__, __xpublisher__
 newtype Subscriber
-  = Subscriber (MVar Zmq_socket)
+  = Subscriber (ThreadSafeSocket)
   deriving stock (Eq)
   deriving (Socket) via (ThreadSafeSocket)
   deriving anyclass
@@ -58,7 +58,7 @@ open options =
     socket <- readMVar socketVar
     Options.setSocketOption socket ZMQ_SNDHWM 0 -- don't drop subscriptions
     Options.setSocketOptions socket ZMQ_SUB options
-    pure (Subscriber socketVar)
+    pure (Subscriber (ThreadSafeSocket socketVar (Options.optionsName options)))
 
 -- | Bind a __subscriber__ to an __endpoint__.
 --
@@ -117,5 +117,5 @@ receive socket =
 receives :: Subscriber -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do
-    frame :| frames <- (Socket.receiveMany socket)
+    frame :| frames <- Socket.receiveMany socket
     pure (frame : frames)

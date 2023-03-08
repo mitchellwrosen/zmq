@@ -22,14 +22,14 @@ import Numeric.Natural (Natural)
 import Zmq.Error (Error, catchingOkErrors, enrichError, throwOkError)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Socket (CanSend, Socket (withSocket), ThreadSafeSocket)
+import Zmq.Internal.Socket (CanSend, Socket (withSocket), ThreadSafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __publisher__ socket.
 --
 -- Valid peers: __subscriber__, __xsubscriber__
 newtype Publisher
-  = Publisher (MVar Zmq_socket)
+  = Publisher ThreadSafeSocket
   deriving stock (Eq)
   deriving anyclass
     ( Options.CanSetLossy,
@@ -60,7 +60,7 @@ open options =
     socket <- readMVar socketVar
     Options.setSocketOption socket ZMQ_RCVHWM 0 -- don't drop subscriptions
     Options.setSocketOptions socket ZMQ_PUB options
-    pure (Publisher socketVar)
+    pure (Publisher (ThreadSafeSocket socketVar (Options.optionsName options)))
 
 -- | Bind a __publisher__ to an __endpoint__.
 --
@@ -105,7 +105,7 @@ send :: Publisher -> ByteString -> IO (Either Error ())
 send socket0 frame =
   catchingOkErrors do
     withSocket socket0 \socket ->
-      Socket.sendOneDontWait socket frame False >>= \case
+      Socket.sendOneDontWait socket (Socket.socketName socket0) frame False >>= \case
         True -> pure ()
         False -> throwOkError (enrichError "zmq_send" EAGAIN)
 
@@ -124,6 +124,6 @@ sends socket0 = \case
   frame : frames ->
     catchingOkErrors do
       withSocket socket0 \socket ->
-        Socket.sendManyDontWait socket (frame :| frames) >>= \case
+        Socket.sendManyDontWait socket (Socket.socketName socket0) (frame :| frames) >>= \case
           True -> pure ()
           False -> throwOkError (enrichError "zmq_send" EAGAIN)

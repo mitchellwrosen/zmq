@@ -36,6 +36,7 @@ import Data.ByteString qualified as ByteString
 import Data.Foldable (for_)
 import Data.Functor ((<&>))
 import Data.IORef
+import Data.Kind (Type)
 import Data.List qualified as List
 import Data.List.NonEmpty (pattern (:|))
 import Data.List.NonEmpty qualified as List (NonEmpty)
@@ -62,12 +63,15 @@ import Zmq.Error (Error, enrichError, throwOkError, unexpectedError)
 import Zmq.Internal.Context (Context (..), globalContextRef)
 import Zmq.Internal.SocketFinalizer (makeSocketFinalizer)
 
-class Socket socket where
+class Socket (socket :: Type) where
   getSocket :: socket -> (Zmq_socket -> IO a) -> IO a
   getSocket = withSocket
 
   withSocket :: socket -> (Zmq_socket -> IO a) -> IO a
   withSocket = undefined -- hide "minimal complete definition" haddock
+
+  socketName :: socket -> Maybe Text
+  socketName = undefined -- hide "minimal complete definition" haddock
 
 class Socket socket => CanReceive socket where
   receive_ :: socket -> IO (Either Error ByteString)
@@ -77,16 +81,20 @@ class Socket socket => CanSend socket where
   send_ :: socket -> ByteString -> IO (Either Error ())
   send_ = undefined -- hide "minimal complete definition" haddock
 
-newtype ThreadSafeSocket
-  = ThreadSafeSocket (MVar Zmq_socket)
+data ThreadSafeSocket
+  = ThreadSafeSocket !(MVar Zmq_socket) !(Maybe Text)
+  deriving stock (Eq)
 
 instance Socket ThreadSafeSocket where
-  getSocket (ThreadSafeSocket socketVar) action = do
+  getSocket (ThreadSafeSocket socketVar _) action = do
     socket <- readMVar socketVar
     action socket
 
-  withSocket (ThreadSafeSocket socketVar) =
+  withSocket (ThreadSafeSocket socketVar _) =
     withMVar socketVar
+
+  socketName (ThreadSafeSocket _ name) =
+    name
 
 data ThreadUnsafeSocket = ThreadUnsafeSocket
   { socket :: !Zmq_socket,
@@ -105,6 +113,10 @@ instance Show ThreadUnsafeSocket where
 instance Socket ThreadUnsafeSocket where
   withSocket (ThreadUnsafeSocket socket (IORef canary#)) action =
     IO \s -> keepAlive# canary# s (unIO (action socket))
+
+  -- FIXME
+  socketName _ =
+    Nothing
 
 -- Throws ok errors
 openThreadUnsafeSocket :: Zmq_socket_type -> IO ThreadUnsafeSocket
@@ -233,9 +245,9 @@ disconnect socket0 endpoint =
 
 -- Send a single frame
 -- Throws ok errors
-sendOne :: Zmq_socket -> ByteString -> Bool -> IO ()
-sendOne socket frame more = do
-  when debug (debugPrintFrames socket Outgoing (frame :| []))
+sendOne :: Zmq_socket -> Maybe Text -> ByteString -> Bool -> IO ()
+sendOne socket maybeName frame more = do
+  when debug (debugPrintFrames socket maybeName Outgoing (frame :| []))
   sendOne_ socket frame more
 
 -- Throws ok errors
@@ -259,9 +271,9 @@ sendOne_ socket frame more = do
 
 -- Send a single frame with ZMQ_DONTWAIT; on EAGAIN, returns False
 -- Throws ok errors
-sendOneDontWait :: Zmq_socket -> ByteString -> Bool -> IO Bool
-sendOneDontWait socket frame more = do
-  when debug (debugPrintFrames socket Outgoing (frame :| []))
+sendOneDontWait :: Zmq_socket -> Maybe Text -> ByteString -> Bool -> IO Bool
+sendOneDontWait socket maybeName frame more = do
+  when debug (debugPrintFrames socket maybeName Outgoing (frame :| []))
   sendOneDontWait_ socket frame more
 
 -- Throws ok errors
@@ -286,9 +298,9 @@ sendOneDontWait_ socket frame more = do
 
 -- Like sendOneDontWait, but for when we know EAGAIN is impossble (so we dont set ZMQ_DONTWAIT)
 -- Throws ok errors
-sendOneWontBlock :: Zmq_socket -> ByteString -> Bool -> IO ()
-sendOneWontBlock socket frame more = do
-  when debug (debugPrintFrames socket Outgoing (frame :| []))
+sendOneWontBlock :: Zmq_socket -> Maybe Text -> ByteString -> Bool -> IO ()
+sendOneWontBlock socket maybeName frame more = do
+  when debug (debugPrintFrames socket maybeName Outgoing (frame :| []))
   sendOneWontBlock_ socket frame more
 
 -- Throws ok errors
@@ -311,9 +323,9 @@ sendOneWontBlock_ socket frame more = do
   loop
 
 -- Throws ok errors
-sendMany :: Zmq_socket -> List.NonEmpty ByteString -> IO ()
-sendMany socket frames = do
-  when debug (debugPrintFrames socket Outgoing frames)
+sendMany :: Zmq_socket -> Maybe Text -> List.NonEmpty ByteString -> IO ()
+sendMany socket maybeName frames = do
+  when debug (debugPrintFrames socket maybeName Outgoing frames)
   sendMany_ socket frames
 
 -- Throws ok errors
@@ -326,9 +338,9 @@ sendMany_ socket = \case
       sendManyWontBlock__ socket frames
 
 -- Throws ok errors
-sendManyDontWait :: Zmq_socket -> List.NonEmpty ByteString -> IO Bool
-sendManyDontWait socket frames = do
-  when debug (debugPrintFrames socket Outgoing frames)
+sendManyDontWait :: Zmq_socket -> Maybe Text -> List.NonEmpty ByteString -> IO Bool
+sendManyDontWait socket maybeName frames = do
+  when debug (debugPrintFrames socket maybeName Outgoing frames)
   sendManyDontWait_ socket frames
 
 -- Throws ok errors
@@ -344,9 +356,9 @@ sendManyDontWait_ socket = \case
           pure True
 
 -- Throws ok errors
-sendManyWontBlock :: Zmq_socket -> List.NonEmpty ByteString -> IO ()
-sendManyWontBlock socket frames = do
-  when debug (debugPrintFrames socket Outgoing frames)
+sendManyWontBlock :: Zmq_socket -> Maybe Text -> List.NonEmpty ByteString -> IO ()
+sendManyWontBlock socket maybeName frames = do
+  when debug (debugPrintFrames socket maybeName Outgoing frames)
   sendManyWontBlock_ socket frames
 
 sendManyWontBlock_ :: Zmq_socket -> List.NonEmpty ByteString -> IO ()
@@ -376,7 +388,7 @@ receiveOne socket0 =
     loop =
       join do
         withSocket socket0 \socket ->
-          receiveOneDontWait socket <&> \case
+          receiveOneDontWait socket (socketName socket0) <&> \case
             Nothing -> do
               blockUntilCanReceive socket
               loop
@@ -384,8 +396,8 @@ receiveOne socket0 =
 
 -- Receive one frame, or Nothing on EAGAIN
 -- Throws ok errors
-receiveOneDontWait :: Zmq_socket -> IO (Maybe ByteString)
-receiveOneDontWait socket =
+receiveOneDontWait :: Zmq_socket -> Maybe Text -> IO (Maybe ByteString)
+receiveOneDontWait socket maybeName =
   if not debug
     then do
       mask_ do
@@ -397,7 +409,7 @@ receiveOneDontWait socket =
             pure (Just frame)
     else do
       -- When debugging, we want to print all received frames, even though we only return the first
-      receiveManyDontWait socket <&> \case
+      receiveManyDontWait socket maybeName <&> \case
         Nothing -> Nothing
         Just (frame :| _) -> Just frame
 
@@ -410,7 +422,7 @@ receiveMany socket0 = do
     loop =
       join do
         withSocket socket0 \socket ->
-          receiveManyDontWait socket <&> \case
+          receiveManyDontWait socket (socketName socket0) <&> \case
             Nothing -> do
               blockUntilCanReceive socket
               loop
@@ -418,8 +430,8 @@ receiveMany socket0 = do
 
 -- Receive all frames of a message, or Nothing on EAGAIN
 -- Throws ok errors
-receiveManyDontWait :: Zmq_socket -> IO (Maybe (List.NonEmpty ByteString))
-receiveManyDontWait socket = do
+receiveManyDontWait :: Zmq_socket -> Maybe Text -> IO (Maybe (List.NonEmpty ByteString))
+receiveManyDontWait socket maybeName = do
   maybeFrames <-
     mask_ do
       receiveFrame socket >>= \case
@@ -428,7 +440,7 @@ receiveManyDontWait socket = do
           frames <- receiveRest socket
           pure (Just (frame :| frames))
         NoMore frame -> pure (Just (frame :| []))
-  when debug (for_ maybeFrames (debugPrintFrames socket Incoming))
+  when debug (for_ maybeFrames (debugPrintFrames socket maybeName Incoming))
   pure maybeFrames
 
 -- Receive the rest of a multiframe message
@@ -538,14 +550,16 @@ data Direction
   = Outgoing
   | Incoming
 
-debugPrintFrames :: Zmq_socket -> Direction -> List.NonEmpty ByteString -> IO ()
-debugPrintFrames (Zmq_socket socket) direction frames = do
+debugPrintFrames :: Zmq_socket -> Maybe Text -> Direction -> List.NonEmpty ByteString -> IO ()
+debugPrintFrames (Zmq_socket socket) maybeName direction frames = do
   let !message =
         Text.encodeUtf8 $
           Text.Lazy.toStrict $
             Text.Builder.toLazyText $
-              "== Socket "
-                <> Text.Builder.fromString (show socket)
+              "== "
+                <> case maybeName of
+                  Nothing -> "Socket " <> Text.Builder.fromString (show socket)
+                  Just name -> Text.Builder.fromText name
                 <> " ==\n"
                 <> foldMap formatFrame frames
                 <> "\n\n"

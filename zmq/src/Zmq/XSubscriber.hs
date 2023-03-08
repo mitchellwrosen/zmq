@@ -24,7 +24,7 @@ import Zmq.Error (Error, catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll)
-import Zmq.Internal.Socket (CanReceive, CanSend, Socket (withSocket), ThreadSafeSocket)
+import Zmq.Internal.Socket (CanReceive, CanSend, Socket (withSocket), ThreadSafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 import Zmq.Subscription (pattern Subscribe, pattern Unsubscribe)
 
@@ -32,7 +32,7 @@ import Zmq.Subscription (pattern Subscribe, pattern Unsubscribe)
 --
 -- Valid peers: __publisher__, __xpublisher__
 newtype XSubscriber
-  = XSubscriber (MVar Zmq_socket)
+  = XSubscriber ThreadSafeSocket
   deriving stock (Eq)
   deriving anyclass (CanPoll)
   deriving (Socket) via (ThreadSafeSocket)
@@ -55,7 +55,7 @@ open options =
     socket <- readMVar socketVar
     Options.setSocketOption socket ZMQ_SNDHWM 0 -- don't drop subscriptions
     Options.setSocketOptions socket ZMQ_XSUB options
-    pure (XSubscriber socketVar)
+    pure (XSubscriber (ThreadSafeSocket socketVar (Options.optionsName options)))
 
 -- | Bind an __xsubscriber__ to an __endpoint__.
 --
@@ -106,7 +106,7 @@ send :: XSubscriber -> ByteString -> IO (Either Error ())
 send socket0 frame =
   catchingOkErrors do
     withSocket socket0 \socket ->
-      Socket.sendOneWontBlock socket frame False
+      Socket.sendOneWontBlock socket (Socket.socketName socket0) frame False
 
 -- | Send a __multiframe message__ on an __xsubscriber__ to all peers.
 --
@@ -117,7 +117,7 @@ sends socket0 = \case
   frame : frames ->
     catchingOkErrors do
       withSocket socket0 \socket ->
-        Socket.sendManyWontBlock socket (frame :| frames)
+        Socket.sendManyWontBlock socket (Socket.socketName socket0) (frame :| frames)
 
 -- | Receive a __message__ on an __xsubscriber__ from any peer (fair-queued).
 --
@@ -130,5 +130,5 @@ receive socket =
 receives :: XSubscriber -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do
-    frame :| frames <- (Socket.receiveMany socket)
+    frame :| frames <- Socket.receiveMany socket
     pure (frame : frames)
