@@ -57,6 +57,7 @@ run options action =
 newContext :: Options Context -> IO Context
 newContext options = do
   context <- zmq_ctx_new
+  Options.setContextOption context ZMQ_BLOCKY 0
   Options.setContextOptions context options
   socketFinalizersRef <- newIORef []
   pure Context {context, socketFinalizersRef}

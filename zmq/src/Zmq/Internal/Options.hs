@@ -7,6 +7,7 @@ module Zmq.Internal.Options
     optionsName,
 
     -- ** Context options
+    setContextOption,
     setContextOptions,
     ioThreads,
     maxSockets,
@@ -89,10 +90,13 @@ ioThreads n =
   ContextOptions \context ->
     setContextOption context ZMQ_IO_THREADS (natToInt n)
 
+-- | The maximum number of sockets that can be open at once, after which @open@ will return 'Zmq.EMFILE'.
+--
+-- /Default/: 1023
 maxSockets :: Natural -> Options Context
 maxSockets n =
   ContextOptions \context ->
-    setContextOption context ZMQ_MAX_SOCKETS (natToInt n)
+    setContextOption context ZMQ_MAX_SOCKETS (natToInt (min 1 n)) -- 0 is invalid
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Socket options

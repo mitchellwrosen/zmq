@@ -14,7 +14,7 @@ import GHC.Base (mkWeak#)
 import GHC.Exts (TYPE, UnliftedRep)
 import GHC.IO (IO (..), unIO)
 import GHC.Weak (Weak (..))
-import Libzmq (Zmq_error, Zmq_socket_option (ZMQ_LINGER))
+import Libzmq (Zmq_error)
 import System.Mem.Weak (deRefWeak)
 
 -- | A socket finalizer is a weak reference to an idempotent linger+close action.
@@ -26,18 +26,13 @@ newtype SocketFinalizer
 
 makeSocketFinalizer ::
   forall (canary# :: TYPE UnliftedRep).
-  -- zmq_setsockopt
-  (forall a. Zmq_socket_option a -> a -> IO (Either Zmq_error ())) ->
   -- zmq_close
   IO (Either Zmq_error ()) ->
   canary# ->
   IO SocketFinalizer
-makeSocketFinalizer setsockopt close canary# = do
-  idempotentFinalize <-
-    makeIdempotent do
-      void (setsockopt ZMQ_LINGER 1_000) -- linger 1 second
-      void close
-  weak <- makeWeakPointer canary# idempotentFinalize idempotentFinalize
+makeSocketFinalizer close canary# = do
+  idempotentClose <- makeIdempotent (void close)
+  weak <- makeWeakPointer canary# idempotentClose idempotentClose
   pure (SocketFinalizer weak)
 
 makeWeakPointer :: forall (key# :: TYPE UnliftedRep) value. key# -> value -> IO () -> IO (Weak value)

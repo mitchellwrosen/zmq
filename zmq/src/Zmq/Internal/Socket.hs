@@ -172,7 +172,7 @@ openSocket wrap socketType = do
               _ -> unexpectedError err
       Right socket -> do
         ThingAndCanary thing canary <- wrap socket
-        finalizer <- makeSocketFinalizer (zmq_setsockopt socket) (zmq_close socket) canary
+        finalizer <- makeSocketFinalizer (zmq_close socket) canary
         atomicModifyIORef' socketsRef \finalizers -> (finalizer : finalizers, ())
         pure thing
 
