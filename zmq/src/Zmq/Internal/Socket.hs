@@ -173,19 +173,17 @@ openSocket wrap socketType = do
 
 -- Throws ok errors
 getIntOption :: Zmq_socket -> CInt -> IO Int
-getIntOption socket option = do
-  let loop = do
-        zmq_getsockopt_int socket option >>= \case
-          Left errno ->
-            let err = enrichError "zmq_getsockopt" errno
-             in case errno of
-                  EINTR -> throwOkError err
-                  EINVAL -> throwIO err
-                  ENOTSOCK -> throwIO err
-                  ETERM -> throwOkError err
-                  _ -> unexpectedError err
-          Right val -> pure val
-  loop
+getIntOption socket option =
+  zmq_getsockopt_int socket option >>= \case
+    Left errno ->
+      let err = enrichError "zmq_getsockopt" errno
+       in case errno of
+            EINTR -> throwOkError err
+            EINVAL -> throwIO err
+            ENOTSOCK -> throwIO err
+            ETERM -> throwOkError err
+            _ -> unexpectedError err
+    Right val -> pure val
 
 -- | Bind a __socket__ to an __endpoint__.
 bind :: Socket socket => socket -> Text -> IO (Either Error ())
@@ -260,22 +258,20 @@ disconnect socket0 endpoint =
 
 -- Throws ok errors
 sendOne_ :: Zmq_socket -> ByteString -> Bool -> IO ()
-sendOne_ socket frame more = do
-  let loop =
-        zmq_send socket frame (if more then ZMQ_SNDMORE else mempty) >>= \case
-          Left errno ->
-            let err = enrichError "zmq_send" errno
-             in case errno of
-                  EFSM -> throwIO err
-                  EHOSTUNREACH -> throwOkError err
-                  EINVAL -> throwIO err
-                  EINTR -> throwOkError err
-                  ENOTSUP -> throwIO err
-                  ENOTSOCK -> throwIO err
-                  ETERM -> throwOkError err
-                  _ -> unexpectedError err
-          Right _len -> pure ()
-  loop
+sendOne_ socket frame more =
+  zmq_send socket frame (if more then ZMQ_SNDMORE else mempty) >>= \case
+    Left errno ->
+      let err = enrichError "zmq_send" errno
+       in case errno of
+            EFSM -> throwIO err
+            EHOSTUNREACH -> throwOkError err
+            EINVAL -> throwIO err
+            EINTR -> throwOkError err
+            ENOTSUP -> throwIO err
+            ENOTSOCK -> throwIO err
+            ETERM -> throwOkError err
+            _ -> unexpectedError err
+    Right _len -> pure ()
 
 -- Send a single frame with ZMQ_DONTWAIT; on EAGAIN, returns False
 -- Throws ok errors
@@ -286,23 +282,21 @@ sendOneDontWait socket name frame more = do
 
 -- Throws ok errors
 sendOneDontWait_ :: Zmq_socket -> ByteString -> Bool -> IO Bool
-sendOneDontWait_ socket frame more = do
-  let loop =
-        zmq_send__unsafe socket frame (if more then ZMQ_DONTWAIT <> ZMQ_SNDMORE else ZMQ_DONTWAIT) >>= \case
-          Left errno ->
-            let err = enrichError "zmq_send" errno
-             in case errno of
-                  EAGAIN -> pure False
-                  EFSM -> throwIO err
-                  EHOSTUNREACH -> throwOkError err
-                  EINVAL -> throwIO err
-                  EINTR -> throwOkError err
-                  ENOTSUP -> throwIO err
-                  ENOTSOCK -> throwIO err
-                  ETERM -> throwOkError err
-                  _ -> unexpectedError err
-          Right _len -> pure True
-  loop
+sendOneDontWait_ socket frame more =
+  zmq_send__unsafe socket frame (if more then ZMQ_DONTWAIT <> ZMQ_SNDMORE else ZMQ_DONTWAIT) >>= \case
+    Left errno ->
+      let err = enrichError "zmq_send" errno
+       in case errno of
+            EAGAIN -> pure False
+            EFSM -> throwIO err
+            EHOSTUNREACH -> throwOkError err
+            EINVAL -> throwIO err
+            EINTR -> throwOkError err
+            ENOTSUP -> throwIO err
+            ENOTSOCK -> throwIO err
+            ETERM -> throwOkError err
+            _ -> unexpectedError err
+    Right _len -> pure True
 
 -- Like sendOneDontWait, but for when we know EAGAIN is impossble (so we dont set ZMQ_DONTWAIT)
 -- Throws ok errors
@@ -313,22 +307,20 @@ sendOneWontBlock socket name frame more = do
 
 -- Throws ok errors
 sendOneWontBlock_ :: Zmq_socket -> ByteString -> Bool -> IO ()
-sendOneWontBlock_ socket frame more = do
-  let loop =
-        zmq_send__unsafe socket frame (if more then ZMQ_SNDMORE else mempty) >>= \case
-          Left errno ->
-            let err = enrichError "zmq_send" errno
-             in case errno of
-                  EFSM -> throwIO err
-                  EHOSTUNREACH -> throwOkError err
-                  EINVAL -> throwIO err
-                  EINTR -> throwOkError err
-                  ENOTSUP -> throwIO err
-                  ENOTSOCK -> throwIO err
-                  ETERM -> throwOkError err
-                  _ -> unexpectedError err
-          Right _len -> pure ()
-  loop
+sendOneWontBlock_ socket frame more =
+  zmq_send__unsafe socket frame (if more then ZMQ_SNDMORE else mempty) >>= \case
+    Left errno ->
+      let err = enrichError "zmq_send" errno
+       in case errno of
+            EFSM -> throwIO err
+            EHOSTUNREACH -> throwOkError err
+            EINVAL -> throwIO err
+            EINTR -> throwOkError err
+            ENOTSUP -> throwIO err
+            ENOTSOCK -> throwIO err
+            ETERM -> throwOkError err
+            _ -> unexpectedError err
+    Right _len -> pure ()
 
 -- Throws ok errors
 sendMany :: Zmq_socket -> Text -> List.NonEmpty ByteString -> IO ()
@@ -478,47 +470,43 @@ data ReceiveF a
 -- Throws ok errors
 receiveFrame :: Zmq_socket -> IO (ReceiveF ())
 receiveFrame socket =
-  bracket zmq_msg_init zmq_msg_close \frame -> do
-    let loop = do
-          zmq_msg_recv_dontwait frame socket >>= \case
-            Left errno ->
-              let err = enrichError "zmq_msg_recv" errno
-               in case errno of
-                    EAGAIN -> pure (Again ())
-                    EFSM -> throwIO err
-                    EINTR -> throwOkError err
-                    ENOTSOCK -> throwIO err
-                    ENOTSUP -> throwIO err
-                    ETERM -> throwOkError err
-                    _ -> unexpectedError err
-            Right _len -> do
-              bytes <- zmq_msg_data frame
-              zmq_msg_more frame <&> \case
-                False -> NoMore bytes
-                True -> More bytes
-    loop
+  bracket zmq_msg_init zmq_msg_close \frame ->
+    zmq_msg_recv_dontwait frame socket >>= \case
+      Left errno ->
+        let err = enrichError "zmq_msg_recv" errno
+         in case errno of
+              EAGAIN -> pure (Again ())
+              EFSM -> throwIO err
+              EINTR -> throwOkError err
+              ENOTSOCK -> throwIO err
+              ENOTSUP -> throwIO err
+              ETERM -> throwOkError err
+              _ -> unexpectedError err
+      Right _len -> do
+        bytes <- zmq_msg_data frame
+        zmq_msg_more frame <&> \case
+          False -> NoMore bytes
+          True -> More bytes
 
 -- Throws ok errors
 receiveFrameWontBlock :: Zmq_socket -> IO (ReceiveF Void)
 receiveFrameWontBlock socket =
-  bracket zmq_msg_init zmq_msg_close \frame -> do
-    let loop = do
-          zmq_msg_recv_dontwait frame socket >>= \case
-            Left errno ->
-              let err = enrichError "zmq_msg_recv" errno
-               in case errno of
-                    EFSM -> throwIO err
-                    EINTR -> throwOkError err
-                    ENOTSOCK -> throwIO err
-                    ENOTSUP -> throwIO err
-                    ETERM -> throwOkError err
-                    _ -> unexpectedError err
-            Right _len -> do
-              bytes <- zmq_msg_data frame
-              zmq_msg_more frame <&> \case
-                False -> NoMore bytes
-                True -> More bytes
-    loop
+  bracket zmq_msg_init zmq_msg_close \frame ->
+    zmq_msg_recv_dontwait frame socket >>= \case
+      Left errno ->
+        let err = enrichError "zmq_msg_recv" errno
+         in case errno of
+              EFSM -> throwIO err
+              EINTR -> throwOkError err
+              ENOTSOCK -> throwIO err
+              ENOTSUP -> throwIO err
+              ETERM -> throwOkError err
+              _ -> unexpectedError err
+      Right _len -> do
+        bytes <- zmq_msg_data frame
+        zmq_msg_more frame <&> \case
+          False -> NoMore bytes
+          True -> More bytes
 
 -- Throws ok errors
 blockUntilCanSend :: Zmq_socket -> IO ()

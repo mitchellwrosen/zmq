@@ -105,19 +105,17 @@ maxSockets n =
 
 -- Throws ok errors
 setSocketOption :: Zmq_socket -> Zmq_socket_option a -> a -> IO ()
-setSocketOption socket option value = do
-  let loop =
-        zmq_setsockopt socket option value >>= \case
-          Left errno ->
-            let err = enrichError "zmq_setsockopt" errno
-             in case errno of
-                  EINTR -> throwOkError err
-                  EINVAL -> throwIO err
-                  ENOTSOCK -> throwIO err
-                  ETERM -> throwOkError err
-                  _ -> unexpectedError err
-          Right val -> pure val
-  loop
+setSocketOption socket option value =
+  zmq_setsockopt socket option value >>= \case
+    Left errno ->
+      let err = enrichError "zmq_setsockopt" errno
+       in case errno of
+            EINTR -> throwOkError err
+            EINVAL -> throwIO err
+            ENOTSOCK -> throwIO err
+            ETERM -> throwOkError err
+            _ -> unexpectedError err
+    Right val -> pure val
 
 -- Throws ok errors
 setSocketOptions :: Zmq_socket -> Zmq_socket_type -> Options socket -> IO ()

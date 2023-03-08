@@ -6,6 +6,7 @@ module Zmq.Internal.Context
 where
 
 import Control.Exception
+import Control.Monad (when)
 import Data.Foldable (for_)
 import Data.IORef
 import Libzmq
@@ -79,13 +80,13 @@ terminateContext Context {context, socketFinalizersRef} = do
   for_ (reverse finalizers) runSocketFinalizer
 
   -- Terminate the context
-  let loop = do
+  let loop maybeErr = do
         zmq_ctx_term context >>= \case
           Left errno ->
             let err = enrichError "zmq_ctx_term" errno
              in case errno of
                   EFAULT -> throwIO err
-                  EINTR -> loop
+                  EINTR -> loop (Just err) -- remember that we were interrupted to throw after termination
                   _ -> unexpectedError err
-          Right () -> pure ()
-  loop
+          Right () -> for_ maybeErr throwIO
+  loop Nothing

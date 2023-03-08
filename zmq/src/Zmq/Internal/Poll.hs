@@ -82,16 +82,14 @@ pollFor :: Sockets -> Int -> IO (Either Error (Int -> Bool))
 pollFor sockets timeout = do
   pollitems <- socketsArray sockets
   keepingSocketsAlive sockets do
-    let loop =
-          zmq_poll pollitems (fromIntegral @Int @Int64 timeout) >>= \case
-            Left errno ->
-              let err = enrichError "zmq_poll" errno
-               in case errno of
-                    EINTR -> pure (Left err)
-                    EFAULT -> throwIO err
-                    ETERM -> pure (Left err)
-                    _ -> unexpectedError err
-            Right _n -> do
-              indices <- socketsArrayIndices pollitems
-              pure (Right (`IntSet.member` indices))
-    loop
+    zmq_poll pollitems (fromIntegral @Int @Int64 timeout) >>= \case
+      Left errno ->
+        let err = enrichError "zmq_poll" errno
+         in case errno of
+              EINTR -> pure (Left err)
+              EFAULT -> throwIO err
+              ETERM -> pure (Left err)
+              _ -> unexpectedError err
+      Right _n -> do
+        indices <- socketsArrayIndices pollitems
+        pure (Right (`IntSet.member` indices))
