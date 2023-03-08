@@ -512,6 +512,8 @@ zmq_unbind (Zmq_socket socket) endpoint =
 ------------------------------------------------------------------------------------------------------------------------
 -- I/O multiplexing
 
+-- TODO replace StorableArray with raw ForeignPtr to drop `array` dependency
+
 -- | Input/output multiplexing.
 --
 -- http://api.zeromq.org/master:zmq-poll

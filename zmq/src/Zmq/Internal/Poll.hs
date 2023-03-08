@@ -73,23 +73,39 @@ socketsArrayIndices array = do
               else loop (IntSet.insert i acc) (i + 1)
   loop IntSet.empty lo
 
-poll :: Sockets -> IO (Either Error (Int -> Bool))
-poll sockets =
-  pollFor sockets (-1)
-
 -- TODO make Sockets wrap the StorableArray so we don't allocate it anew each time
-pollFor :: Sockets -> Int -> IO (Either Error (Int -> Bool))
-pollFor sockets timeout = do
+poll :: Sockets -> IO (Either Error (Int -> Bool))
+poll sockets = do
   pollitems <- socketsArray sockets
   keepingSocketsAlive sockets do
-    zmq_poll pollitems (fromIntegral @Int @Int64 timeout) >>= \case
-      Left errno ->
-        let err = enrichError "zmq_poll" errno
-         in case errno of
-              EINTR -> pure (Left err)
-              EFAULT -> throwIO err
-              ETERM -> pure (Left err)
-              _ -> unexpectedError err
+    poll_ pollitems (-1) >>= \case
+      Left err -> pure (Left err)
       Right _n -> do
         indices <- socketsArrayIndices pollitems
         pure (Right (`IntSet.member` indices))
+
+-- | milliseconds
+pollFor :: Sockets -> Int -> IO (Either Error (Maybe (Int -> Bool)))
+pollFor sockets timeout = do
+  pollitems <- socketsArray sockets
+  keepingSocketsAlive sockets do
+    poll_ pollitems (fromIntegral @Int @Int64 timeout) >>= \case
+      Left err -> pure (Left err)
+      Right n ->
+        if n == 0
+          then pure (Right Nothing)
+          else do
+            indices <- socketsArrayIndices pollitems
+            pure (Right (Just (`IntSet.member` indices)))
+
+poll_ :: StorableArray Int Zmq_pollitem -> Int64 -> IO (Either Error Int)
+poll_ pollitems timeout = do
+  zmq_poll pollitems timeout >>= \case
+    Left errno ->
+      let err = enrichError "zmq_poll" errno
+       in case errno of
+            EINTR -> pure (Left err)
+            EFAULT -> throwIO err
+            ETERM -> pure (Left err)
+            _ -> unexpectedError err
+    Right n -> pure (Right n)

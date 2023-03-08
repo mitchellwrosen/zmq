@@ -6,7 +6,6 @@ module Zmq.Internal.Context
 where
 
 import Control.Exception
-import Control.Monad (when)
 import Data.Foldable (for_)
 import Data.IORef
 import Libzmq

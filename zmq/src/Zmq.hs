@@ -26,6 +26,7 @@ module Zmq
     the,
     also,
     poll,
+    pollFor,
 
     -- * Socket types
     Dealer,
@@ -82,7 +83,7 @@ import Zmq.Internal.Options
     name,
     sendQueueSize,
   )
-import Zmq.Internal.Poll (CanPoll, Sockets, also, poll, the)
+import Zmq.Internal.Poll (CanPoll, Sockets, also, poll, pollFor, the)
 import Zmq.Internal.Socket
   ( CanReceive (receive_),
     CanSend (send_),
