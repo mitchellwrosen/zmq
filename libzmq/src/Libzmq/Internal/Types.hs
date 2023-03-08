@@ -12,7 +12,7 @@ import Data.Text (Text)
 import Data.Word (Word64)
 import Foreign.C.Error
 import Foreign.C.Types (CInt, CShort)
-import Foreign.Ptr (Ptr)
+import Foreign.Ptr (Ptr, nullPtr)
 import Foreign.Storable (Storable)
 import Libzmq.Bindings qualified
 
@@ -462,16 +462,43 @@ newtype Zmq_msg
   deriving stock (Eq, Ord, Show)
   deriving newtype (Storable)
 
--- | A ØMQ pollitem.
-data Zmq_pollitem
-  = Zmq_pollitem_socket !Zmq_socket !Zmq_events
-  | Zmq_pollitem_fd !Libzmq.Bindings.Zmq_fd !Zmq_events
-  deriving stock (Eq, Ord, Show)
+-- | A file descripter ØMQ pollitem.
+pattern Zmq_pollitem_fd :: Libzmq.Bindings.Zmq_fd -> Zmq_events -> Libzmq.Bindings.Zmq_pollitem
+pattern Zmq_pollitem_fd fd events <-
+  (asPollitemFd -> Just (fd, events))
+  where
+    Zmq_pollitem_fd fd (Zmq_events events) =
+      Libzmq.Bindings.Zmq_pollitem
+        { Libzmq.Bindings.socket = nullPtr,
+          Libzmq.Bindings.fd = fd,
+          Libzmq.Bindings.events = events,
+          Libzmq.Bindings.revents = 0
+        }
 
--- | A set of ØMQ pollitems.
-data Zmq_pollitems
-  = Zmq_pollitems !(Ptr Libzmq.Bindings.Zmq_pollitem) !Int
-  deriving stock (Eq, Ord, Show)
+-- | A socket ØMQ pollitem.
+pattern Zmq_pollitem_socket :: Zmq_socket -> Zmq_events -> Libzmq.Bindings.Zmq_pollitem
+pattern Zmq_pollitem_socket socket events <-
+  (asPollitemSocket -> Just (socket, events))
+  where
+    Zmq_pollitem_socket (Zmq_socket socket) (Zmq_events events) =
+      Libzmq.Bindings.Zmq_pollitem
+        { Libzmq.Bindings.socket = socket,
+          Libzmq.Bindings.fd = 0,
+          Libzmq.Bindings.events = events,
+          Libzmq.Bindings.revents = 0
+        }
+
+asPollitemFd :: Libzmq.Bindings.Zmq_pollitem -> Maybe (Libzmq.Bindings.Zmq_fd, Zmq_events)
+asPollitemFd Libzmq.Bindings.Zmq_pollitem {Libzmq.Bindings.socket, Libzmq.Bindings.fd, Libzmq.Bindings.revents} =
+  if socket == nullPtr
+    then Just (fd, Zmq_events revents)
+    else Nothing
+
+asPollitemSocket :: Libzmq.Bindings.Zmq_pollitem -> Maybe (Zmq_socket, Zmq_events)
+asPollitemSocket Libzmq.Bindings.Zmq_pollitem {Libzmq.Bindings.socket, Libzmq.Bindings.revents} =
+  if socket == nullPtr
+    then Nothing
+    else Just (Zmq_socket socket, Zmq_events revents)
 
 -- | A ØMQ send option.
 newtype Zmq_send_option

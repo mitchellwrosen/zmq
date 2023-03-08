@@ -200,7 +200,7 @@ tasksink =
   Zmq.run Zmq.defaultOptions do
     -- Prepare our socket
     receiver <- unwrap (Zmq.Puller.open (Zmq.name "receiver"))
-    unwrap (Zmq.bind receiver "tcp//*:5558")
+    unwrap (Zmq.bind receiver "tcp://*:5558")
 
     -- Wait for start of batch
     _ <- unwrap (Zmq.receive receiver)

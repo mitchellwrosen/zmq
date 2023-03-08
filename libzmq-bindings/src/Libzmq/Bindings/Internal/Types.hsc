@@ -5,7 +5,7 @@ module Libzmq.Bindings.Internal.Types (module Libzmq.Bindings.Internal.Types) wh
 #include <zmq.h>
 
 import Data.Coerce (coerce)
-import Foreign.C.Types (CChar, CShort)
+import Foreign.C.Types (CChar, CInt, CShort, CUInt)
 import Foreign.Ptr (Ptr)
 import Foreign.Storable (Storable (..))
 
@@ -16,11 +16,11 @@ import Foreign.Storable (Storable (..))
 type Zmq_fd = Word64
 #else
 -- | A ØMQ file descriptor.
-type Zmq_fd = Word
+type Zmq_fd = CUInt
 #endif
 #else
 -- | A ØMQ file descriptor.
-type Zmq_fd = Int
+type Zmq_fd = CInt
 #endif
 
 -- | A ØMQ message.

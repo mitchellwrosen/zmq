@@ -54,7 +54,6 @@ module Libzmq
     zmq_socket_monitor,
 
     -- ** I/O multiplexing
-    zmq_pollitems,
     zmq_poll,
     zmq_poll_dontwait,
 
@@ -115,8 +114,9 @@ module Libzmq
         ZMQ_SHARED
       ),
     Zmq_msg,
-    Zmq_pollitem (..),
-    Zmq_pollitems,
+    Libzmq.Bindings.Zmq_pollitem,
+    pattern Zmq_pollitem_fd,
+    pattern Zmq_pollitem_socket,
     Zmq_send_option,
     pattern ZMQ_DONTWAIT,
     pattern ZMQ_SNDMORE,
@@ -144,6 +144,7 @@ module Libzmq
     Zmq_events (Zmq_events),
     Zmq_msg_option (Zmq_msg_option),
     Zmq_msg (Zmq_msg),
+    Libzmq.Bindings.Zmq_pollitem (..),
     Zmq_send_option (Zmq_send_option),
     Zmq_socket (Zmq_socket),
     Zmq_socket_type (Zmq_socket_type),

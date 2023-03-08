@@ -36,12 +36,13 @@ common component
 library
   import: component
   build-depends:
-    base,
-    bytestring,
+    array ^>= 0.5.3,
+    base ^>= 4.16 || ^>= 4.17 || ^>= 4.18,
+    bytestring ^>= 0.11.0,
     containers ^>= 0.6,
     libzmq,
     libzmq-bindings,
-    text,
+    text ^>= 2.0,
   exposed-modules:
     Zmq
     Zmq.Dealer

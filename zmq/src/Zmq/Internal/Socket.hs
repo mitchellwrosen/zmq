@@ -81,6 +81,7 @@ class Socket socket => CanSend socket where
   send_ :: socket -> ByteString -> IO (Either Error ())
   send_ = undefined -- hide "minimal complete definition" haddock
 
+-- TODO MVar () + Zmq_socket
 data ThreadSafeSocket = ThreadSafeSocket
   { socketVar :: !(MVar Zmq_socket),
     name :: !Text

@@ -1,5 +1,8 @@
 module Libzmq.Internal.Functions (module Libzmq.Internal.Functions) where
 
+import Data.Array.MArray qualified as MArray
+import Data.Array.Storable (StorableArray)
+import Data.Array.Storable qualified as StorableArray
 import Data.Bits ((.|.))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as ByteString
@@ -15,18 +18,14 @@ import Foreign.C (CUInt)
 import Foreign.C.String (CString)
 import Foreign.C.Types (CChar (..), CInt (..), CLong (..), CSize (..))
 import Foreign.Marshal.Alloc (free, malloc)
-import Foreign.Marshal.Array qualified
 import Foreign.Ptr (Ptr, castPtr, nullPtr)
 import Libzmq.Bindings qualified
 import Libzmq.Internal.Types
   ( Zmq_ctx (..),
     Zmq_ctx_option (..),
     Zmq_error (..),
-    Zmq_events (..),
     Zmq_msg (..),
     Zmq_msg_option (..),
-    Zmq_pollitem (..),
-    Zmq_pollitems (..),
     Zmq_send_option (..),
     Zmq_socket (..),
     Zmq_socket_option (..),
@@ -394,10 +393,10 @@ sendwith send0 (Zmq_socket socket) message (Zmq_send_option option) =
     n -> pure (Right (fromIntegral @CInt @Int n))
   where
     send =
-      ByteString.Unsafe.unsafeUseAsCStringLen message \(c_message, len) ->
+      ByteString.Unsafe.unsafeUseAsCStringLen message \(cmessage, len) ->
         send0
           socket
-          c_message
+          cmessage
           (fromIntegral @Int @CSize len)
           option
 
@@ -513,52 +512,29 @@ zmq_unbind (Zmq_socket socket) endpoint =
 ------------------------------------------------------------------------------------------------------------------------
 -- I/O multiplexing
 
-zmq_pollitems :: [Zmq_pollitem] -> (Zmq_pollitems -> IO a) -> IO a
-zmq_pollitems pollitems action =
-  Foreign.Marshal.Array.withArrayLen (map f pollitems) \len ptr -> action (Zmq_pollitems ptr len)
-  where
-    f :: Zmq_pollitem -> Libzmq.Bindings.Zmq_pollitem
-    f = \case
-      Zmq_pollitem_socket (Zmq_socket socket) (Zmq_events events) ->
-        Libzmq.Bindings.Zmq_pollitem
-          { Libzmq.Bindings.socket = socket,
-            Libzmq.Bindings.fd = 0,
-            Libzmq.Bindings.events = events,
-            Libzmq.Bindings.revents = 0
-          }
-      Zmq_pollitem_fd fd (Zmq_events events) ->
-        Libzmq.Bindings.Zmq_pollitem
-          { Libzmq.Bindings.socket = nullPtr,
-            Libzmq.Bindings.fd = fd,
-            Libzmq.Bindings.events = events,
-            Libzmq.Bindings.revents = 0
-          }
+-- | Input/output multiplexing.
+--
+-- http://api.zeromq.org/master:zmq-poll
+zmq_poll :: StorableArray Int Libzmq.Bindings.Zmq_pollitem -> Int64 -> IO (Either Zmq_error Int)
+zmq_poll pollitems timeout = do
+  (lo, hi) <- MArray.getBounds pollitems
+  let numPollitems = fromIntegral @Int @CInt (hi - lo + 1)
+  StorableArray.withStorableArray pollitems \cpollitems -> do
+    Libzmq.Bindings.zmq_poll cpollitems numPollitems (fromIntegral @Int64 @CLong timeout) >>= \case
+      -1 -> Left <$> zmq_errno
+      n -> pure (Right (fromIntegral @CInt @Int n))
 
 -- | Input/output multiplexing.
 --
 -- http://api.zeromq.org/master:zmq-poll
-zmq_poll :: Zmq_pollitems -> Int64 -> IO (Either Zmq_error [Zmq_events])
-zmq_poll (Zmq_pollitems pollitems len) timeout =
-  Libzmq.Bindings.zmq_poll pollitems (fromIntegral @Int @CInt len) (fromIntegral @Int64 @CLong timeout) >>= \case
-    -1 -> Left <$> zmq_errno
-    _ -> Right . map f <$> Foreign.Marshal.Array.peekArray len pollitems
-  where
-    f :: Libzmq.Bindings.Zmq_pollitem -> Zmq_events
-    f Libzmq.Bindings.Zmq_pollitem {Libzmq.Bindings.revents} =
-      Zmq_events revents
-
--- | Input/output multiplexing.
---
--- http://api.zeromq.org/master:zmq-poll
-zmq_poll_dontwait :: Zmq_pollitems -> IO (Either Zmq_error [Zmq_events])
-zmq_poll_dontwait (Zmq_pollitems pollitems len) =
-  Libzmq.Bindings.zmq_poll__unsafe pollitems (fromIntegral @Int @CInt len) 0 >>= \case
-    -1 -> Left <$> zmq_errno
-    _ -> Right . map f <$> Foreign.Marshal.Array.peekArray len pollitems
-  where
-    f :: Libzmq.Bindings.Zmq_pollitem -> Zmq_events
-    f Libzmq.Bindings.Zmq_pollitem {Libzmq.Bindings.revents} =
-      Zmq_events revents
+zmq_poll_dontwait :: StorableArray Int Libzmq.Bindings.Zmq_pollitem -> IO (Either Zmq_error Int)
+zmq_poll_dontwait pollitems = do
+  (lo, hi) <- MArray.getBounds pollitems
+  let numPollitems = fromIntegral @Int @CInt (hi - lo + 1)
+  StorableArray.withStorableArray pollitems \cpollitems -> do
+    Libzmq.Bindings.zmq_poll__unsafe cpollitems numPollitems 0 >>= \case
+      -1 -> Left <$> zmq_errno
+      n -> pure (Right (fromIntegral @CInt @Int n))
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Misc. utils
