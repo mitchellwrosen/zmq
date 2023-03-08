@@ -54,6 +54,7 @@ main =
     ["psenvpub"] -> psenvpub
     ["psenvsub"] -> psenvsub
     ["rtreq"] -> rtreq
+    ["rtdealer"] -> rtdealer
     ["lbbroker"] -> lbbroker
     ["asyncsrv"] -> asyncsrv
     "peering1" : self : peers -> peering1 self peers
@@ -577,6 +578,56 @@ rtreq = do
             if finished
               then printf "Completed: %d tasks\n" total
               else do
+                -- Do some random work
+                threadDelay =<< uniformRM (1_000, 500_000) globalStdGen
+                loop (total + 1)
+      loop (0 :: Int)
+
+-- ROUTER-to-DEALER example
+rtdealer :: IO ()
+rtdealer = do
+  let nbrWorkers = 1 :: Int
+
+  Zmq.run Zmq.defaultOptions do
+    broker <- unwrap (Zmq.Router.open (Zmq.name "broker"))
+
+    unwrap (Zmq.bind broker "tcp://*:5671")
+
+    Ki.scoped \scope -> do
+      for_ [1 .. nbrWorkers] \workerNbr -> do
+        _ <- Ki.fork scope (workerTask workerNbr)
+        pure ()
+      -- Run for five seconds and then tell workers to end
+      endTime <- (+ 5_000_000_000) <$> getMonotonicTimeNSec
+      let loop workersFired = do
+            -- Next message gives us least recently used worker
+            message <- unwrap (Zmq.receives broker)
+            -- Encourage workers until it's time to fire them
+            time <- getMonotonicTimeNSec
+            if time < endTime
+              then do
+                unwrap (Zmq.Router.sends broker (take 1 message ++ ["", "Work harder"]))
+                loop workersFired
+              else do
+                unwrap (Zmq.Router.sends broker (take 1 message ++ ["", "Fired!"]))
+                when (workersFired + 1 < nbrWorkers) do
+                  loop (workersFired + 1)
+      loop 0
+      atomically (Ki.awaitAll scope)
+  where
+    workerTask :: Int -> IO ()
+    workerTask workerNbr = do
+      worker <- unwrap (Zmq.Dealer.open (Zmq.name ("worker " <> Text.pack (show workerNbr))))
+      unwrap (Zmq.connect worker "tcp://localhost:5671")
+
+      let loop total = do
+            -- Tell the broker we're ready for work
+            unwrap (Zmq.Dealer.sends worker ["", "Hi Boss"])
+
+            -- Get workload from broker, until finished
+            unwrap (Zmq.receives worker) >>= \case
+              ["", "Fired!"] -> printf "Completed: %d tasks\n" total
+              _ -> do
                 -- Do some random work
                 threadDelay =<< uniformRM (1_000, 500_000) globalStdGen
                 loop (total + 1)

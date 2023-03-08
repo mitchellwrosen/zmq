@@ -540,7 +540,7 @@ blockUntilEvent socket event = do
 -- debug :: (Text -> IO ()) -> Options a
 
 debug :: Bool
-debug = False
+debug = True
 
 debuglock :: MVar ()
 debuglock =
