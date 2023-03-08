@@ -9,7 +9,6 @@ module Zmq.Internal.Options
     -- ** Context options
     setContextOptions,
     ioThreads,
-    maxMessageSize,
     maxSockets,
 
     -- ** Socket options
@@ -81,19 +80,14 @@ setContextOptions context = \case
 
 -- | The number of background IO threads that ØMQ uses.
 --
--- As a rule of thumb, each thread can handle 1Gb/sec in or out. If your program performs no external socket IO, you
--- can set this value to 0.
+-- As a rule of thumb, each thread can handle 1Gb/sec of data in or out. If your program performs no external socket IO,
+-- you can set this value to 0.
 --
 -- /Default/: 1
 ioThreads :: Natural -> Options Context
 ioThreads n =
   ContextOptions \context ->
     setContextOption context ZMQ_IO_THREADS (natToInt n)
-
-maxMessageSize :: Natural -> Options Context
-maxMessageSize n =
-  ContextOptions \context ->
-    setContextOption context ZMQ_MAX_MSGSZ (natToInt n)
 
 maxSockets :: Natural -> Options Context
 maxSockets n =

@@ -4,7 +4,6 @@ module Zmq
 
     -- ** Main options
     ioThreads,
-    maxMessageSize,
     maxSockets,
 
     -- * Socket
@@ -80,7 +79,6 @@ import Zmq.Internal.Options
     defaultOptions,
     ioThreads,
     lossy,
-    maxMessageSize,
     maxSockets,
     name,
     sendQueueSize,
