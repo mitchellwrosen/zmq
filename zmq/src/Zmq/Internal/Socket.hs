@@ -3,6 +3,7 @@
 
 module Zmq.Internal.Socket
   ( Socket (..),
+    keepingSocketAlive,
     CanReceive (..),
     CanSend (..),
     ThreadSafeSocket (..),
@@ -64,14 +65,18 @@ import Zmq.Internal.Context (Context (..), globalContextRef)
 import Zmq.Internal.SocketFinalizer (makeSocketFinalizer)
 
 class Socket (socket :: Type) where
-  getSocket :: socket -> (Zmq_socket -> IO a) -> IO a
-  getSocket = withSocket
+  getSocket :: socket -> Zmq_socket
+  getSocket = undefined -- hide "minimal complete definition" haddock
 
   withSocket :: socket -> (Zmq_socket -> IO a) -> IO a
   withSocket = undefined -- hide "minimal complete definition" haddock
 
   socketName :: socket -> Text
   socketName = undefined -- hide "minimal complete definition" haddock
+
+keepingSocketAlive :: Zmq_socket -> IO a -> IO a
+keepingSocketAlive socket action =
+  IO \s -> keepAlive# socket s (unIO action)
 
 class Socket socket => CanReceive socket where
   receive_ :: socket -> IO (Either Error ByteString)
@@ -83,20 +88,21 @@ class Socket socket => CanSend socket where
 
 -- TODO MVar () + Zmq_socket
 data ThreadSafeSocket = ThreadSafeSocket
-  { socketVar :: !(MVar Zmq_socket),
+  { lock :: !(MVar ()),
+    socket :: !Zmq_socket,
     name :: !Text
   }
   deriving stock (Eq)
 
 instance Socket ThreadSafeSocket where
-  getSocket (ThreadSafeSocket socketVar _) action = do
-    socket <- readMVar socketVar
-    action socket
+  getSocket ThreadSafeSocket {socket} =
+    socket
 
-  withSocket (ThreadSafeSocket socketVar _) =
-    withMVar socketVar
+  withSocket ThreadSafeSocket {lock, socket} action =
+    withMVar lock \_ ->
+      keepingSocketAlive socket (action socket)
 
-  socketName (ThreadSafeSocket _ name) =
+  socketName ThreadSafeSocket {name} =
     name
 
 data ThreadUnsafeSocket = ThreadUnsafeSocket
@@ -114,8 +120,8 @@ instance Ord ThreadUnsafeSocket where
     compare s0 s1
 
 instance Socket ThreadUnsafeSocket where
-  withSocket (ThreadUnsafeSocket socket _name (IORef canary#)) action =
-    IO \s -> keepAlive# canary# s (unIO (action socket))
+  withSocket ThreadUnsafeSocket {socket} action =
+    keepingSocketAlive socket (action socket)
 
   -- FIXME
   socketName ThreadUnsafeSocket {name} =
@@ -132,11 +138,14 @@ openThreadUnsafeSocket socketType name =
     socketType
 
 -- Throws ok errors
-openThreadSafeSocket :: Zmq_socket_type -> IO (MVar Zmq_socket)
-openThreadSafeSocket =
-  openSocket \socket -> do
-    socketVar@(MVar canary#) <- newMVar socket
-    pure (ThingAndCanary socketVar canary#)
+openThreadSafeSocket :: Zmq_socket_type -> Text -> IO ThreadSafeSocket
+openThreadSafeSocket socketType name =
+  openSocket
+    ( \socket -> do
+        lock@(MVar canary#) <- newMVar ()
+        pure (ThingAndCanary (ThreadSafeSocket lock socket name) canary#)
+    )
+    socketType
 
 data ThingAndCanary a
   = forall (canary# :: TYPE UnliftedRep).
@@ -540,10 +549,10 @@ blockUntilEvent socket event = do
 debug :: Bool
 debug = True
 
-lock :: MVar ()
-lock =
+debuglock :: MVar ()
+debuglock =
   unsafePerformIO (newMVar ())
-{-# NOINLINE lock #-}
+{-# NOINLINE debuglock #-}
 
 data Direction
   = Outgoing
@@ -563,7 +572,8 @@ debugPrintFrames (Zmq_socket socket) name direction frames = do
                 <> " ==\n"
                 <> foldMap formatFrame frames
                 <> "\n"
-  withMVar lock \_ -> ByteString.hPut IO.stderr message
+  withMVar debuglock \_ ->
+    ByteString.hPut IO.stderr message
   where
     formatFrame :: ByteString -> Text.Builder
     formatFrame frame =

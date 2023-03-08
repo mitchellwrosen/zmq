@@ -14,7 +14,6 @@ module Zmq.Dealer
   )
 where
 
-import Control.Concurrent.MVar
 import Control.Monad (join)
 import Data.ByteString (ByteString)
 import Data.List.NonEmpty (pattern (:|))
@@ -58,10 +57,9 @@ sendQueueSize =
 open :: Options Dealer -> IO (Either Error Dealer)
 open options =
   catchingOkErrors do
-    socketVar <- Socket.openThreadSafeSocket ZMQ_DEALER
-    socket <- readMVar socketVar
-    Options.setSocketOptions socket ZMQ_DEALER options
-    pure (Dealer (ThreadSafeSocket socketVar (Options.optionsName options)))
+    socket@(ThreadSafeSocket _ zsocket _) <- Socket.openThreadSafeSocket ZMQ_DEALER (Options.optionsName options)
+    Options.setSocketOptions zsocket ZMQ_DEALER options
+    pure (Dealer socket)
 
 -- | Bind a __dealer__ to an __endpoint__.
 --

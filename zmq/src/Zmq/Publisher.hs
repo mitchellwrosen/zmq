@@ -13,7 +13,6 @@ module Zmq.Publisher
   )
 where
 
-import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
@@ -56,11 +55,10 @@ sendQueueSize =
 open :: Options Publisher -> IO (Either Error Publisher)
 open options =
   catchingOkErrors do
-    socketVar <- Socket.openThreadSafeSocket ZMQ_PUB
-    socket <- readMVar socketVar
-    Options.setSocketOption socket ZMQ_RCVHWM 0 -- don't drop subscriptions
-    Options.setSocketOptions socket ZMQ_PUB options
-    pure (Publisher (ThreadSafeSocket socketVar (Options.optionsName options)))
+    socket@(ThreadSafeSocket _ zsocket _) <- Socket.openThreadSafeSocket ZMQ_PUB (Options.optionsName options)
+    Options.setSocketOption zsocket ZMQ_RCVHWM 0 -- don't drop subscriptions
+    Options.setSocketOptions zsocket ZMQ_PUB options
+    pure (Publisher socket)
 
 -- | Bind a __publisher__ to an __endpoint__.
 --

@@ -12,7 +12,6 @@ module Zmq.Router
   )
 where
 
-import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
@@ -49,11 +48,10 @@ sendQueueSize =
 open :: Options Router -> IO (Either Error Router)
 open options =
   catchingOkErrors do
-    socketVar <- Socket.openThreadSafeSocket ZMQ_ROUTER
-    socket <- readMVar socketVar
-    Options.setSocketOption socket ZMQ_ROUTER_MANDATORY 1
-    Options.setSocketOptions socket ZMQ_ROUTER options
-    pure (Router (ThreadSafeSocket socketVar (Options.optionsName options)))
+    socket@(ThreadSafeSocket _ zsocket _) <- Socket.openThreadSafeSocket ZMQ_ROUTER (Options.optionsName options)
+    Options.setSocketOption zsocket ZMQ_ROUTER_MANDATORY 1
+    Options.setSocketOptions zsocket ZMQ_ROUTER options
+    pure (Router socket)
 
 -- | Bind a __router__ to an __endpoint__.
 --

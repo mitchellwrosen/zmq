@@ -19,7 +19,8 @@ import Data.IntSet qualified as IntSet
 import Libzmq
 import Libzmq.Bindings qualified
 import Zmq.Error (Error, enrichError, unexpectedError)
-import Zmq.Internal.Socket (Socket (getSocket))
+import Zmq.Internal.Socket (Socket)
+import Zmq.Internal.Socket qualified as Socket
 
 class Socket socket => CanPoll socket
 
@@ -45,26 +46,18 @@ keepingSocketsAlive (Sockets sockets0) action =
     go = \case
       [] -> action
       SomeSocket socket : sockets ->
-        getSocket socket \_ ->
-          go sockets
-
--- TODO remove IO after ThreadSafeSocket doesn't require IO to get Zmq_socket
-socketPollitem :: SomeSocket -> IO Zmq_pollitem
-socketPollitem (SomeSocket socket0) =
-  getSocket socket0 \socket ->
-    pure (Zmq_pollitem_socket socket ZMQ_POLLIN)
+        Socket.keepingSocketAlive (Socket.getSocket socket) (go sockets)
 
 socketsArray :: Sockets -> IO (StorableArray Int Zmq_pollitem)
 socketsArray (Sockets sockets0) = do
-  (len, pollitems) <- do
-    let loop :: Int -> [Zmq_pollitem] -> [SomeSocket] -> IO (Int, [Zmq_pollitem])
-        loop !len pollitems = \case
-          [] -> pure (len, pollitems)
-          socket : sockets -> do
-            pollitem <- socketPollitem socket
-            loop (len + 1) (pollitem : pollitems) sockets
-    loop (0 :: Int) [] sockets0
-  MArray.newListArray (0, len) pollitems
+  loop 0 [] sockets0
+  where
+    loop :: Int -> [Zmq_pollitem] -> [SomeSocket] -> IO (StorableArray Int Zmq_pollitem)
+    loop !len pollitems = \case
+      [] -> MArray.newListArray (0, len) pollitems
+      SomeSocket socket : sockets -> do
+        let pollitem = Zmq_pollitem_socket (Socket.getSocket socket) ZMQ_POLLIN
+        loop (len + 1) (pollitem : pollitems) sockets
 
 -- Get indices that have fired
 socketsArrayIndices :: StorableArray Int Zmq_pollitem -> IO IntSet

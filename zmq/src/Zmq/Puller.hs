@@ -12,7 +12,6 @@ module Zmq.Puller
   )
 where
 
-import Control.Concurrent.MVar
 import Data.ByteString (ByteString)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
@@ -52,10 +51,9 @@ sendQueueSize =
 open :: Options Puller -> IO (Either Error Puller)
 open options =
   catchingOkErrors do
-    socketVar <- Socket.openThreadSafeSocket ZMQ_PULL
-    socket <- readMVar socketVar
-    Options.setSocketOptions socket ZMQ_PULL options
-    pure (Puller (ThreadSafeSocket socketVar (Options.optionsName options)))
+    socket@(ThreadSafeSocket _ zsocket _) <- Socket.openThreadSafeSocket ZMQ_PULL (Options.optionsName options)
+    Options.setSocketOptions zsocket ZMQ_PULL options
+    pure (Puller socket)
 
 -- | Bind a __puller__ to an __endpoint__.
 --

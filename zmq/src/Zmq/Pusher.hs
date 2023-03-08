@@ -12,7 +12,6 @@ module Zmq.Pusher
   )
 where
 
-import Control.Concurrent.MVar
 import Control.Monad (join)
 import Data.ByteString (ByteString)
 import Data.List.NonEmpty (pattern (:|))
@@ -51,10 +50,9 @@ sendQueueSize =
 open :: Options Pusher -> IO (Either Error Pusher)
 open options =
   catchingOkErrors do
-    socketVar <- Socket.openThreadSafeSocket ZMQ_PUSH
-    socket <- readMVar socketVar
-    Options.setSocketOptions socket ZMQ_PUSH options
-    pure (Pusher (ThreadSafeSocket socketVar (Options.optionsName options)))
+    socket@(ThreadSafeSocket _ zsocket _) <- Socket.openThreadSafeSocket ZMQ_PUSH (Options.optionsName options)
+    Options.setSocketOptions zsocket ZMQ_PUSH options
+    pure (Pusher socket)
 
 -- | Bind a __pusher__ to an __endpoint__.
 --
