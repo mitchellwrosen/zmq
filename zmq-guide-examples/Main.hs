@@ -56,6 +56,7 @@ main =
     ["rtreq"] -> rtreq
     ["lbbroker"] -> lbbroker
     ["asyncsrv"] -> asyncsrv
+    "peering1" : self : peers -> peering1 self peers
     _ -> pure ()
 
 -- Hello World server
@@ -787,6 +788,56 @@ asyncsrv =
               threadDelay =<< uniformRM (1_000, 1_000_000) globalStdGen
               unwrap (Zmq.Dealer.sends worker [identity, content])
           _ -> pure ()
+
+-- Broker peering simulation (part 1)
+-- Prototypes the state flow
+-- First argument is this broker's name
+-- Other arguments are our peers' names
+peering1 :: String -> [String] -> IO ()
+peering1 self peers =
+  Zmq.run Zmq.defaultOptions do
+    putStrLn ("I: preparing broker at " ++ self ++ "...")
+
+    -- Bind state backend to endpoint
+    statebe <- unwrap (Zmq.Publisher.open (Zmq.name "statebe"))
+    unwrap (Zmq.bind statebe ("ipc://" <> Text.pack self <> "-state.ipc"))
+
+    -- Connect statefe to all peers
+    statefe <- unwrap (Zmq.Subscriber.open (Zmq.name "statefe"))
+    unwrap (Zmq.Subscriber.subscribe statefe "")
+    for_ peers \peer -> do
+      putStrLn ("I: connecting to state backend at '" ++ peer ++ "'")
+      unwrap (Zmq.connect statefe ("ipc://" <> Text.pack peer <> "-state.ipc"))
+
+    -- The main loop sends out status messages to peers, and collects
+    -- status messages back from peers. The zmq_poll timeout defines
+    -- our own heartbeat:
+    let loop = do
+          -- Poll for activity, or 1 second timeout
+          Zmq.pollFor (Zmq.the statefe) 1_000 >>= \case
+            Left _ -> pure () -- Interrupted
+            Right maybeReady -> do
+              case maybeReady of
+                -- Handle incoming status messages
+                Just _ready ->
+                  unwrap (Zmq.Subscriber.receives statefe) >>= \case
+                    [peerName, available] ->
+                      printf
+                        "%s - %s workers free\n"
+                        (ByteString.Char8.unpack peerName)
+                        (ByteString.Char8.unpack available)
+                    _ -> pure ()
+                -- Send random values for worker availability
+                Nothing -> do
+                  val <- uniformRM (0 :: Int, 9) globalStdGen
+                  unwrap $
+                    Zmq.Publisher.sends
+                      statebe
+                      [ ByteString.Char8.pack self,
+                        ByteString.Char8.pack (show val)
+                      ]
+              loop
+    loop
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Utils
