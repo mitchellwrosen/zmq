@@ -13,7 +13,6 @@ module Zmq.Internal.Socket
     unbind,
     connect,
     disconnect,
-    sendOne,
     sendOneDontWait,
     sendOneWontBlock,
     sendMany,
@@ -82,8 +81,10 @@ class Socket socket => CanSend socket where
   send_ :: socket -> ByteString -> IO (Either Error ())
   send_ = undefined -- hide "minimal complete definition" haddock
 
-data ThreadSafeSocket
-  = ThreadSafeSocket !(MVar Zmq_socket) !Text
+data ThreadSafeSocket = ThreadSafeSocket
+  { socketVar :: !(MVar Zmq_socket),
+    name :: !Text
+  }
   deriving stock (Eq)
 
 instance Socket ThreadSafeSocket where
@@ -99,32 +100,35 @@ instance Socket ThreadSafeSocket where
 
 data ThreadUnsafeSocket = ThreadUnsafeSocket
   { socket :: !Zmq_socket,
+    name :: !Text,
     canary :: !(IORef ())
   }
 
 instance Eq ThreadUnsafeSocket where
-  ThreadUnsafeSocket s0 _ == ThreadUnsafeSocket s1 _ = s0 == s1
+  ThreadUnsafeSocket s0 _ _ == ThreadUnsafeSocket s1 _ _ =
+    s0 == s1
 
 instance Ord ThreadUnsafeSocket where
-  compare (ThreadUnsafeSocket s0 _) (ThreadUnsafeSocket s1 _) = compare s0 s1
-
-instance Show ThreadUnsafeSocket where
-  show (ThreadUnsafeSocket s0 _) = show s0
+  compare (ThreadUnsafeSocket s0 _ _) (ThreadUnsafeSocket s1 _ _) =
+    compare s0 s1
 
 instance Socket ThreadUnsafeSocket where
-  withSocket (ThreadUnsafeSocket socket (IORef canary#)) action =
+  withSocket (ThreadUnsafeSocket socket _name (IORef canary#)) action =
     IO \s -> keepAlive# canary# s (unIO (action socket))
 
   -- FIXME
-  socketName _ =
-    ""
+  socketName ThreadUnsafeSocket {name} =
+    name
 
 -- Throws ok errors
-openThreadUnsafeSocket :: Zmq_socket_type -> IO ThreadUnsafeSocket
-openThreadUnsafeSocket =
-  openSocket \socket -> do
-    canary@(IORef (STRef canary#)) <- newIORef ()
-    pure (ThingAndCanary (ThreadUnsafeSocket socket canary) canary#)
+openThreadUnsafeSocket :: Zmq_socket_type -> Text -> IO ThreadUnsafeSocket
+openThreadUnsafeSocket socketType name =
+  openSocket
+    ( \socket -> do
+        canary@(IORef (STRef canary#)) <- newIORef ()
+        pure (ThingAndCanary (ThreadUnsafeSocket socket name canary) canary#)
+    )
+    socketType
 
 -- Throws ok errors
 openThreadSafeSocket :: Zmq_socket_type -> IO (MVar Zmq_socket)
@@ -243,13 +247,6 @@ disconnect socket0 endpoint =
               ETERM -> pure ()
               _ -> unexpectedError err
       Right () -> pure ()
-
--- Send a single frame
--- Throws ok errors
-sendOne :: Zmq_socket -> Text -> ByteString -> Bool -> IO ()
-sendOne socket name frame more = do
-  when debug (debugPrintFrames socket name Outgoing (frame :| []))
-  sendOne_ socket frame more
 
 -- Throws ok errors
 sendOne_ :: Zmq_socket -> ByteString -> Bool -> IO ()

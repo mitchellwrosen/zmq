@@ -56,7 +56,7 @@ sendQueueSize =
 open :: Options Replier -> IO (Either Error Replier)
 open options =
   catchingOkErrors do
-    socket@(ThreadUnsafeSocket zsocket _) <- Socket.openThreadUnsafeSocket ZMQ_REP
+    socket@(ThreadUnsafeSocket zsocket _ _) <- Socket.openThreadUnsafeSocket ZMQ_REP (Options.optionsName options)
     Options.setSocketOptions zsocket ZMQ_REP options
     pure (Replier socket)
 
