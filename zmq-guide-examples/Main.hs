@@ -7,6 +7,7 @@ import Data.ByteString.Char8 qualified as ByteString.Char8
 import Data.Foldable (for_)
 import Data.Function ((&))
 import Data.Functor ((<&>))
+import Data.Text qualified as Text
 import Data.Void (Void)
 import GHC.Clock (getMonotonicTimeNSec)
 import GHC.Conc (atomically)
@@ -62,7 +63,7 @@ hwserver :: IO ()
 hwserver =
   Zmq.run Zmq.defaultOptions do
     -- Socket to talk to clients
-    responder <- unwrap (Zmq.Replier.open Zmq.defaultOptions)
+    responder <- unwrap (Zmq.Replier.open (Zmq.name "responder"))
     unwrap (Zmq.bind responder "tcp://*:5555")
 
     forever do
@@ -76,7 +77,7 @@ hwclient :: IO ()
 hwclient =
   Zmq.run Zmq.defaultOptions do
     putStrLn "Connecting to hello world server..."
-    requester <- unwrap (Zmq.Requester.open Zmq.defaultOptions)
+    requester <- unwrap (Zmq.Requester.open (Zmq.name "requester"))
     unwrap (Zmq.connect requester "tcp://localhost:5555")
 
     for_ [(0 :: Int) .. 9] \requestNbr -> do
@@ -98,7 +99,7 @@ wuserver :: IO ()
 wuserver =
   Zmq.run Zmq.defaultOptions do
     -- Prepare our publisher
-    publisher <- unwrap (Zmq.Publisher.open Zmq.defaultOptions)
+    publisher <- unwrap (Zmq.Publisher.open (Zmq.name "publisher"))
     unwrap (Zmq.bind publisher "tcp://*:5556")
 
     forever do
@@ -119,7 +120,7 @@ wuclient =
   Zmq.run Zmq.defaultOptions do
     -- Socket to talk to server
     putStrLn "Collecting updates from weather server..."
-    subscriber <- unwrap (Zmq.Subscriber.open Zmq.defaultOptions)
+    subscriber <- unwrap (Zmq.Subscriber.open (Zmq.name "subscriber"))
     unwrap (Zmq.connect subscriber "tcp://localhost:5556")
 
     -- Subscribe to zipcode, default is NYC, 10001
@@ -144,11 +145,11 @@ taskvent :: IO ()
 taskvent =
   Zmq.run Zmq.defaultOptions do
     -- Socket to send messages on
-    sender <- unwrap (Zmq.Pusher.open Zmq.defaultOptions)
+    sender <- unwrap (Zmq.Pusher.open (Zmq.name "sender"))
     unwrap (Zmq.bind sender "tcp://*:5557")
 
     -- Socket to send start of batch message on
-    sink <- unwrap (Zmq.Pusher.open Zmq.defaultOptions)
+    sink <- unwrap (Zmq.Pusher.open (Zmq.name "sink"))
     unwrap (Zmq.connect sink "tcp://localhost:5558")
 
     putStrLn "Press Enter when the workers are ready"
@@ -176,11 +177,11 @@ taskwork :: IO ()
 taskwork =
   Zmq.run Zmq.defaultOptions do
     -- Socket to receive messages on
-    receiver <- unwrap (Zmq.Puller.open Zmq.defaultOptions)
+    receiver <- unwrap (Zmq.Puller.open (Zmq.name "receiver"))
     unwrap (Zmq.connect receiver "tcp://localhost:5557")
 
     -- Socket to send messages to
-    sender <- unwrap (Zmq.Pusher.open Zmq.defaultOptions)
+    sender <- unwrap (Zmq.Pusher.open (Zmq.name "sender"))
     unwrap (Zmq.connect sender "tcp://localhost:5558")
 
     -- Process tasks forever
@@ -198,7 +199,7 @@ tasksink :: IO ()
 tasksink =
   Zmq.run Zmq.defaultOptions do
     -- Prepare our socket
-    receiver <- unwrap (Zmq.Puller.open Zmq.defaultOptions)
+    receiver <- unwrap (Zmq.Puller.open (Zmq.name "receiver"))
     unwrap (Zmq.bind receiver "tcp//*:5558")
 
     -- Wait for start of batch
@@ -222,11 +223,11 @@ mspoller :: IO ()
 mspoller =
   Zmq.run Zmq.defaultOptions do
     -- Connect to task ventilator
-    receiver <- unwrap (Zmq.Puller.open Zmq.defaultOptions)
+    receiver <- unwrap (Zmq.Puller.open (Zmq.name "receiver"))
     unwrap (Zmq.connect receiver "tcp://localhost:5557")
 
     -- Connect to weather server
-    subscriber <- unwrap (Zmq.Subscriber.open Zmq.defaultOptions)
+    subscriber <- unwrap (Zmq.Subscriber.open (Zmq.name "subscriber"))
     unwrap (Zmq.connect subscriber "tcp://localhost:5556")
     unwrap (Zmq.Subscriber.subscribe subscriber "10001 ")
 
@@ -256,7 +257,7 @@ rrclient :: IO ()
 rrclient =
   Zmq.run Zmq.defaultOptions do
     -- Socket to talk to server
-    requester <- unwrap (Zmq.Requester.open Zmq.defaultOptions)
+    requester <- unwrap (Zmq.Requester.open (Zmq.name "requester"))
     unwrap (Zmq.connect requester "tcp://localhost:5559")
 
     for_ [(0 :: Int) .. 9] \requestNbr -> do
@@ -271,7 +272,7 @@ rrworker :: IO ()
 rrworker =
   Zmq.run Zmq.defaultOptions do
     -- Socket to talk to clients
-    responder <- unwrap (Zmq.Replier.open Zmq.defaultOptions)
+    responder <- unwrap (Zmq.Replier.open (Zmq.name "responder"))
     unwrap (Zmq.connect responder "tcp://localhost:5560")
 
     forever do
@@ -290,8 +291,8 @@ rrbroker :: IO ()
 rrbroker =
   Zmq.run Zmq.defaultOptions do
     -- Prepare our sockets
-    frontend <- unwrap (Zmq.Router.open Zmq.defaultOptions)
-    backend <- unwrap (Zmq.Dealer.open Zmq.defaultOptions)
+    frontend <- unwrap (Zmq.Router.open (Zmq.name "frontend"))
+    backend <- unwrap (Zmq.Dealer.open (Zmq.name "backend"))
     unwrap (Zmq.bind frontend "tcp://*:5559")
     unwrap (Zmq.bind backend "tcp://*:5560")
 
@@ -314,11 +315,11 @@ wuproxy :: IO ()
 wuproxy =
   Zmq.run Zmq.defaultOptions do
     -- This is where the weather server sits
-    frontend <- unwrap (Zmq.XSubscriber.open Zmq.defaultOptions)
+    frontend <- unwrap (Zmq.XSubscriber.open (Zmq.name "frontend"))
     unwrap (Zmq.connect frontend "tcp://192.168.55.210:5556")
 
     -- This is our public endpoint for subscribers
-    backend <- unwrap (Zmq.XPublisher.open Zmq.defaultOptions)
+    backend <- unwrap (Zmq.XPublisher.open (Zmq.name "backend"))
     unwrap (Zmq.bind backend "tcp://10.1.1.0:8100")
 
     -- Run the proxy until the user interrupts us
@@ -340,15 +341,15 @@ taskwork2 :: IO ()
 taskwork2 =
   Zmq.run Zmq.defaultOptions do
     -- Socket to receive messages on
-    receiver <- unwrap (Zmq.Puller.open Zmq.defaultOptions)
+    receiver <- unwrap (Zmq.Puller.open (Zmq.name "receiver"))
     unwrap (Zmq.connect receiver "tcp://localhost:5557")
 
     -- Socket to send messages to
-    sender <- unwrap (Zmq.Pusher.open Zmq.defaultOptions)
+    sender <- unwrap (Zmq.Pusher.open (Zmq.name "sender"))
     unwrap (Zmq.connect sender "tcp://localhost:5558")
 
     -- Socket for control input
-    controller <- unwrap (Zmq.Subscriber.open Zmq.defaultOptions)
+    controller <- unwrap (Zmq.Subscriber.open (Zmq.name "controller"))
     unwrap (Zmq.connect controller "tcp://localhost:5559")
     unwrap (Zmq.Subscriber.subscribe controller "")
 
@@ -375,11 +376,11 @@ tasksink2 :: IO ()
 tasksink2 =
   Zmq.run Zmq.defaultOptions do
     -- Socket to receive messages on
-    receiver <- unwrap (Zmq.Puller.open Zmq.defaultOptions)
+    receiver <- unwrap (Zmq.Puller.open (Zmq.name "receiver"))
     unwrap (Zmq.bind receiver "tcp://*:5558")
 
     -- Socket for worker control
-    controller <- unwrap (Zmq.Publisher.open Zmq.defaultOptions)
+    controller <- unwrap (Zmq.Publisher.open (Zmq.name "controller"))
     unwrap (Zmq.bind controller "tcp://*:5559")
 
     -- Wait for start of batch
@@ -404,11 +405,11 @@ mtserver :: IO ()
 mtserver =
   Zmq.run Zmq.defaultOptions do
     -- Socket to talk to clients
-    clients <- unwrap (Zmq.Router.open Zmq.defaultOptions)
+    clients <- unwrap (Zmq.Router.open (Zmq.name "clients"))
     unwrap (Zmq.bind clients "tcp://*:5555")
 
     -- Socket to talk to workers
-    workers <- unwrap (Zmq.Dealer.open Zmq.defaultOptions)
+    workers <- unwrap (Zmq.Dealer.open (Zmq.name "workers"))
     unwrap (Zmq.bind workers "inproc://workers")
 
     -- Launch pool of worker threads
@@ -416,7 +417,7 @@ mtserver =
       replicateM_ 5 do
         Ki.fork_ scope do
           -- Socket to talk to dispatcher
-          receiver <- unwrap (Zmq.Replier.open Zmq.defaultOptions)
+          receiver <- unwrap (Zmq.Replier.open (Zmq.name "receiver"))
           unwrap (Zmq.connect receiver "inproc://workers")
 
           forever do
@@ -446,12 +447,12 @@ syncpub = do
   Zmq.run Zmq.defaultOptions do
     -- Socket to talk to clients
     let sndhwm = 1_100_000 :: Natural
-    publisher <- unwrap (Zmq.Publisher.open (Zmq.sendQueueSize sndhwm))
+    publisher <- unwrap (Zmq.Publisher.open (Zmq.name "publisher" <> Zmq.sendQueueSize sndhwm))
 
     unwrap (Zmq.bind publisher "tcp://*:5561")
 
     -- Socket to receive signals
-    syncservice <- unwrap (Zmq.Replier.open Zmq.defaultOptions)
+    syncservice <- unwrap (Zmq.Replier.open (Zmq.name "syncservice"))
     unwrap (Zmq.bind syncservice "tcp://*:5562")
 
     -- Get synchronization from subscribers
@@ -473,7 +474,7 @@ syncsub :: IO ()
 syncsub = do
   Zmq.run Zmq.defaultOptions do
     -- First, connect our subscriber socket
-    subscriber <- unwrap (Zmq.Subscriber.open Zmq.defaultOptions)
+    subscriber <- unwrap (Zmq.Subscriber.open (Zmq.name "subscriber"))
     unwrap (Zmq.connect subscriber "tcp://localhost:5561")
     unwrap (Zmq.Subscriber.subscribe subscriber "")
 
@@ -481,7 +482,7 @@ syncsub = do
     threadDelay 1_000_000
 
     -- Second, synchronize with publisher
-    syncclient <- unwrap (Zmq.Requester.open Zmq.defaultOptions)
+    syncclient <- unwrap (Zmq.Requester.open (Zmq.name "syncclient"))
     unwrap (Zmq.connect syncclient "tcp://localhost:5562")
 
     -- send a synchronization request
@@ -504,7 +505,7 @@ psenvpub :: IO ()
 psenvpub =
   Zmq.run Zmq.defaultOptions do
     -- Prepare our publisher
-    publisher <- unwrap (Zmq.Publisher.open Zmq.defaultOptions)
+    publisher <- unwrap (Zmq.Publisher.open (Zmq.name "publisher"))
     unwrap (Zmq.bind publisher "tcp://*:5563")
 
     forever do
@@ -518,7 +519,7 @@ psenvsub :: IO ()
 psenvsub =
   Zmq.run Zmq.defaultOptions do
     -- Prepare our subscriber
-    subscriber <- unwrap (Zmq.Subscriber.open Zmq.defaultOptions)
+    subscriber <- unwrap (Zmq.Subscriber.open (Zmq.name "subscriber"))
     unwrap (Zmq.connect subscriber "tcp://localhost:5563")
     unwrap (Zmq.Subscriber.subscribe subscriber "B")
 
@@ -534,7 +535,7 @@ rtreq = do
   let nbrWorkers = 10 :: Int
 
   Zmq.run Zmq.defaultOptions do
-    broker <- unwrap (Zmq.Router.open Zmq.defaultOptions)
+    broker <- unwrap (Zmq.Router.open (Zmq.name "broker"))
 
     unwrap (Zmq.bind broker "tcp://*:5671")
 
@@ -562,7 +563,7 @@ rtreq = do
   where
     workerTask :: IO ()
     workerTask = do
-      worker <- unwrap (Zmq.Requester.open Zmq.defaultOptions)
+      worker <- unwrap (Zmq.Requester.open (Zmq.name "worker"))
       unwrap (Zmq.connect worker "tcp://localhost:5671")
 
       let loop total = do
@@ -593,18 +594,18 @@ lbbroker =
     let nbrWorkers = 3 :: Int
 
     -- Prepare our sockets
-    frontend <- unwrap (Zmq.Router.open Zmq.defaultOptions)
-    backend <- unwrap (Zmq.Router.open Zmq.defaultOptions)
+    frontend <- unwrap (Zmq.Router.open (Zmq.name "frontend"))
+    backend <- unwrap (Zmq.Router.open (Zmq.name "backend"))
 
     unwrap (Zmq.bind frontend "ipc://frontend.ipc")
     unwrap (Zmq.bind backend "ipc://backend.ipc")
 
     Ki.scoped \scope -> do
-      replicateM_ nbrClients do
-        _ <- Ki.fork scope clientTask
+      for_ [1 .. nbrClients] \clientNbr -> do
+        _ <- Ki.fork scope (clientTask clientNbr)
         pure ()
-      replicateM_ nbrWorkers do
-        _ <- Ki.fork scope workerTask
+      for_ [1 .. nbrWorkers] \workerNbr -> do
+        _ <- Ki.fork scope (workerTask workerNbr)
         pure ()
       -- Here is the main loop for the least-recently-used queue. It has two
       -- sockets; a frontend for clients and a backend for workers. It polls
@@ -669,9 +670,9 @@ lbbroker =
       loop nbrClients []
   where
     -- Basic request-reply client using REQ socket
-    clientTask :: IO ()
-    clientTask = do
-      client <- unwrap (Zmq.Requester.open Zmq.defaultOptions)
+    clientTask :: Int -> IO ()
+    clientTask clientNbr = do
+      client <- unwrap (Zmq.Requester.open (Zmq.name ("client " <> Text.pack (show clientNbr))))
       unwrap (Zmq.connect client "ipc://frontend.ipc")
 
       -- Send request, get reply
@@ -680,9 +681,9 @@ lbbroker =
       printf "Client: %s\n" (ByteString.Char8.unpack reply)
 
     -- This is the worker task, using a REQ socket to do load-balancing.
-    workerTask :: IO ()
-    workerTask = do
-      worker <- unwrap (Zmq.Requester.open Zmq.defaultOptions)
+    workerTask :: Int -> IO ()
+    workerTask workerNbr = do
+      worker <- unwrap (Zmq.Requester.open (Zmq.name ("worker " <> Text.pack (show workerNbr))))
       unwrap (Zmq.connect worker "ipc://backend.ipc")
 
       -- Tell broker we're ready for work
@@ -710,9 +711,8 @@ asyncsrv :: IO ()
 asyncsrv =
   Zmq.run Zmq.defaultOptions do
     Ki.scoped \scope -> do
-      Ki.fork_ scope clientTask
-      Ki.fork_ scope clientTask
-      Ki.fork_ scope clientTask
+      for_ [(1 :: Int) .. 3] \clientNbr ->
+        Ki.fork_ scope (clientTask clientNbr)
       Ki.fork_ scope serverTask
 
       threadDelay 5_000_000 -- Run for 5 seconds then quit
@@ -721,9 +721,9 @@ asyncsrv =
     -- It connects to the server, and then sends a request once per second
     -- It collects responses as they arrive, and it prints them out. We will
     -- run several client tasks in parallel, each with a different random ID.
-    clientTask :: IO Void
-    clientTask = do
-      client <- unwrap (Zmq.Dealer.open Zmq.defaultOptions)
+    clientTask :: Int -> IO Void
+    clientTask clientNbr = do
+      client <- unwrap (Zmq.Dealer.open (Zmq.name ("client " <> Text.pack (show clientNbr))))
 
       unwrap (Zmq.connect client "tcp://localhost:5570")
 
@@ -748,14 +748,14 @@ asyncsrv =
       -- Launch pool of worker threads, precise number is not critical
       let nbrThreads = 5 :: Int
       Ki.scoped \scope -> do
-        replicateM_ nbrThreads do
-          Ki.fork_ scope serverWorker
+        for_ [1 .. nbrThreads] \threadNbr -> do
+          Ki.fork_ scope (serverWorker threadNbr)
 
         -- Connect backend to frontend
-        frontend <- unwrap (Zmq.Router.open Zmq.defaultOptions)
+        frontend <- unwrap (Zmq.Router.open (Zmq.name "frontend"))
         unwrap (Zmq.bind frontend "tcp://*:5570")
 
-        backend <- unwrap (Zmq.Dealer.open Zmq.defaultOptions)
+        backend <- unwrap (Zmq.Dealer.open (Zmq.name "backend"))
         unwrap (Zmq.bind backend "inproc://backend")
 
         forever do
@@ -772,9 +772,9 @@ asyncsrv =
 
     -- Each worker task works on one request at a time and sends a random number
     -- of replies back, with random delays between replies:
-    serverWorker :: IO Void
-    serverWorker = do
-      worker <- unwrap (Zmq.Dealer.open Zmq.defaultOptions)
+    serverWorker :: Int -> IO Void
+    serverWorker threadNbr = do
+      worker <- unwrap (Zmq.Dealer.open (Zmq.name ("worker " <> Text.pack (show threadNbr))))
       unwrap (Zmq.connect worker "inproc://backend")
 
       forever do

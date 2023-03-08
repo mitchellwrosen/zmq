@@ -9,6 +9,7 @@ executable example
     bytestring ^>= 0.11.4,
     ki ^>= 1.0,
     random ^>= 1.2.1,
+    text ^>= 2.0,
     zmq,
   default-extensions:
     BlockArguments
