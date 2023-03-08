@@ -115,12 +115,11 @@ sends socket0 = \case
 -- /Alias/: 'Zmq.receive'
 receive :: Replier -> IO (Either Error ByteString)
 receive socket =
-  catchingOkErrors do
-    withSocket socket Socket.receiveOne
+  catchingOkErrors (Socket.receiveOne socket)
 
 -- | Receive a __multiframe message__ on a __replier__ from any peer (fair-queued).
 receives :: Replier -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do
-    frame :| frames <- withSocket socket Socket.receiveMany
+    frame :| frames <- (Socket.receiveMany socket)
     pure (frame : frames)

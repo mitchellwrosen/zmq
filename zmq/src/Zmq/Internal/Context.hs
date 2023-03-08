@@ -15,6 +15,8 @@ import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.SocketFinalizer (SocketFinalizer, runSocketFinalizer)
 
+-- TODO runtime error if `run` twice
+
 data Context = Context
   { context :: !Zmq_ctx,
     -- A context cannot terminate until all sockets are closed. So, whenever we open a socket, we register a weak

@@ -15,6 +15,7 @@ module Zmq.Dealer
 where
 
 import Control.Concurrent.MVar
+import Control.Monad (join)
 import Data.ByteString (ByteString)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
@@ -97,15 +98,18 @@ disconnect =
 -- /Alias/: 'Zmq.send'
 send :: Dealer -> ByteString -> IO (Either Error ())
 send socket0 frame =
-  catchingOkErrors do
-    withSocket socket0 \socket -> do
-      let loop =
-            Socket.sendOneDontWait socket frame False >>= \case
-              True -> pure ()
-              False -> do
+  catchingOkErrors loop
+  where
+    loop = do
+      join do
+        withSocket socket0 \socket -> do
+          sent <- Socket.sendOneDontWait socket frame False
+          pure
+            if sent
+              then pure ()
+              else do
                 Socket.blockUntilCanSend socket
                 loop
-      loop
 
 -- | Send a __multiframe message__ on a __dealer__ to one peer (round-robin).
 --
@@ -113,28 +117,29 @@ send socket0 frame =
 sends :: Dealer -> [ByteString] -> IO (Either Error ())
 sends socket0 = \case
   [] -> pure (Right ())
-  frame : frames ->
-    catchingOkErrors do
-      withSocket socket0 \socket -> do
-        let loop =
-              Socket.sendManyDontWait socket (frame :| frames) >>= \case
-                True -> pure ()
-                False -> do
-                  Socket.blockUntilCanSend socket
-                  loop
-        loop
+  frame : frames -> do
+    let loop = do
+          join do
+            withSocket socket0 \socket -> do
+              sent <- Socket.sendManyDontWait socket (frame :| frames)
+              pure
+                if sent
+                  then pure ()
+                  else do
+                    Socket.blockUntilCanSend socket
+                    loop
+    catchingOkErrors loop
 
 -- | Receive a __message__ on an __dealer__ from any peer (fair-queued).
 --
 -- /Alias/: 'Zmq.receive'
 receive :: Dealer -> IO (Either Error ByteString)
 receive socket =
-  catchingOkErrors do
-    withSocket socket Socket.receiveOne
+  catchingOkErrors (Socket.receiveOne socket)
 
 -- | Receive a __multiframe message__ on an __dealer__ from any peer (fair-queued).
 receives :: Dealer -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do
-    frame :| frames <- withSocket socket Socket.receiveMany
+    frame :| frames <- (Socket.receiveMany socket)
     pure (frame : frames)

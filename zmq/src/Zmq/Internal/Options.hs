@@ -28,6 +28,8 @@ import Numeric.Natural (Natural)
 import Zmq.Error (enrichError, throwOkError, unexpectedError)
 import {-# SOURCE #-} Zmq.Internal.Context (Context)
 
+-- TODO linger option for context and socket
+
 data Options socket
   = DefaultOptions
   | ContextOptions (Zmq_ctx -> IO ())

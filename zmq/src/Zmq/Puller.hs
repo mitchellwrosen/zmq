@@ -22,7 +22,7 @@ import Zmq.Error
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll)
-import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadSafeSocket)
+import Zmq.Internal.Socket (CanReceive, Socket, ThreadSafeSocket)
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __puller__ socket.
@@ -90,12 +90,11 @@ disconnect =
 -- /Alias/: 'Zmq.receive'
 receive :: Puller -> IO (Either Error ByteString)
 receive socket =
-  catchingOkErrors do
-    withSocket socket Socket.receiveOne
+  catchingOkErrors (Socket.receiveOne socket)
 
 -- | Receive a __multiframe message__ on a __puller__ from one peer (fair-queued).
 receives :: Puller -> IO (Either Error [ByteString])
-receives socket = do
+receives socket =
   catchingOkErrors do
-    frame :| frames <- withSocket socket Socket.receiveMany
+    frame :| frames <- (Socket.receiveMany socket)
     pure (frame : frames)

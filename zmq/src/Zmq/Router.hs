@@ -96,15 +96,15 @@ sends socket0 = \case
         -- First try a non-blocking send, but if that doesn't work, try a blocking send. We'll get EAGAIN if the peer we
         -- are we are trying to send to has reached its high-water mark. In this case, waiting for the socket to become
         -- writable is not useful for a router - we want to block until we can send to *this* peer. So we do that with
-        -- a safe FFI call to zmq_send without ZMQ_DONTWAIT.
+        -- a safe FFI call to zmq_send without ZMQ_DONTWAIT. Note that this means while we're blocking in send, other
+        -- threads can't receive on this router.
         Socket.sendManyDontWait socket message >>= \case
           True -> pure ()
           False -> Socket.sendMany socket message
 
 -- | Receive a __multiframe message__ on an __router__ from any peer (fair-queued).
 receives :: Router -> IO (Either Error [ByteString])
-receives socket0 =
+receives socket =
   catchingOkErrors do
-    withSocket socket0 \socket -> do
-      frame :| frames <- Socket.receiveMany socket
-      pure (frame : frames)
+    frame :| frames <- (Socket.receiveMany socket)
+    pure (frame : frames)

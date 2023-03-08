@@ -22,16 +22,18 @@ module Zmq.Internal.Socket
     receiveOne,
     receiveMany,
     blockUntilCanSend,
+    blockUntilCanReceive,
   )
 where
 
 import Control.Concurrent (threadWaitRead)
 import Control.Concurrent.MVar
 import Control.Exception
-import Control.Monad (when)
+import Control.Monad (join, when)
 import Data.Bits ((.&.))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as ByteString
+import Data.Foldable (for_)
 import Data.Functor ((<&>))
 import Data.IORef
 import Data.List qualified as List
@@ -42,6 +44,7 @@ import Data.Text.Encoding qualified as Text
 import Data.Text.Lazy qualified as Text.Lazy
 import Data.Text.Lazy.Builder qualified as Text (Builder)
 import Data.Text.Lazy.Builder qualified as Text.Builder
+import Data.Void (Void, absurd)
 import Data.Word (Word8)
 import Foreign.C.Types (CInt, CShort)
 import GHC.Exts (TYPE, UnliftedRep, keepAlive#)
@@ -160,85 +163,73 @@ getIntOption socket option = do
 -- | Bind a __socket__ to an __endpoint__.
 bind :: Socket socket => socket -> Text -> IO (Either Error ())
 bind socket0 endpoint =
-  withSocket socket0 \socket -> bind_ socket endpoint
-
-bind_ :: Zmq_socket -> Text -> IO (Either Error ())
-bind_ socket endpoint =
-  zmq_bind socket endpoint >>= \case
-    Left errno ->
-      let err = enrichError "zmq_bind" errno
-       in case errno of
-            EADDRINUSE -> pure (Left err)
-            EADDRNOTAVAIL -> throwIO err
-            EINVAL -> throwIO err
-            EMTHREAD -> pure (Left err)
-            ENOCOMPATPROTO -> throwIO err
-            ENODEV -> throwIO err
-            ENOTSOCK -> throwIO err
-            EPROTONOSUPPORT -> throwIO err
-            ETERM -> pure (Left err)
-            _ -> unexpectedError err
-    Right () -> pure (Right ())
+  withSocket socket0 \socket ->
+    zmq_bind socket endpoint >>= \case
+      Left errno ->
+        let err = enrichError "zmq_bind" errno
+         in case errno of
+              EADDRINUSE -> pure (Left err)
+              EADDRNOTAVAIL -> throwIO err
+              EINVAL -> throwIO err
+              EMTHREAD -> pure (Left err)
+              ENOCOMPATPROTO -> throwIO err
+              ENODEV -> throwIO err
+              ENOTSOCK -> throwIO err
+              EPROTONOSUPPORT -> throwIO err
+              ETERM -> pure (Left err)
+              _ -> unexpectedError err
+      Right () -> pure (Right ())
 
 -- | Unbind a __socket__ from an __endpoint__.
 unbind :: Socket socket => socket -> Text -> IO ()
 unbind socket0 endpoint =
-  withSocket socket0 \socket -> unbind_ socket endpoint
-
-unbind_ :: Zmq_socket -> Text -> IO ()
-unbind_ socket endpoint =
-  zmq_unbind socket endpoint >>= \case
-    Left errno ->
-      let err = enrichError "zmq_unbind" errno
-       in case errno of
-            -- These aren't very interesting to report to the user; in all cases, we can say "ok, we
-            -- disconnected", so we prefer the cleaner return type with no Either.
-            EINVAL -> pure ()
-            ENOENT -> pure ()
-            ENOTSOCK -> pure ()
-            ETERM -> pure ()
-            _ -> unexpectedError err
-    Right () -> pure ()
+  withSocket socket0 \socket ->
+    zmq_unbind socket endpoint >>= \case
+      Left errno ->
+        let err = enrichError "zmq_unbind" errno
+         in case errno of
+              -- These aren't very interesting to report to the user; in all cases, we can say "ok, we
+              -- disconnected", so we prefer the cleaner return type with no Either.
+              EINVAL -> pure ()
+              ENOENT -> pure ()
+              ENOTSOCK -> pure ()
+              ETERM -> pure ()
+              _ -> unexpectedError err
+      Right () -> pure ()
 
 -- | Connect a __socket__ to an __endpoint__.
 connect :: Socket socket => socket -> Text -> IO (Either Error ())
 connect socket0 endpoint =
-  withSocket socket0 \socket -> connect_ socket endpoint
-
-connect_ :: Zmq_socket -> Text -> IO (Either Error ())
-connect_ socket endpoint =
-  zmq_connect socket endpoint >>= \case
-    Left errno ->
-      let err = enrichError "zmq_connect" errno
-       in case errno of
-            EINVAL -> throwIO err
-            EMTHREAD -> pure (Left err)
-            ENOCOMPATPROTO -> throwIO err
-            ENOTSOCK -> throwIO err
-            EPROTONOSUPPORT -> throwIO err
-            ETERM -> pure (Left err)
-            _ -> unexpectedError err
-    Right () -> pure (Right ())
+  withSocket socket0 \socket ->
+    zmq_connect socket endpoint >>= \case
+      Left errno ->
+        let err = enrichError "zmq_connect" errno
+         in case errno of
+              EINVAL -> throwIO err
+              EMTHREAD -> pure (Left err)
+              ENOCOMPATPROTO -> throwIO err
+              ENOTSOCK -> throwIO err
+              EPROTONOSUPPORT -> throwIO err
+              ETERM -> pure (Left err)
+              _ -> unexpectedError err
+      Right () -> pure (Right ())
 
 -- | Disconnect a __socket__ from an __endpoint__.
 disconnect :: Socket socket => socket -> Text -> IO ()
 disconnect socket0 endpoint =
-  withSocket socket0 \socket -> disconnect_ socket endpoint
-
-disconnect_ :: Zmq_socket -> Text -> IO ()
-disconnect_ socket endpoint =
-  zmq_disconnect socket endpoint >>= \case
-    Left errno ->
-      let err = enrichError "zmq_disconnect" errno
-       in case errno of
-            -- These aren't very interesting to report to the user; in all cases, we can say "ok, we
-            -- disconnected", so we prefer the cleaner return type with no Either.
-            EINVAL -> pure ()
-            ENOENT -> pure ()
-            ENOTSOCK -> pure ()
-            ETERM -> pure ()
-            _ -> unexpectedError err
-    Right () -> pure ()
+  withSocket socket0 \socket ->
+    zmq_disconnect socket endpoint >>= \case
+      Left errno ->
+        let err = enrichError "zmq_disconnect" errno
+         in case errno of
+              -- These aren't very interesting to report to the user; in all cases, we can say "ok, we
+              -- disconnected", so we prefer the cleaner return type with no Either.
+              EINVAL -> pure ()
+              ENOENT -> pure ()
+              ENOTSOCK -> pure ()
+              ETERM -> pure ()
+              _ -> unexpectedError err
+      Right () -> pure ()
 
 -- Send a single frame
 -- Throws ok errors
@@ -378,56 +369,94 @@ sendManyWontBlock__ socket =
    in loop
 
 -- Throws ok errors
-receiveOne :: Zmq_socket -> IO ByteString
-receiveOne socket =
+receiveOne :: Socket socket => socket -> IO ByteString
+receiveOne socket0 =
+  loop
+  where
+    loop =
+      join do
+        withSocket socket0 \socket ->
+          receiveOneDontWait socket <&> \case
+            Nothing -> do
+              blockUntilCanReceive socket
+              loop
+            Just frame -> pure frame
+
+-- Receive one frame, or Nothing on EAGAIN
+-- Throws ok errors
+receiveOneDontWait :: Zmq_socket -> IO (Maybe ByteString)
+receiveOneDontWait socket =
   if not debug
     then do
       mask_ do
         receiveFrame socket >>= \case
+          Again () -> pure Nothing
+          NoMore frame -> pure (Just frame)
           More frame -> do
-            receiveOne_ socket
-            pure frame
-          NoMore frame -> pure frame
+            receiveRest_ socket
+            pure (Just frame)
     else do
       -- When debugging, we want to print all received frames, even though we only return the first
-      frame :| _ <- receiveMany socket
-      pure frame
+      receiveManyDontWait socket <&> \case
+        Nothing -> Nothing
+        Just (frame :| _) -> Just frame
 
+-- Receive all frames of a message
 -- Throws ok errors
-receiveOne_ :: Zmq_socket -> IO ()
-receiveOne_ socket =
-  receiveFrame socket >>= \case
-    More _ -> receiveOne_ socket
-    NoMore _ -> pure ()
+receiveMany :: Socket socket => socket -> IO (List.NonEmpty ByteString)
+receiveMany socket0 = do
+  loop
+  where
+    loop =
+      join do
+        withSocket socket0 \socket ->
+          receiveManyDontWait socket <&> \case
+            Nothing -> do
+              blockUntilCanReceive socket
+              loop
+            Just frames -> pure frames
 
+-- Receive all frames of a message, or Nothing on EAGAIN
 -- Throws ok errors
-receiveMany :: Zmq_socket -> IO (List.NonEmpty ByteString)
-receiveMany socket = do
-  frames <-
+receiveManyDontWait :: Zmq_socket -> IO (Maybe (List.NonEmpty ByteString))
+receiveManyDontWait socket = do
+  maybeFrames <-
     mask_ do
       receiveFrame socket >>= \case
+        Again () -> pure Nothing
         More frame -> do
-          frames <- receiveMany_ socket
-          pure (frame :| frames)
-        NoMore frame -> pure (frame :| [])
-  when debug (debugPrintFrames socket Incoming frames)
-  pure frames
+          frames <- receiveRest socket
+          pure (Just (frame :| frames))
+        NoMore frame -> pure (Just (frame :| []))
+  when debug (for_ maybeFrames (debugPrintFrames socket Incoming))
+  pure maybeFrames
 
+-- Receive the rest of a multiframe message
 -- Throws ok errors
-receiveMany_ :: Zmq_socket -> IO [ByteString]
-receiveMany_ socket =
-  receiveFrame socket >>= \case
+receiveRest :: Zmq_socket -> IO [ByteString]
+receiveRest socket =
+  receiveFrameWontBlock socket >>= \case
     More frame -> do
-      frames <- receiveMany_ socket
+      frames <- receiveRest socket
       pure (frame : frames)
     NoMore frame -> pure [frame]
+    Again v -> absurd v
 
-data ReceiveF
-  = More ByteString
+-- Throws ok errors
+receiveRest_ :: Zmq_socket -> IO ()
+receiveRest_ socket =
+  receiveFrameWontBlock socket >>= \case
+    More _ -> receiveRest_ socket
+    NoMore _ -> pure ()
+    Again v -> absurd v
+
+data ReceiveF a
+  = Again a
+  | More ByteString
   | NoMore ByteString
 
 -- Throws ok errors
-receiveFrame :: Zmq_socket -> IO ReceiveF
+receiveFrame :: Zmq_socket -> IO (ReceiveF ())
 receiveFrame socket =
   bracket zmq_msg_init zmq_msg_close \frame -> do
     let loop = do
@@ -435,9 +464,29 @@ receiveFrame socket =
             Left errno ->
               let err = enrichError "zmq_msg_recv" errno
                in case errno of
-                    EAGAIN -> do
-                      blockUntilEvent socket Libzmq.Bindings._ZMQ_POLLIN
-                      loop
+                    EAGAIN -> pure (Again ())
+                    EFSM -> throwIO err
+                    EINTR -> throwOkError err
+                    ENOTSOCK -> throwIO err
+                    ENOTSUP -> throwIO err
+                    ETERM -> throwOkError err
+                    _ -> unexpectedError err
+            Right _len -> do
+              bytes <- zmq_msg_data frame
+              zmq_msg_more frame <&> \case
+                False -> NoMore bytes
+                True -> More bytes
+    loop
+
+-- Throws ok errors
+receiveFrameWontBlock :: Zmq_socket -> IO (ReceiveF Void)
+receiveFrameWontBlock socket =
+  bracket zmq_msg_init zmq_msg_close \frame -> do
+    let loop = do
+          zmq_msg_recv_dontwait frame socket >>= \case
+            Left errno ->
+              let err = enrichError "zmq_msg_recv" errno
+               in case errno of
                     EFSM -> throwIO err
                     EINTR -> throwOkError err
                     ENOTSOCK -> throwIO err
@@ -455,6 +504,11 @@ receiveFrame socket =
 blockUntilCanSend :: Zmq_socket -> IO ()
 blockUntilCanSend socket =
   blockUntilEvent socket Libzmq.Bindings._ZMQ_POLLOUT
+
+-- Throws ok errors
+blockUntilCanReceive :: Zmq_socket -> IO ()
+blockUntilCanReceive socket =
+  blockUntilEvent socket Libzmq.Bindings._ZMQ_POLLIN
 
 -- Throws ok errors
 blockUntilEvent :: Zmq_socket -> CShort -> IO ()
