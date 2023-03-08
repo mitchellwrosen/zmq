@@ -41,6 +41,7 @@ import Data.List qualified as List
 import Data.List.NonEmpty (pattern (:|))
 import Data.List.NonEmpty qualified as List (NonEmpty)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Text.Encoding qualified as Text
 import Data.Text.Lazy qualified as Text.Lazy
 import Data.Text.Lazy.Builder qualified as Text (Builder)
@@ -70,7 +71,7 @@ class Socket (socket :: Type) where
   withSocket :: socket -> (Zmq_socket -> IO a) -> IO a
   withSocket = undefined -- hide "minimal complete definition" haddock
 
-  socketName :: socket -> Maybe Text
+  socketName :: socket -> Text
   socketName = undefined -- hide "minimal complete definition" haddock
 
 class Socket socket => CanReceive socket where
@@ -82,7 +83,7 @@ class Socket socket => CanSend socket where
   send_ = undefined -- hide "minimal complete definition" haddock
 
 data ThreadSafeSocket
-  = ThreadSafeSocket !(MVar Zmq_socket) !(Maybe Text)
+  = ThreadSafeSocket !(MVar Zmq_socket) !Text
   deriving stock (Eq)
 
 instance Socket ThreadSafeSocket where
@@ -116,7 +117,7 @@ instance Socket ThreadUnsafeSocket where
 
   -- FIXME
   socketName _ =
-    Nothing
+    ""
 
 -- Throws ok errors
 openThreadUnsafeSocket :: Zmq_socket_type -> IO ThreadUnsafeSocket
@@ -245,9 +246,9 @@ disconnect socket0 endpoint =
 
 -- Send a single frame
 -- Throws ok errors
-sendOne :: Zmq_socket -> Maybe Text -> ByteString -> Bool -> IO ()
-sendOne socket maybeName frame more = do
-  when debug (debugPrintFrames socket maybeName Outgoing (frame :| []))
+sendOne :: Zmq_socket -> Text -> ByteString -> Bool -> IO ()
+sendOne socket name frame more = do
+  when debug (debugPrintFrames socket name Outgoing (frame :| []))
   sendOne_ socket frame more
 
 -- Throws ok errors
@@ -271,9 +272,9 @@ sendOne_ socket frame more = do
 
 -- Send a single frame with ZMQ_DONTWAIT; on EAGAIN, returns False
 -- Throws ok errors
-sendOneDontWait :: Zmq_socket -> Maybe Text -> ByteString -> Bool -> IO Bool
-sendOneDontWait socket maybeName frame more = do
-  when debug (debugPrintFrames socket maybeName Outgoing (frame :| []))
+sendOneDontWait :: Zmq_socket -> Text -> ByteString -> Bool -> IO Bool
+sendOneDontWait socket name frame more = do
+  when debug (debugPrintFrames socket name Outgoing (frame :| []))
   sendOneDontWait_ socket frame more
 
 -- Throws ok errors
@@ -298,9 +299,9 @@ sendOneDontWait_ socket frame more = do
 
 -- Like sendOneDontWait, but for when we know EAGAIN is impossble (so we dont set ZMQ_DONTWAIT)
 -- Throws ok errors
-sendOneWontBlock :: Zmq_socket -> Maybe Text -> ByteString -> Bool -> IO ()
-sendOneWontBlock socket maybeName frame more = do
-  when debug (debugPrintFrames socket maybeName Outgoing (frame :| []))
+sendOneWontBlock :: Zmq_socket -> Text -> ByteString -> Bool -> IO ()
+sendOneWontBlock socket name frame more = do
+  when debug (debugPrintFrames socket name Outgoing (frame :| []))
   sendOneWontBlock_ socket frame more
 
 -- Throws ok errors
@@ -323,9 +324,9 @@ sendOneWontBlock_ socket frame more = do
   loop
 
 -- Throws ok errors
-sendMany :: Zmq_socket -> Maybe Text -> List.NonEmpty ByteString -> IO ()
-sendMany socket maybeName frames = do
-  when debug (debugPrintFrames socket maybeName Outgoing frames)
+sendMany :: Zmq_socket -> Text -> List.NonEmpty ByteString -> IO ()
+sendMany socket name frames = do
+  when debug (debugPrintFrames socket name Outgoing frames)
   sendMany_ socket frames
 
 -- Throws ok errors
@@ -338,9 +339,9 @@ sendMany_ socket = \case
       sendManyWontBlock__ socket frames
 
 -- Throws ok errors
-sendManyDontWait :: Zmq_socket -> Maybe Text -> List.NonEmpty ByteString -> IO Bool
-sendManyDontWait socket maybeName frames = do
-  when debug (debugPrintFrames socket maybeName Outgoing frames)
+sendManyDontWait :: Zmq_socket -> Text -> List.NonEmpty ByteString -> IO Bool
+sendManyDontWait socket name frames = do
+  when debug (debugPrintFrames socket name Outgoing frames)
   sendManyDontWait_ socket frames
 
 -- Throws ok errors
@@ -356,9 +357,9 @@ sendManyDontWait_ socket = \case
           pure True
 
 -- Throws ok errors
-sendManyWontBlock :: Zmq_socket -> Maybe Text -> List.NonEmpty ByteString -> IO ()
-sendManyWontBlock socket maybeName frames = do
-  when debug (debugPrintFrames socket maybeName Outgoing frames)
+sendManyWontBlock :: Zmq_socket -> Text -> List.NonEmpty ByteString -> IO ()
+sendManyWontBlock socket name frames = do
+  when debug (debugPrintFrames socket name Outgoing frames)
   sendManyWontBlock_ socket frames
 
 sendManyWontBlock_ :: Zmq_socket -> List.NonEmpty ByteString -> IO ()
@@ -396,8 +397,8 @@ receiveOne socket0 =
 
 -- Receive one frame, or Nothing on EAGAIN
 -- Throws ok errors
-receiveOneDontWait :: Zmq_socket -> Maybe Text -> IO (Maybe ByteString)
-receiveOneDontWait socket maybeName =
+receiveOneDontWait :: Zmq_socket -> Text -> IO (Maybe ByteString)
+receiveOneDontWait socket name =
   if not debug
     then do
       mask_ do
@@ -409,7 +410,7 @@ receiveOneDontWait socket maybeName =
             pure (Just frame)
     else do
       -- When debugging, we want to print all received frames, even though we only return the first
-      receiveManyDontWait socket maybeName <&> \case
+      receiveManyDontWait socket name <&> \case
         Nothing -> Nothing
         Just (frame :| _) -> Just frame
 
@@ -430,8 +431,8 @@ receiveMany socket0 = do
 
 -- Receive all frames of a message, or Nothing on EAGAIN
 -- Throws ok errors
-receiveManyDontWait :: Zmq_socket -> Maybe Text -> IO (Maybe (List.NonEmpty ByteString))
-receiveManyDontWait socket maybeName = do
+receiveManyDontWait :: Zmq_socket -> Text -> IO (Maybe (List.NonEmpty ByteString))
+receiveManyDontWait socket name = do
   maybeFrames <-
     mask_ do
       receiveFrame socket >>= \case
@@ -440,7 +441,7 @@ receiveManyDontWait socket maybeName = do
           frames <- receiveRest socket
           pure (Just (frame :| frames))
         NoMore frame -> pure (Just (frame :| []))
-  when debug (for_ maybeFrames (debugPrintFrames socket maybeName Incoming))
+  when debug (for_ maybeFrames (debugPrintFrames socket name Incoming))
   pure maybeFrames
 
 -- Receive the rest of a multiframe message
@@ -550,16 +551,17 @@ data Direction
   = Outgoing
   | Incoming
 
-debugPrintFrames :: Zmq_socket -> Maybe Text -> Direction -> List.NonEmpty ByteString -> IO ()
-debugPrintFrames (Zmq_socket socket) maybeName direction frames = do
+debugPrintFrames :: Zmq_socket -> Text -> Direction -> List.NonEmpty ByteString -> IO ()
+debugPrintFrames (Zmq_socket socket) name direction frames = do
   let !message =
         Text.encodeUtf8 $
           Text.Lazy.toStrict $
             Text.Builder.toLazyText $
               "== "
-                <> case maybeName of
-                  Nothing -> "Socket " <> Text.Builder.fromString (show socket)
-                  Just name -> Text.Builder.fromText name
+                <> ( if Text.null name
+                       then "Socket " <> Text.Builder.fromString (show socket)
+                       else Text.Builder.fromText name
+                   )
                 <> " ==\n"
                 <> foldMap formatFrame frames
                 <> "\n\n"

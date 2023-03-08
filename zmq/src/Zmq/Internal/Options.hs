@@ -26,6 +26,7 @@ where
 import Control.Exception
 import Data.Int (Int32)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Libzmq
 import Numeric.Natural (Natural)
 import Zmq.Error (enrichError, throwOkError, unexpectedError)
@@ -37,18 +38,13 @@ import {-# SOURCE #-} Zmq.Internal.Socket (Socket)
 data Options socket
   = DefaultOptions
   | ContextOptions (Zmq_ctx -> IO ())
-  | SocketOptions (Zmq_socket -> IO ()) !(Maybe Text)
+  | SocketOptions (Zmq_socket -> IO ()) !Text
 
 instance Semigroup (Options socket) where
   DefaultOptions <> y = y
   x <> DefaultOptions = x
   ContextOptions x <> ContextOptions y = ContextOptions (x <> y)
-  SocketOptions x0 x1 <> SocketOptions y0 y1 =
-    SocketOptions
-      (x0 <> y0)
-      case y1 of
-        Nothing -> x1
-        _ -> y1
+  SocketOptions x0 x1 <> SocketOptions y0 y1 = SocketOptions (x0 <> y0) (if Text.null y1 then x1 else y1)
   _ <> _ = DefaultOptions -- type system should prevent this
 
 class CanSetLossy socket
@@ -59,10 +55,10 @@ defaultOptions :: Options a
 defaultOptions =
   DefaultOptions
 
-optionsName :: Options socket -> Maybe Text
+optionsName :: Options socket -> Text
 optionsName = \case
   SocketOptions _ s -> s
-  _ -> Nothing
+  _ -> Text.empty
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Context options
@@ -150,20 +146,20 @@ setSocketOptions socket socketType options =
 
 lossy :: CanSetLossy socket => Options socket
 lossy =
-  SocketOptions (\socket -> setSocketOption socket ZMQ_XPUB_NODROP 0) Nothing
+  SocketOptions (\socket -> setSocketOption socket ZMQ_XPUB_NODROP 0) Text.empty
 
 -- internal
 notLossy :: Options socket
 notLossy =
-  SocketOptions (\socket -> setSocketOption socket ZMQ_XPUB_NODROP 1) Nothing
+  SocketOptions (\socket -> setSocketOption socket ZMQ_XPUB_NODROP 1) Text.empty
 
 name :: Socket socket => Text -> Options socket
-name s =
-  SocketOptions mempty (Just s)
+name =
+  SocketOptions mempty
 
 sendQueueSize :: CanSetSendQueueSize socket => Natural -> Options socket
 sendQueueSize n =
-  SocketOptions (\socket -> setSocketOption socket ZMQ_SNDHWM (natToInt32 n)) Nothing
+  SocketOptions (\socket -> setSocketOption socket ZMQ_SNDHWM (natToInt32 n)) Text.empty
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Utils
