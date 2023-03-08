@@ -522,21 +522,14 @@ zmq_poll pollitems timeout = do
   (lo, hi) <- MArray.getBounds pollitems
   let numPollitems = fromIntegral @Int @CInt (hi - lo + 1)
   StorableArray.withStorableArray pollitems \cpollitems -> do
-    Libzmq.Bindings.zmq_poll cpollitems numPollitems (fromIntegral @Int64 @CLong timeout) >>= \case
+    poll cpollitems numPollitems (fromIntegral @Int64 @CLong timeout) >>= \case
       -1 -> Left <$> zmq_errno
       n -> pure (Right (fromIntegral @CInt @Int n))
-
--- | Input/output multiplexing.
---
--- http://api.zeromq.org/master:zmq-poll
-zmq_poll_dontwait :: StorableArray Int Libzmq.Bindings.Zmq_pollitem -> IO (Either Zmq_error Int)
-zmq_poll_dontwait pollitems = do
-  (lo, hi) <- MArray.getBounds pollitems
-  let numPollitems = fromIntegral @Int @CInt (hi - lo + 1)
-  StorableArray.withStorableArray pollitems \cpollitems -> do
-    Libzmq.Bindings.zmq_poll__unsafe cpollitems numPollitems 0 >>= \case
-      -1 -> Left <$> zmq_errno
-      n -> pure (Right (fromIntegral @CInt @Int n))
+  where
+    poll =
+      if timeout == 0
+        then Libzmq.Bindings.zmq_poll__unsafe
+        else Libzmq.Bindings.zmq_poll
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Misc. utils

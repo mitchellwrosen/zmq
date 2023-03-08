@@ -55,7 +55,6 @@ module Libzmq
 
     -- ** I/O multiplexing
     zmq_poll,
-    zmq_poll_dontwait,
 
     -- * Types
     Zmq_ctx_option
