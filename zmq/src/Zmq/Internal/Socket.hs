@@ -561,7 +561,7 @@ debugPrintFrames (Zmq_socket socket) name direction frames = do
                    )
                 <> " ==\n"
                 <> foldMap formatFrame frames
-                <> "\n\n"
+                <> "\n"
   withMVar lock \_ -> ByteString.hPut IO.stderr message
   where
     formatFrame :: ByteString -> Text.Builder
