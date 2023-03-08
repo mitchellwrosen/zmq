@@ -7,6 +7,7 @@ import Data.ByteString.Char8 qualified as ByteString.Char8
 import Data.Foldable (for_)
 import Data.Function ((&))
 import Data.Functor ((<&>))
+import Data.Void (Void)
 import GHC.Clock (getMonotonicTimeNSec)
 import GHC.Conc (atomically)
 import Ki qualified
@@ -53,6 +54,7 @@ main =
     ["psenvsub"] -> psenvsub
     ["rtreq"] -> rtreq
     ["lbbroker"] -> lbbroker
+    ["asyncsrv"] -> asyncsrv
     _ -> pure ()
 
 -- Hello World server
@@ -694,6 +696,96 @@ lbbroker =
             -- Send reply
             printf "Worker: %s\n" (ByteString.Char8.unpack request)
             unwrap (Zmq.Requester.sends worker [clientId, clientRequestId, "", "OK"])
+          _ -> pure ()
+
+-- Asynchronous client-to-server (DEALER to ROUTER)
+--
+-- While this example runs in a single process, that is to make
+-- it easier to start and stop the example. Each task conceptually
+-- acts as a separate process.
+--
+-- The main thread simply starts several clients and a server, and then
+-- waits for the server to finish.
+asyncsrv :: IO ()
+asyncsrv =
+  Zmq.run Zmq.defaultOptions do
+    Ki.scoped \scope -> do
+      Ki.fork_ scope clientTask
+      Ki.fork_ scope clientTask
+      Ki.fork_ scope clientTask
+      Ki.fork_ scope serverTask
+
+      threadDelay 5_000_000 -- Run for 5 seconds then quit
+  where
+    -- This is our client task
+    -- It connects to the server, and then sends a request once per second
+    -- It collects responses as they arrive, and it prints them out. We will
+    -- run several client tasks in parallel, each with a different random ID.
+    clientTask :: IO Void
+    clientTask = do
+      client <- unwrap (Zmq.Dealer.open Zmq.defaultOptions)
+
+      unwrap (Zmq.connect client "tcp://localhost:5570")
+
+      Ki.scoped \scope -> do
+        Ki.fork_ scope do
+          forever do
+            msg <- unwrap (Zmq.receive client)
+            print msg
+        let loop requestNbr = do
+              threadDelay 1_000_000
+              unwrap (Zmq.send client ("request #" <> ByteString.Char8.pack (show requestNbr)))
+              loop (requestNbr + 1)
+        loop (1 :: Int)
+
+    -- This is our server task.
+    -- It uses the multithreaded server model to deal requests out to a pool
+    -- of workers and route replies back to clients. One worker can handle
+    -- one request at a time but one client can talk to multiple workers at
+    -- once.
+    serverTask :: IO Void
+    serverTask = do
+      -- Launch pool of worker threads, precise number is not critical
+      let nbrThreads = 5 :: Int
+      Ki.scoped \scope -> do
+        replicateM_ nbrThreads do
+          Ki.fork_ scope serverWorker
+
+        -- Connect backend to frontend
+        frontend <- unwrap (Zmq.Router.open Zmq.defaultOptions)
+        unwrap (Zmq.bind frontend "tcp://*:5570")
+
+        backend <- unwrap (Zmq.Dealer.open Zmq.defaultOptions)
+        unwrap (Zmq.bind backend "inproc://backend")
+
+        forever do
+          let items =
+                Zmq.the frontend
+                  & Zmq.also backend
+          ready <- unwrap (Zmq.poll items)
+          when (ready 0) do
+            message <- unwrap (Zmq.Router.receives frontend)
+            unwrap (Zmq.Dealer.sends backend message)
+          when (ready 1) do
+            message <- unwrap (Zmq.Dealer.receives backend)
+            unwrap (Zmq.Router.sends frontend message)
+
+    -- Each worker task works on one request at a time and sends a random number
+    -- of replies back, with random delays between replies:
+    serverWorker :: IO Void
+    serverWorker = do
+      worker <- unwrap (Zmq.Dealer.open Zmq.defaultOptions)
+      unwrap (Zmq.connect worker "inproc://backend")
+
+      forever do
+        unwrap (Zmq.Dealer.receives worker) >>= \case
+          [identity, content] -> do
+            -- Send 0..4 replies back
+            replies <- uniformRM (0 :: Int, 4) globalStdGen
+            replicateM_ replies do
+              -- Sleep for some fraction of a second
+              threadDelay =<< uniformRM (1_000, 1_000_000) globalStdGen
+              unwrap (Zmq.Dealer.sends worker [identity, content])
           _ -> pure ()
 
 ------------------------------------------------------------------------------------------------------------------------
