@@ -15,6 +15,7 @@ module Zmq
     disconnect,
     send,
     receive,
+    receives,
 
     -- ** Socket options
     lossy,
@@ -55,6 +56,7 @@ module Zmq
     -- * Socket subclasses
     CanSend,
     CanReceive,
+    CanReceives,
     CanPoll,
 
     -- ** Options
@@ -86,11 +88,13 @@ import Zmq.Internal.Options
 import Zmq.Internal.Poll (CanPoll, Sockets, also, poll, pollFor, the)
 import Zmq.Internal.Socket
   ( CanReceive (receive_),
+    CanReceives,
     CanSend (send_),
     Socket,
     bind,
     connect,
     disconnect,
+    receives_,
     unbind,
   )
 import Zmq.Publisher (Publisher)
@@ -111,6 +115,10 @@ send =
 receive :: CanReceive socket => socket -> IO (Either Error ByteString)
 receive =
   receive_
+
+receives :: CanReceives socket => socket -> IO (Either Error [ByteString])
+receives =
+  receives_
 
 version :: (Int, Int, Int)
 version =

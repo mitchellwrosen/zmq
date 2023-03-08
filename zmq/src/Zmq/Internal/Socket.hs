@@ -5,6 +5,7 @@ module Zmq.Internal.Socket
   ( Socket (..),
     keepingSocketAlive,
     CanReceive (..),
+    CanReceives (..),
     CanSend (..),
     ThreadSafeSocket (..),
     ThreadUnsafeSocket (..),
@@ -81,6 +82,10 @@ keepingSocketAlive socket action =
 class Socket socket => CanReceive socket where
   receive_ :: socket -> IO (Either Error ByteString)
   receive_ = undefined -- hide "minimal complete definition" haddock
+
+class Socket socket => CanReceives socket where
+  receives_ :: socket -> IO (Either Error [ByteString])
+  receives_ = undefined -- hide "minimal complete definition" haddock
 
 class Socket socket => CanSend socket where
   send_ :: socket -> ByteString -> IO (Either Error ())
@@ -535,7 +540,7 @@ blockUntilEvent socket event = do
 -- debug :: (Text -> IO ()) -> Options a
 
 debug :: Bool
-debug = True
+debug = False
 
 debuglock :: MVar ()
 debuglock =

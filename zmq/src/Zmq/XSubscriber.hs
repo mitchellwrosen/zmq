@@ -23,7 +23,7 @@ import Zmq.Error (Error, catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll)
-import Zmq.Internal.Socket (CanReceive, CanSend, Socket (withSocket), ThreadSafeSocket (..))
+import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket), ThreadSafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 import Zmq.Subscription (pattern Subscribe, pattern Unsubscribe)
 
@@ -38,6 +38,9 @@ newtype XSubscriber
 
 instance CanReceive XSubscriber where
   receive_ = receive
+
+instance CanReceives XSubscriber where
+  receives_ = receives
 
 instance CanSend XSubscriber where
   send_ = send
@@ -125,6 +128,8 @@ receive socket =
   catchingOkErrors (Socket.receiveOne socket)
 
 -- | Receive a __multiframe message__ on an __xsubscriber__ from any peer (fair-queued).
+--
+-- /Alias/: 'Zmq.receives'
 receives :: XSubscriber -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do

@@ -305,10 +305,10 @@ rrbroker =
     forever do
       ready <- unwrap (Zmq.poll items)
       when (ready 0) do
-        message <- unwrap (Zmq.Router.receives frontend)
+        message <- unwrap (Zmq.receives frontend)
         unwrap (Zmq.Dealer.sends backend message)
       when (ready 1) do
-        message <- unwrap (Zmq.Dealer.receives backend)
+        message <- unwrap (Zmq.receives backend)
         unwrap (Zmq.Router.sends frontend message)
 
 -- Weather proxy device
@@ -330,10 +330,10 @@ wuproxy =
     forever do
       ready <- unwrap (Zmq.poll items)
       when (ready 0) do
-        message <- unwrap (Zmq.XSubscriber.receives frontend)
+        message <- unwrap (Zmq.receives frontend)
         unwrap (Zmq.XPublisher.sends backend message)
       when (ready 1) do
-        message <- unwrap (Zmq.XPublisher.receives backend)
+        message <- unwrap (Zmq.receives backend)
         unwrap (Zmq.XSubscriber.sends frontend message)
 
 -- Task worker - design 2
@@ -435,10 +435,10 @@ mtserver =
       forever do
         ready <- unwrap (Zmq.poll items)
         when (ready 0) do
-          message <- unwrap (Zmq.Router.receives clients)
+          message <- unwrap (Zmq.receives clients)
           unwrap (Zmq.Dealer.sends workers message)
         when (ready 1) do
-          message <- unwrap (Zmq.Dealer.receives workers)
+          message <- unwrap (Zmq.receives workers)
           unwrap (Zmq.Router.sends clients message)
 
 -- Synchronized publisher
@@ -526,7 +526,7 @@ psenvsub =
 
     forever do
       -- Read envelope with address and message contents
-      unwrap (Zmq.Subscriber.receives subscriber) >>= \case
+      unwrap (Zmq.receives subscriber) >>= \case
         [address, contents] -> printf "[%s] %s\n" (ByteString.Char8.unpack address) (ByteString.Char8.unpack contents)
         _ -> pure ()
 
@@ -548,7 +548,7 @@ rtreq = do
       endTime <- (+ 5_000_000_000) <$> getMonotonicTimeNSec
       let loop workersFired = do
             -- Next message gives us least recently used worker
-            message <- unwrap (Zmq.Router.receives broker)
+            message <- unwrap (Zmq.receives broker)
             -- Encourage workers until it's time to fire them
             time <- getMonotonicTimeNSec
             if time < endTime
@@ -634,7 +634,7 @@ lbbroker =
                       -- Second frame is request id (ZMQ_REQ_CORRELATE)
                       -- Third frame is empty
                       -- Fourth frame is READY or else a client reply identity
-                      unwrap (Zmq.Router.receives backend) >>= \case
+                      unwrap (Zmq.receives backend) >>= \case
                         [workerId, workerRequestId, "", "READY"] ->
                           pure (clientNbr, (workerId, workerRequestId) : workerQueue)
                         -- If client reply, send rest back to frontend
@@ -651,7 +651,7 @@ lbbroker =
                       (True, (workerId, workerRequestId) : workerQueue2) -> do
                         -- Now get next client request, route to last-used worker
                         -- Client request is [identity][messageid][empty][request]
-                        unwrap (Zmq.Router.receives frontend) >>= \case
+                        unwrap (Zmq.receives frontend) >>= \case
                           [clientId, clientRequestId, "", request] -> do
                             unwrap $
                               Zmq.Router.sends
@@ -693,7 +693,7 @@ lbbroker =
       forever do
         -- Read and save all frames until we get an empty frame
         -- In this example there are only 2, but there could be more
-        unwrap (Zmq.Requester.receives worker) >>= \case
+        unwrap (Zmq.receives worker) >>= \case
           [clientId, clientRequestId, "", request] -> do
             -- Send reply
             printf "Worker: %s\n" (ByteString.Char8.unpack request)
@@ -765,10 +765,10 @@ asyncsrv =
                   & Zmq.also backend
           ready <- unwrap (Zmq.poll items)
           when (ready 0) do
-            message <- unwrap (Zmq.Router.receives frontend)
+            message <- unwrap (Zmq.receives frontend)
             unwrap (Zmq.Dealer.sends backend message)
           when (ready 1) do
-            message <- unwrap (Zmq.Dealer.receives backend)
+            message <- unwrap (Zmq.receives backend)
             unwrap (Zmq.Router.sends frontend message)
 
     -- Each worker task works on one request at a time and sends a random number
@@ -779,7 +779,7 @@ asyncsrv =
       unwrap (Zmq.connect worker "inproc://backend")
 
       forever do
-        unwrap (Zmq.Dealer.receives worker) >>= \case
+        unwrap (Zmq.receives worker) >>= \case
           [identity, content] -> do
             -- Send 0..4 replies back
             replies <- uniformRM (0 :: Int, 4) globalStdGen
@@ -820,7 +820,7 @@ peering1 self peers =
               case maybeReady of
                 -- Handle incoming status messages
                 Just _ready ->
-                  unwrap (Zmq.Subscriber.receives statefe) >>= \case
+                  unwrap (Zmq.receives statefe) >>= \case
                     [peerName, available] ->
                       printf
                         "%s - %s workers free\n"

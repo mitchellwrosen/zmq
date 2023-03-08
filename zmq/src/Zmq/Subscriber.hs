@@ -23,7 +23,7 @@ import Zmq.Error
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll)
-import Zmq.Internal.Socket (CanReceive, Socket (withSocket), ThreadSafeSocket (..))
+import Zmq.Internal.Socket (CanReceive, CanReceives, Socket (withSocket), ThreadSafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __subscriber__ socket.
@@ -40,6 +40,9 @@ newtype Subscriber
 
 instance CanReceive Subscriber where
   receive_ = receive
+
+instance CanReceives Subscriber where
+  receives_ = receives
 
 defaultOptions :: Options Subscriber
 defaultOptions =

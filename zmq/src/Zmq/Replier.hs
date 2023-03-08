@@ -23,7 +23,7 @@ import Zmq.Error (Error, catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll)
-import Zmq.Internal.Socket (CanReceive, CanSend, Socket (withSocket), ThreadUnsafeSocket (..))
+import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket), ThreadUnsafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A __replier__ socket.
@@ -40,6 +40,9 @@ newtype Replier
 
 instance CanReceive Replier where
   receive_ = receive
+
+instance CanReceives Replier where
+  receives_ = receives
 
 instance CanSend Replier where
   send_ = send
@@ -118,6 +121,8 @@ receive socket =
   catchingOkErrors (Socket.receiveOne socket)
 
 -- | Receive a __multiframe message__ on a __replier__ from any peer (fair-queued).
+--
+-- /Alias/: 'Zmq.receives'
 receives :: Replier -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do

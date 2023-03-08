@@ -24,7 +24,7 @@ import Zmq.Error (Error, catchingOkErrors, enrichError, throwOkError)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll)
-import Zmq.Internal.Socket (CanReceive, CanSend, Socket (withSocket), ThreadSafeSocket (..))
+import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket), ThreadSafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __xpublisher__ socket.
@@ -42,6 +42,9 @@ newtype XPublisher
 
 instance CanReceive XPublisher where
   receive_ = receive
+
+instance CanReceives XPublisher where
+  receives_ = receives
 
 instance CanSend XPublisher where
   send_ = send
@@ -141,6 +144,8 @@ receive socket =
   catchingOkErrors (Socket.receiveOne socket)
 
 -- | Receive a __multiframe message__ on an __xpublisher__ from any peer (fair-queued).
+--
+-- /Alias/: 'Zmq.receives'
 receives :: XPublisher -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do

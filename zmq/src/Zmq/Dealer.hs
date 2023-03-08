@@ -24,7 +24,7 @@ import Zmq.Error (Error (..), catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll)
-import Zmq.Internal.Socket (CanReceive, CanSend, Socket (withSocket), ThreadSafeSocket (..))
+import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket), ThreadSafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __dealer__ socket.
@@ -41,6 +41,9 @@ newtype Dealer
 
 instance CanReceive Dealer where
   receive_ = receive
+
+instance CanReceives Dealer where
+  receives_ = receives
 
 instance CanSend Dealer where
   send_ = send
@@ -136,6 +139,8 @@ receive socket =
   catchingOkErrors (Socket.receiveOne socket)
 
 -- | Receive a __multiframe message__ on an __dealer__ from any peer (fair-queued).
+--
+-- /Alias/: 'Zmq.receives'
 receives :: Dealer -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do

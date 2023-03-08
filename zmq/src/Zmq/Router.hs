@@ -21,7 +21,7 @@ import Zmq.Error (Error, catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll)
-import Zmq.Internal.Socket (Socket (withSocket), ThreadSafeSocket (..))
+import Zmq.Internal.Socket (CanReceives, Socket (withSocket), ThreadSafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __router__ socket.
@@ -35,6 +35,9 @@ newtype Router
     ( CanPoll,
       Options.CanSetSendQueueSize
     )
+
+instance CanReceives Router where
+  receives_ = receives
 
 defaultOptions :: Options Router
 defaultOptions =
@@ -101,6 +104,8 @@ sends socket0 = \case
           False -> Socket.sendMany socket (Socket.socketName socket0) message
 
 -- | Receive a __multiframe message__ on an __router__ from any peer (fair-queued).
+--
+-- /Alias/: 'Zmq.receives'
 receives :: Router -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do

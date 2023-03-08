@@ -21,7 +21,7 @@ import Zmq.Error
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll)
-import Zmq.Internal.Socket (CanReceive, Socket, ThreadSafeSocket (..))
+import Zmq.Internal.Socket (CanReceive, CanReceives, Socket, ThreadSafeSocket (..))
 import Zmq.Internal.Socket qualified as Socket
 
 -- | A thread-safe __puller__ socket.
@@ -38,6 +38,9 @@ newtype Puller
 
 instance CanReceive Puller where
   receive_ = receive
+
+instance CanReceives Puller where
+  receives_ = receives
 
 defaultOptions :: Options Puller
 defaultOptions =
@@ -91,6 +94,8 @@ receive socket =
   catchingOkErrors (Socket.receiveOne socket)
 
 -- | Receive a __multiframe message__ on a __puller__ from one peer (fair-queued).
+--
+-- /Alias/: 'Zmq.receives'
 receives :: Puller -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do
