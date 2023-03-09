@@ -15,6 +15,7 @@ module Zmq.Requester
 where
 
 import Data.ByteString (ByteString)
+import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
@@ -23,8 +24,10 @@ import Zmq.Error (Error (..), catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll)
-import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket), ThreadUnsafeSocket (..))
+import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket))
 import Zmq.Internal.Socket qualified as Socket
+import Zmq.Internal.ThreadUnsafeSocket (ThreadUnsafeSocket)
+import Zmq.Internal.ThreadUnsafeSocket qualified as ThreadUnsafeSocket
 
 -- | A __requester__ socket.
 --
@@ -32,7 +35,6 @@ import Zmq.Internal.Socket qualified as Socket
 newtype Requester
   = Requester ThreadUnsafeSocket
   deriving stock (Eq)
-  deriving newtype (Socket)
   deriving anyclass
     ( CanPoll,
       Options.CanSetSendQueueSize
@@ -47,6 +49,12 @@ instance CanReceives Requester where
 instance CanSend Requester where
   send_ = send
 
+instance Socket Requester where
+  openSocket = open
+  getSocket = coerce ThreadUnsafeSocket.raw
+  withSocket (Requester socket) = ThreadUnsafeSocket.with socket
+  socketName = coerce ThreadUnsafeSocket.name
+
 defaultOptions :: Options Requester
 defaultOptions =
   Options.defaultOptions
@@ -59,11 +67,13 @@ sendQueueSize =
 open :: Options Requester -> IO (Either Error Requester)
 open options =
   catchingOkErrors do
-    socket@(ThreadUnsafeSocket zsocket _ _) <- Socket.openThreadUnsafeSocket ZMQ_REQ (Options.optionsName options)
-    Options.setSocketOption zsocket ZMQ_REQ_CORRELATE 1
-    Options.setSocketOption zsocket ZMQ_REQ_RELAXED 1
-    Options.setSocketOptions zsocket ZMQ_REQ options
-    pure (Requester socket)
+    coerce do
+      ThreadUnsafeSocket.open
+        ZMQ_REQ
+        ( Options.sockopt ZMQ_REQ_CORRELATE 1
+            <> Options.sockopt ZMQ_REQ_RELAXED 1
+            <> options
+        )
 
 -- | Bind a __requester__ to an __endpoint__.
 --

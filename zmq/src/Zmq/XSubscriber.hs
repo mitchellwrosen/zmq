@@ -16,6 +16,7 @@ module Zmq.XSubscriber
 where
 
 import Data.ByteString (ByteString)
+import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
@@ -23,8 +24,10 @@ import Zmq.Error (Error, catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll)
-import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket), ThreadSafeSocket (..))
+import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket))
 import Zmq.Internal.Socket qualified as Socket
+import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
+import Zmq.Internal.ThreadSafeSocket qualified as ThreadSafeSocket
 import Zmq.Subscription (pattern Subscribe, pattern Unsubscribe)
 
 -- | A thread-safe __xsubscriber__ socket.
@@ -34,7 +37,6 @@ newtype XSubscriber
   = XSubscriber ThreadSafeSocket
   deriving stock (Eq)
   deriving anyclass (CanPoll)
-  deriving (Socket) via (ThreadSafeSocket)
 
 instance CanReceive XSubscriber where
   receive_ = receive
@@ -45,6 +47,12 @@ instance CanReceives XSubscriber where
 instance CanSend XSubscriber where
   send_ = send
 
+instance Socket XSubscriber where
+  openSocket = open
+  getSocket = coerce ThreadSafeSocket.raw
+  withSocket (XSubscriber socket) = ThreadSafeSocket.with socket
+  socketName = coerce ThreadSafeSocket.name
+
 defaultOptions :: Options XSubscriber
 defaultOptions =
   Options.defaultOptions
@@ -53,10 +61,12 @@ defaultOptions =
 open :: Options XSubscriber -> IO (Either Error XSubscriber)
 open options =
   catchingOkErrors do
-    socket@(ThreadSafeSocket _ zsocket _) <- Socket.openThreadSafeSocket ZMQ_XSUB (Options.optionsName options)
-    Options.setSocketOption zsocket ZMQ_SNDHWM 0 -- don't drop subscriptions
-    Options.setSocketOptions zsocket ZMQ_XSUB options
-    pure (XSubscriber socket)
+    coerce do
+      ThreadSafeSocket.open
+        ZMQ_XSUB
+        ( Options.sockopt ZMQ_SNDHWM 0 -- don't drop subscriptions
+            <> options
+        )
 
 -- | Bind an __xsubscriber__ to an __endpoint__.
 --

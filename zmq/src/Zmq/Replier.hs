@@ -15,6 +15,7 @@ module Zmq.Replier
 where
 
 import Data.ByteString (ByteString)
+import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
@@ -23,8 +24,10 @@ import Zmq.Error (Error, catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll)
-import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket), ThreadUnsafeSocket (..))
+import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket))
 import Zmq.Internal.Socket qualified as Socket
+import Zmq.Internal.ThreadUnsafeSocket (ThreadUnsafeSocket)
+import Zmq.Internal.ThreadUnsafeSocket qualified as ThreadUnsafeSocket
 
 -- | A __replier__ socket.
 --
@@ -32,7 +35,6 @@ import Zmq.Internal.Socket qualified as Socket
 newtype Replier
   = Replier ThreadUnsafeSocket
   deriving stock (Eq)
-  deriving newtype (Socket)
   deriving anyclass
     ( CanPoll,
       Options.CanSetSendQueueSize
@@ -47,6 +49,12 @@ instance CanReceives Replier where
 instance CanSend Replier where
   send_ = send
 
+instance Socket Replier where
+  openSocket = open
+  getSocket = coerce ThreadUnsafeSocket.raw
+  withSocket (Replier socket) = ThreadUnsafeSocket.with socket
+  socketName = coerce ThreadUnsafeSocket.name
+
 defaultOptions :: Options Replier
 defaultOptions =
   Options.defaultOptions
@@ -59,9 +67,7 @@ sendQueueSize =
 open :: Options Replier -> IO (Either Error Replier)
 open options =
   catchingOkErrors do
-    socket@(ThreadUnsafeSocket zsocket _ _) <- Socket.openThreadUnsafeSocket ZMQ_REP (Options.optionsName options)
-    Options.setSocketOptions zsocket ZMQ_REP options
-    pure (Replier socket)
+    coerce (ThreadUnsafeSocket.open ZMQ_REP options)
 
 -- | Bind a __replier__ to an __endpoint__.
 --

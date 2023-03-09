@@ -13,6 +13,7 @@ module Zmq.Router
 where
 
 import Data.ByteString (ByteString)
+import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
@@ -21,8 +22,10 @@ import Zmq.Error (Error, catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll)
-import Zmq.Internal.Socket (CanReceives, Socket (withSocket), ThreadSafeSocket (..))
+import Zmq.Internal.Socket (CanReceives, Socket (withSocket))
 import Zmq.Internal.Socket qualified as Socket
+import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
+import Zmq.Internal.ThreadSafeSocket qualified as ThreadSafeSocket
 
 -- | A thread-safe __router__ socket.
 --
@@ -30,7 +33,6 @@ import Zmq.Internal.Socket qualified as Socket
 newtype Router
   = Router (ThreadSafeSocket)
   deriving stock (Eq)
-  deriving (Socket) via (ThreadSafeSocket)
   deriving anyclass
     ( CanPoll,
       Options.CanSetSendQueueSize
@@ -38,6 +40,12 @@ newtype Router
 
 instance CanReceives Router where
   receives_ = receives
+
+instance Socket Router where
+  openSocket = open
+  getSocket = coerce ThreadSafeSocket.raw
+  withSocket (Router socket) = ThreadSafeSocket.with socket
+  socketName = coerce ThreadSafeSocket.name
 
 defaultOptions :: Options Router
 defaultOptions =
@@ -51,10 +59,7 @@ sendQueueSize =
 open :: Options Router -> IO (Either Error Router)
 open options =
   catchingOkErrors do
-    socket@(ThreadSafeSocket _ zsocket _) <- Socket.openThreadSafeSocket ZMQ_ROUTER (Options.optionsName options)
-    Options.setSocketOption zsocket ZMQ_ROUTER_MANDATORY 1
-    Options.setSocketOptions zsocket ZMQ_ROUTER options
-    pure (Router socket)
+    coerce (ThreadSafeSocket.open ZMQ_ROUTER (Options.sockopt ZMQ_ROUTER_MANDATORY 1 <> options))
 
 -- | Bind a __router__ to an __endpoint__.
 --

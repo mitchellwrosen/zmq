@@ -8,25 +8,30 @@ module Zmq
 
     -- * Socket
     Socket,
+    open,
+
+    -- ** Peering
     bind,
     unbind,
     connect,
     disconnect,
+
+    -- ** Messaging
     send,
     receive,
     receives,
 
-    -- ** Socket options
-    lossy,
-    name,
-    sendQueueSize,
-
-    -- * IO multiplexing
+    -- ** IO multiplexing
     Sockets,
     the,
     also,
     poll,
     pollFor,
+
+    -- ** Options
+    lossy,
+    name,
+    sendQueueSize,
 
     -- * Socket types
     Dealer,
@@ -88,7 +93,7 @@ import Zmq.Internal.Socket
   ( CanReceive (receive_),
     CanReceives,
     CanSend (send_),
-    Socket,
+    Socket (openSocket),
     bind,
     connect,
     disconnect,
@@ -105,6 +110,10 @@ import Zmq.Subscriber (Subscriber)
 import Zmq.Subscription (pattern Subscribe, pattern Unsubscribe)
 import Zmq.XPublisher (XPublisher)
 import Zmq.XSubscriber (XSubscriber)
+
+open :: Socket socket => Options socket -> IO (Either Error socket)
+open =
+  openSocket
 
 send :: CanSend socket => socket -> ByteString -> IO (Either Error ())
 send =

@@ -14,6 +14,7 @@ common component
     LambdaCase
     OverloadedStrings
     PatternSynonyms
+    RoleAnnotations
     TypeFamilies
     ViewPatterns
   default-language: GHC2021
@@ -62,6 +63,8 @@ library
     Zmq.Internal.Poll
     Zmq.Internal.Socket
     Zmq.Internal.SocketFinalizer
+    Zmq.Internal.ThreadSafeSocket
+    Zmq.Internal.ThreadUnsafeSocket
     Zmq.Error
     Zmq.Subscription
 

@@ -1,5 +1,4 @@
 {-# LANGUAGE MagicHash #-}
-{-# LANGUAGE UnboxedTuples #-}
 
 module Zmq.Internal.Socket
   ( Socket (..),
@@ -7,10 +6,8 @@ module Zmq.Internal.Socket
     CanReceive (..),
     CanReceives (..),
     CanSend (..),
-    ThreadSafeSocket (..),
-    ThreadUnsafeSocket (..),
-    openThreadUnsafeSocket,
-    openThreadSafeSocket,
+    ThingAndCanary (..),
+    openWith,
     bind,
     unbind,
     connect,
@@ -37,7 +34,6 @@ import Data.ByteString qualified as ByteString
 import Data.Foldable (for_)
 import Data.Functor ((<&>))
 import Data.IORef
-import Data.Kind (Type)
 import Data.List qualified as List
 import Data.List.NonEmpty (pattern (:|))
 import Data.List.NonEmpty qualified as List (NonEmpty)
@@ -52,9 +48,6 @@ import Data.Word (Word8)
 import Foreign.C.Types (CInt, CShort)
 import GHC.Exts (TYPE, UnliftedRep, keepAlive#)
 import GHC.IO (IO (..), unIO)
-import GHC.IORef (IORef (..))
-import GHC.MVar (MVar (..))
-import GHC.STRef (STRef (..))
 import Libzmq
 import Libzmq.Bindings qualified
 import Numeric (showHex)
@@ -63,9 +56,13 @@ import System.IO.Unsafe (unsafePerformIO)
 import System.Posix.Types (Fd (..))
 import Zmq.Error (Error, enrichError, throwOkError, unexpectedError)
 import Zmq.Internal.Context (Context (..), globalContextRef)
+import {-# SOURCE #-} Zmq.Internal.Options (Options)
 import Zmq.Internal.SocketFinalizer (makeSocketFinalizer)
 
-class Socket (socket :: Type) where
+class Socket socket where
+  openSocket :: Options socket -> IO (Either Error socket)
+  openSocket = undefined -- hide "minimal complete definition" haddock
+
   getSocket :: socket -> Zmq_socket
   getSocket = undefined -- hide "minimal complete definition" haddock
 
@@ -91,74 +88,13 @@ class Socket socket => CanSend socket where
   send_ :: socket -> ByteString -> IO (Either Error ())
   send_ = undefined -- hide "minimal complete definition" haddock
 
--- TODO MVar () + Zmq_socket
-data ThreadSafeSocket = ThreadSafeSocket
-  { lock :: !(MVar ()),
-    socket :: !Zmq_socket,
-    name :: !Text
-  }
-  deriving stock (Eq)
-
-instance Socket ThreadSafeSocket where
-  getSocket ThreadSafeSocket {socket} =
-    socket
-
-  withSocket ThreadSafeSocket {lock, socket} action =
-    withMVar lock \_ ->
-      keepingSocketAlive socket (action socket)
-
-  socketName ThreadSafeSocket {name} =
-    name
-
-data ThreadUnsafeSocket = ThreadUnsafeSocket
-  { socket :: !Zmq_socket,
-    name :: !Text,
-    canary :: !(IORef ())
-  }
-
-instance Eq ThreadUnsafeSocket where
-  ThreadUnsafeSocket s0 _ _ == ThreadUnsafeSocket s1 _ _ =
-    s0 == s1
-
-instance Ord ThreadUnsafeSocket where
-  compare (ThreadUnsafeSocket s0 _ _) (ThreadUnsafeSocket s1 _ _) =
-    compare s0 s1
-
-instance Socket ThreadUnsafeSocket where
-  withSocket ThreadUnsafeSocket {socket} action =
-    keepingSocketAlive socket (action socket)
-
-  -- FIXME
-  socketName ThreadUnsafeSocket {name} =
-    name
-
--- Throws ok errors
-openThreadUnsafeSocket :: Zmq_socket_type -> Text -> IO ThreadUnsafeSocket
-openThreadUnsafeSocket socketType name =
-  openSocket
-    ( \socket -> do
-        canary@(IORef (STRef canary#)) <- newIORef ()
-        pure (ThingAndCanary (ThreadUnsafeSocket socket name canary) canary#)
-    )
-    socketType
-
--- Throws ok errors
-openThreadSafeSocket :: Zmq_socket_type -> Text -> IO ThreadSafeSocket
-openThreadSafeSocket socketType name =
-  openSocket
-    ( \socket -> do
-        lock@(MVar canary#) <- newMVar ()
-        pure (ThingAndCanary (ThreadSafeSocket lock socket name) canary#)
-    )
-    socketType
-
 data ThingAndCanary a
   = forall (canary# :: TYPE UnliftedRep).
     ThingAndCanary !a canary#
 
 -- Throws ok errors
-openSocket :: (Zmq_socket -> IO (ThingAndCanary a)) -> Zmq_socket_type -> IO a
-openSocket wrap socketType = do
+openWith :: (Zmq_socket -> IO (ThingAndCanary a)) -> Zmq_socket_type -> IO a
+openWith wrap socketType = do
   Context context socketsRef <- readIORef globalContextRef
   mask_ do
     zmq_socket context socketType >>= \case

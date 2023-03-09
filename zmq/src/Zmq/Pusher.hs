@@ -14,6 +14,7 @@ where
 
 import Control.Monad (join)
 import Data.ByteString (ByteString)
+import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
@@ -21,8 +22,10 @@ import Numeric.Natural (Natural)
 import Zmq.Error (Error (..), catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Socket (CanSend, Socket (withSocket), ThreadSafeSocket (..))
+import Zmq.Internal.Socket (CanSend, Socket (withSocket))
 import Zmq.Internal.Socket qualified as Socket
+import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
+import Zmq.Internal.ThreadSafeSocket qualified as ThreadSafeSocket
 
 -- | A thread-safe __pusher__ socket.
 --
@@ -33,10 +36,15 @@ newtype Pusher
   deriving anyclass
     ( Options.CanSetSendQueueSize
     )
-  deriving (Socket) via (ThreadSafeSocket)
 
 instance CanSend Pusher where
   send_ = send
+
+instance Socket Pusher where
+  openSocket = open
+  getSocket = coerce ThreadSafeSocket.raw
+  withSocket (Pusher socket) = ThreadSafeSocket.with socket
+  socketName = coerce ThreadSafeSocket.name
 
 defaultOptions :: Options Pusher
 defaultOptions =
@@ -50,9 +58,7 @@ sendQueueSize =
 open :: Options Pusher -> IO (Either Error Pusher)
 open options =
   catchingOkErrors do
-    socket@(ThreadSafeSocket _ zsocket _) <- Socket.openThreadSafeSocket ZMQ_PUSH (Options.optionsName options)
-    Options.setSocketOptions zsocket ZMQ_PUSH options
-    pure (Pusher socket)
+    coerce (ThreadSafeSocket.open ZMQ_PUSH options)
 
 -- | Bind a __pusher__ to an __endpoint__.
 --

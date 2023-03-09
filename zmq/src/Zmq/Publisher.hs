@@ -14,6 +14,7 @@ module Zmq.Publisher
 where
 
 import Data.ByteString (ByteString)
+import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
@@ -21,8 +22,10 @@ import Numeric.Natural (Natural)
 import Zmq.Error (Error, catchingOkErrors, enrichError, throwOkError)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Socket (CanSend, Socket (withSocket), ThreadSafeSocket (..))
+import Zmq.Internal.Socket (CanSend, Socket (withSocket))
 import Zmq.Internal.Socket qualified as Socket
+import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
+import Zmq.Internal.ThreadSafeSocket qualified as ThreadSafeSocket
 
 -- | A thread-safe __publisher__ socket.
 --
@@ -34,10 +37,15 @@ newtype Publisher
     ( Options.CanSetLossy,
       Options.CanSetSendQueueSize
     )
-  deriving (Socket) via (ThreadSafeSocket)
 
 instance CanSend Publisher where
   send_ = send
+
+instance Socket Publisher where
+  openSocket = open
+  getSocket = coerce ThreadSafeSocket.raw
+  withSocket (Publisher socket) = ThreadSafeSocket.with socket
+  socketName = coerce ThreadSafeSocket.name
 
 defaultOptions :: Options Publisher
 defaultOptions =
@@ -55,10 +63,13 @@ sendQueueSize =
 open :: Options Publisher -> IO (Either Error Publisher)
 open options =
   catchingOkErrors do
-    socket@(ThreadSafeSocket _ zsocket _) <- Socket.openThreadSafeSocket ZMQ_PUB (Options.optionsName options)
-    Options.setSocketOption zsocket ZMQ_RCVHWM 0 -- don't drop subscriptions
-    Options.setSocketOptions zsocket ZMQ_PUB options
-    pure (Publisher socket)
+    coerce do
+      ThreadSafeSocket.open
+        ZMQ_PUB
+        ( Options.sockopt ZMQ_RCVHWM 0 -- don't drop subscriptions
+            <> Options.sockopt ZMQ_XPUB_NODROP 1 -- not lossy
+            <> options
+        )
 
 -- | Bind a __publisher__ to an __endpoint__.
 --

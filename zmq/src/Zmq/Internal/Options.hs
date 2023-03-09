@@ -16,7 +16,7 @@ module Zmq.Internal.Options
     CanSetLossy,
     CanSetSendQueueSize,
     setSocketOptions,
-    setSocketOption,
+    sockopt,
     lossy,
     name,
     sendQueueSize,
@@ -33,12 +33,13 @@ import Zmq.Error (enrichError, throwOkError, unexpectedError)
 import {-# SOURCE #-} Zmq.Internal.Context (Context)
 import {-# SOURCE #-} Zmq.Internal.Socket (Socket)
 
--- TODO linger option for context and socket
-
-data Options socket
+-- | Options.
+data Options a
   = DefaultOptions
   | ContextOptions (Zmq_ctx -> IO ())
   | SocketOptions (Zmq_socket -> IO ()) !Text
+
+type role Options representational
 
 instance Semigroup (Options socket) where
   DefaultOptions <> y = y
@@ -51,6 +52,7 @@ class CanSetLossy socket
 
 class CanSetSendQueueSize socket
 
+-- | Default options.
 defaultOptions :: Options a
 defaultOptions =
   DefaultOptions
@@ -116,38 +118,14 @@ setSocketOption socket option value =
     Right val -> pure val
 
 -- Throws ok errors
-setSocketOptions :: Zmq_socket -> Zmq_socket_type -> Options socket -> IO ()
-setSocketOptions socket socketType options =
-  case defaults <> options of
-    SocketOptions f _name -> f socket
-    _ -> pure ()
-  where
-    -- we flip some defaults:
-    --   1. pub/xpub are non-lossy
-    defaults :: Options socket
-    defaults =
-      case socketType of
-        ZMQ_DEALER -> defaultOptions
-        ZMQ_PAIR -> defaultOptions
-        ZMQ_PUB -> notLossy
-        ZMQ_PULL -> defaultOptions
-        ZMQ_PUSH -> defaultOptions
-        ZMQ_REP -> defaultOptions
-        ZMQ_REQ -> defaultOptions
-        ZMQ_ROUTER -> defaultOptions
-        ZMQ_STREAM -> defaultOptions
-        ZMQ_SUB -> defaultOptions
-        ZMQ_XPUB -> notLossy
-        ZMQ_XSUB -> defaultOptions
+setSocketOptions :: Zmq_socket -> Options socket -> IO ()
+setSocketOptions socket = \case
+  SocketOptions f _name -> f socket
+  _ -> pure ()
 
 lossy :: CanSetLossy socket => Options socket
 lossy =
-  SocketOptions (\socket -> setSocketOption socket ZMQ_XPUB_NODROP 0) Text.empty
-
--- internal
-notLossy :: Options socket
-notLossy =
-  SocketOptions (\socket -> setSocketOption socket ZMQ_XPUB_NODROP 1) Text.empty
+  sockopt ZMQ_XPUB_NODROP 0
 
 name :: Socket socket => Text -> Options socket
 name =
@@ -155,7 +133,12 @@ name =
 
 sendQueueSize :: CanSetSendQueueSize socket => Natural -> Options socket
 sendQueueSize n =
-  SocketOptions (\socket -> setSocketOption socket ZMQ_SNDHWM (natToInt32 n)) Text.empty
+  sockopt ZMQ_SNDHWM (natToInt32 n)
+
+-- internal usage only
+sockopt :: Zmq_socket_option a -> a -> Options socket
+sockopt option value =
+  SocketOptions (\socket -> setSocketOption socket option value) Text.empty
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Utils

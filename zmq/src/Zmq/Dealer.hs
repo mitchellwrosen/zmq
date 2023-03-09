@@ -16,6 +16,7 @@ where
 
 import Control.Monad (join)
 import Data.ByteString (ByteString)
+import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
@@ -24,8 +25,10 @@ import Zmq.Error (Error (..), catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll)
-import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket), ThreadSafeSocket (..))
+import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket))
 import Zmq.Internal.Socket qualified as Socket
+import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
+import Zmq.Internal.ThreadSafeSocket qualified as ThreadSafeSocket
 
 -- | A thread-safe __dealer__ socket.
 --
@@ -37,7 +40,6 @@ newtype Dealer
     ( CanPoll,
       Options.CanSetSendQueueSize
     )
-  deriving (Socket) via (ThreadSafeSocket)
 
 instance CanReceive Dealer where
   receive_ = receive
@@ -47,6 +49,12 @@ instance CanReceives Dealer where
 
 instance CanSend Dealer where
   send_ = send
+
+instance Socket Dealer where
+  openSocket = open
+  getSocket = coerce ThreadSafeSocket.raw
+  withSocket (Dealer socket) = ThreadSafeSocket.with socket
+  socketName = coerce ThreadSafeSocket.name
 
 defaultOptions :: Options Dealer
 defaultOptions =
@@ -60,9 +68,7 @@ sendQueueSize =
 open :: Options Dealer -> IO (Either Error Dealer)
 open options =
   catchingOkErrors do
-    socket@(ThreadSafeSocket _ zsocket _) <- Socket.openThreadSafeSocket ZMQ_DEALER (Options.optionsName options)
-    Options.setSocketOptions zsocket ZMQ_DEALER options
-    pure (Dealer socket)
+    coerce (ThreadSafeSocket.open ZMQ_DEALER options)
 
 -- | Bind a __dealer__ to an __endpoint__.
 --

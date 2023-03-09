@@ -15,6 +15,7 @@ module Zmq.Subscriber
 where
 
 import Data.ByteString (ByteString)
+import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
@@ -23,8 +24,10 @@ import Zmq.Error
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll)
-import Zmq.Internal.Socket (CanReceive, CanReceives, Socket (withSocket), ThreadSafeSocket (..))
+import Zmq.Internal.Socket (CanReceive, CanReceives, Socket (withSocket))
 import Zmq.Internal.Socket qualified as Socket
+import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
+import Zmq.Internal.ThreadSafeSocket qualified as ThreadSafeSocket
 
 -- | A thread-safe __subscriber__ socket.
 --
@@ -32,7 +35,6 @@ import Zmq.Internal.Socket qualified as Socket
 newtype Subscriber
   = Subscriber (ThreadSafeSocket)
   deriving stock (Eq)
-  deriving (Socket) via (ThreadSafeSocket)
   deriving anyclass
     ( CanPoll,
       Options.CanSetSendQueueSize
@@ -43,6 +45,12 @@ instance CanReceive Subscriber where
 
 instance CanReceives Subscriber where
   receives_ = receives
+
+instance Socket Subscriber where
+  openSocket = open
+  getSocket = coerce ThreadSafeSocket.raw
+  withSocket (Subscriber socket) = ThreadSafeSocket.with socket
+  socketName = coerce ThreadSafeSocket.name
 
 defaultOptions :: Options Subscriber
 defaultOptions =
@@ -56,10 +64,12 @@ sendQueueSize =
 open :: Options Subscriber -> IO (Either Error Subscriber)
 open options =
   catchingOkErrors do
-    socket@(ThreadSafeSocket _ zsocket _) <- Socket.openThreadSafeSocket ZMQ_SUB (Options.optionsName options)
-    Options.setSocketOption zsocket ZMQ_SNDHWM 0 -- don't drop subscriptions
-    Options.setSocketOptions zsocket ZMQ_SUB options
-    pure (Subscriber socket)
+    coerce do
+      ThreadSafeSocket.open
+        ZMQ_SUB
+        ( Options.sockopt ZMQ_SNDHWM 0 -- don't drop subscriptions
+            <> options
+        )
 
 -- | Bind a __subscriber__ to an __endpoint__.
 --
@@ -96,14 +106,14 @@ subscribe :: Subscriber -> ByteString -> IO (Either Error ())
 subscribe socket0 prefix =
   catchingOkErrors do
     withSocket socket0 \socket ->
-      Options.setSocketOption socket Libzmq.ZMQ_SUBSCRIBE prefix
+      Options.setSocketOptions socket (Options.sockopt ZMQ_SUBSCRIBE prefix)
 
 -- | Unsubscribe a __subscriber__ from a previously-subscribed __topic__.
 unsubscribe :: Subscriber -> ByteString -> IO (Either Error ())
 unsubscribe socket0 prefix =
   catchingOkErrors do
     withSocket socket0 \socket ->
-      Options.setSocketOption socket Libzmq.ZMQ_UNSUBSCRIBE prefix
+      Options.setSocketOptions socket (Options.sockopt ZMQ_UNSUBSCRIBE prefix)
 
 -- | Receive a __message__ on a __subscriber__ from any peer (fair-queued).
 --

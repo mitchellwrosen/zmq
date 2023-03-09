@@ -16,6 +16,7 @@ module Zmq.XPublisher
 where
 
 import Data.ByteString (ByteString)
+import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
@@ -24,8 +25,10 @@ import Zmq.Error (Error, catchingOkErrors, enrichError, throwOkError)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll)
-import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket), ThreadSafeSocket (..))
+import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket))
 import Zmq.Internal.Socket qualified as Socket
+import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
+import Zmq.Internal.ThreadSafeSocket qualified as ThreadSafeSocket
 
 -- | A thread-safe __xpublisher__ socket.
 --
@@ -38,7 +41,6 @@ newtype XPublisher
       Options.CanSetLossy,
       Options.CanSetSendQueueSize
     )
-  deriving (Socket) via (ThreadSafeSocket)
 
 instance CanReceive XPublisher where
   receive_ = receive
@@ -48,6 +50,12 @@ instance CanReceives XPublisher where
 
 instance CanSend XPublisher where
   send_ = send
+
+instance Socket XPublisher where
+  openSocket = open
+  getSocket = coerce ThreadSafeSocket.raw
+  withSocket (XPublisher socket) = ThreadSafeSocket.with socket
+  socketName = coerce ThreadSafeSocket.name
 
 defaultOptions :: Options XPublisher
 defaultOptions =
@@ -65,10 +73,13 @@ sendQueueSize =
 open :: Options XPublisher -> IO (Either Error XPublisher)
 open options =
   catchingOkErrors do
-    socket@(ThreadSafeSocket _ zsocket _) <- Socket.openThreadSafeSocket ZMQ_XPUB (Options.optionsName options)
-    Options.setSocketOption zsocket ZMQ_RCVHWM 0 -- don't drop subscriptions
-    Options.setSocketOptions zsocket ZMQ_XPUB options
-    pure (XPublisher socket)
+    coerce do
+      ThreadSafeSocket.open
+        ZMQ_XPUB
+        ( Options.sockopt ZMQ_RCVHWM 0 -- don't drop subscriptions
+            <> Options.sockopt ZMQ_XPUB_NODROP 1 -- not lossy
+            <> options
+        )
 
 -- | Bind an __xpublisher__ to an __endpoint__.
 --

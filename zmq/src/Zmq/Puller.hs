@@ -13,6 +13,7 @@ module Zmq.Puller
 where
 
 import Data.ByteString (ByteString)
+import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
@@ -21,8 +22,10 @@ import Zmq.Error
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll)
-import Zmq.Internal.Socket (CanReceive, CanReceives, Socket, ThreadSafeSocket (..))
+import Zmq.Internal.Socket (CanReceive, CanReceives, Socket)
 import Zmq.Internal.Socket qualified as Socket
+import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
+import Zmq.Internal.ThreadSafeSocket qualified as ThreadSafeSocket
 
 -- | A thread-safe __puller__ socket.
 --
@@ -34,13 +37,18 @@ newtype Puller
     ( CanPoll,
       Options.CanSetSendQueueSize
     )
-  deriving (Socket) via (ThreadSafeSocket)
 
 instance CanReceive Puller where
   receive_ = receive
 
 instance CanReceives Puller where
   receives_ = receives
+
+instance Socket Puller where
+  openSocket = open
+  getSocket = coerce ThreadSafeSocket.raw
+  withSocket (Puller socket) = ThreadSafeSocket.with socket
+  socketName = coerce ThreadSafeSocket.name
 
 defaultOptions :: Options Puller
 defaultOptions =
@@ -54,9 +62,7 @@ sendQueueSize =
 open :: Options Puller -> IO (Either Error Puller)
 open options =
   catchingOkErrors do
-    socket@(ThreadSafeSocket _ zsocket _) <- Socket.openThreadSafeSocket ZMQ_PULL (Options.optionsName options)
-    Options.setSocketOptions zsocket ZMQ_PULL options
-    pure (Puller socket)
+    coerce (ThreadSafeSocket.open ZMQ_PULL options)
 
 -- | Bind a __puller__ to an __endpoint__.
 --
