@@ -16,7 +16,7 @@ where
 
 import Control.Monad (when)
 import Data.ByteString (ByteString)
-import Data.IORef (IORef, newIORef)
+import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.List.NonEmpty (pattern (:|))
 import Data.List.NonEmpty qualified as List (NonEmpty)
 import Data.Text (Text)
@@ -147,14 +147,25 @@ sends socket = \case
 --
 -- /Alias/: 'Zmq.receive'
 receive :: Requester -> IO (Either Error ByteString)
-receive socket =
-  catchingOkErrors (Socket.receiveOne socket)
+receive socket@(Requester _ messageBuffer) =
+  -- Remember: this socket isn't thread safe, so we don't have to be very careful with our readIORef/writeIORefs
+  readIORef messageBuffer >>= \case
+    Nothing -> catchingOkErrors (Socket.receiveOne socket)
+    Just (frame :| _) -> do
+      writeIORef messageBuffer Nothing
+      pure (Right frame)
 
 -- | Receive a __multiframe message__ on a __requester__ from the last peer sent to.
 --
 -- /Alias/: 'Zmq.receives'
 receives :: Requester -> IO (Either Error [ByteString])
-receives socket =
-  catchingOkErrors do
-    frame :| frames <- Socket.receiveMany socket
-    pure (frame : frames)
+receives socket@(Requester _ messageBuffer) =
+  -- Remember: this socket isn't thread safe, so we don't have to be very careful with our readIORef/writeIORefs
+  readIORef messageBuffer >>= \case
+    Nothing ->
+      catchingOkErrors do
+        frame :| frames <- Socket.receiveMany socket
+        pure (frame : frames)
+    Just (frame :| frames) -> do
+      writeIORef messageBuffer Nothing
+      pure (Right (frame : frames))
