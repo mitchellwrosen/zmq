@@ -16,7 +16,6 @@ where
 
 import Control.Monad (when)
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
@@ -33,7 +32,7 @@ import Zmq.Internal.ThreadUnsafeSocket qualified as ThreadUnsafeSocket
 -- | A __requester__ socket.
 --
 -- Valid peers: __replier__, __router__
-newtype Requester
+data Requester
   = Requester ThreadUnsafeSocket
   deriving stock (Eq)
   deriving anyclass
@@ -54,9 +53,9 @@ instance CanSend Requester where
 
 instance Socket Requester where
   openSocket = open
-  getSocket = coerce ThreadUnsafeSocket.raw
+  getSocket (Requester socket) = ThreadUnsafeSocket.raw socket
   withSocket (Requester socket) = ThreadUnsafeSocket.with socket
-  socketName = coerce ThreadUnsafeSocket.name
+  socketName (Requester socket) = ThreadUnsafeSocket.name socket
 
 defaultOptions :: Options Requester
 defaultOptions =
@@ -70,13 +69,14 @@ sendQueueSize =
 open :: Options Requester -> IO (Either Error Requester)
 open options =
   catchingOkErrors do
-    coerce do
+    socket <-
       ThreadUnsafeSocket.open
         ZMQ_REQ
         ( Options.sockopt ZMQ_REQ_CORRELATE 1
             <> Options.sockopt ZMQ_REQ_RELAXED 1
             <> options
         )
+    pure (Requester socket)
 
 -- | Bind a __requester__ to an __endpoint__.
 --
