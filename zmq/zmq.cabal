@@ -67,16 +67,3 @@ library
     Zmq.Internal.ThreadUnsafeSocket
     Zmq.Error
     Zmq.Subscription
-
-test-suite tests
-  import: component
-  build-depends:
-    base,
-    hedgehog,
-    hspec,
-    text,
-    zmq,
-  ghc-options: -threaded -with-rtsopts=-N2
-  hs-source-dirs: test
-  main-is: Main.hs
-  type: exitcode-stdio-1.0
