@@ -16,7 +16,9 @@ where
 
 import Control.Monad (when)
 import Data.ByteString (ByteString)
+import Data.IORef (IORef, newIORef)
 import Data.List.NonEmpty (pattern (:|))
+import Data.List.NonEmpty qualified as List (NonEmpty)
 import Data.Text (Text)
 import Libzmq
 import Numeric.Natural (Natural)
@@ -33,7 +35,10 @@ import Zmq.Internal.ThreadUnsafeSocket qualified as ThreadUnsafeSocket
 --
 -- Valid peers: __replier__, __router__
 data Requester
-  = Requester ThreadUnsafeSocket
+  = Requester
+      !ThreadUnsafeSocket
+      -- The last message we received, if any. See Note [Requester message buffer] for details.
+      !(IORef (Maybe (List.NonEmpty ByteString)))
   deriving stock (Eq)
   deriving anyclass
     ( Options.CanSetSendQueueSize
@@ -53,9 +58,9 @@ instance CanSend Requester where
 
 instance Socket Requester where
   openSocket = open
-  getSocket (Requester socket) = ThreadUnsafeSocket.raw socket
-  withSocket (Requester socket) = ThreadUnsafeSocket.with socket
-  socketName (Requester socket) = ThreadUnsafeSocket.name socket
+  getSocket (Requester socket _) = ThreadUnsafeSocket.raw socket
+  withSocket (Requester socket _) = ThreadUnsafeSocket.with socket
+  socketName (Requester socket _) = ThreadUnsafeSocket.name socket
 
 defaultOptions :: Options Requester
 defaultOptions =
@@ -76,7 +81,8 @@ open options =
             <> Options.sockopt ZMQ_REQ_RELAXED 1
             <> options
         )
-    pure (Requester socket)
+    messageBuffer <- newIORef Nothing
+    pure (Requester socket messageBuffer)
 
 -- | Bind a __requester__ to an __endpoint__.
 --
