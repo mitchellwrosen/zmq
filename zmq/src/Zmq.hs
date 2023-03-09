@@ -27,6 +27,7 @@ module Zmq
     also,
     poll,
     pollFor,
+    pollUntil,
 
     -- ** Options
     lossy,

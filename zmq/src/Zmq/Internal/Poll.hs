@@ -5,6 +5,7 @@ module Zmq.Internal.Poll
     also,
     poll,
     pollFor,
+    pollUntil,
   )
 where
 
@@ -16,6 +17,8 @@ import Data.Coerce (coerce)
 import Data.Int (Int64)
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet
+import Data.Word (Word64)
+import GHC.Clock (getMonotonicTimeNSec)
 import Libzmq
 import Libzmq.Bindings qualified
 import Zmq.Error (Error, enrichError, unexpectedError)
@@ -90,6 +93,28 @@ pollFor sockets timeout = do
   pollitems <- socketsArray sockets
   keepingSocketsAlive sockets do
     poll_ pollitems (fromIntegral @Int @Int64 timeout) >>= \case
+      Left err -> pure (Left err)
+      Right n ->
+        if n == 0
+          then pure (Right Nothing)
+          else do
+            indices <- socketsArrayIndices pollitems
+            pure (Right (Just (`IntSet.member` indices)))
+
+-- | monotonic time as reported by 'getMonotonicTimeNSec'
+pollUntil :: Sockets -> Word64 -> IO (Either Error (Maybe (Int -> Bool)))
+pollUntil sockets deadline = do
+  now <- getMonotonicTimeNSec
+  let millisecondsUntilDeadline =
+        if now > deadline
+          then 0
+          else
+            fromIntegral @Word64 @Int64
+              -- If sleeping for longer than max int64 (lol), then sleep for max int64
+              (min ((deadline - now) `div` 1_000_000) 9_223_372_036_854_775_807)
+  pollitems <- socketsArray sockets
+  keepingSocketsAlive sockets do
+    poll_ pollitems millisecondsUntilDeadline >>= \case
       Left err -> pure (Left err)
       Right n ->
         if n == 0
