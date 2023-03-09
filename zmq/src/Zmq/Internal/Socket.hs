@@ -27,7 +27,7 @@ where
 import Control.Concurrent (threadWaitRead)
 import Control.Concurrent.MVar
 import Control.Exception
-import Control.Monad (join, when)
+import Control.Monad (when)
 import Data.Bits ((.&.))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as ByteString
@@ -66,7 +66,7 @@ class Socket socket where
   getSocket :: socket -> Zmq_socket
   getSocket = undefined -- hide "minimal complete definition" haddock
 
-  withSocket :: socket -> (Zmq_socket -> IO a) -> IO a
+  withSocket :: socket -> IO a -> IO a
   withSocket = undefined -- hide "minimal complete definition" haddock
 
   socketName :: socket -> Text
@@ -128,9 +128,9 @@ getIntOption socket option =
 
 -- | Bind a __socket__ to an __endpoint__.
 bind :: Socket socket => socket -> Text -> IO (Either Error ())
-bind socket0 endpoint =
-  withSocket socket0 \socket ->
-    zmq_bind socket endpoint >>= \case
+bind socket endpoint =
+  withSocket socket do
+    zmq_bind (getSocket socket) endpoint >>= \case
       Left errno ->
         let err = enrichError "zmq_bind" errno
          in case errno of
@@ -148,9 +148,9 @@ bind socket0 endpoint =
 
 -- | Unbind a __socket__ from an __endpoint__.
 unbind :: Socket socket => socket -> Text -> IO ()
-unbind socket0 endpoint =
-  withSocket socket0 \socket ->
-    zmq_unbind socket endpoint >>= \case
+unbind socket endpoint =
+  withSocket socket do
+    zmq_unbind (getSocket socket) endpoint >>= \case
       Left errno ->
         let err = enrichError "zmq_unbind" errno
          in case errno of
@@ -165,9 +165,9 @@ unbind socket0 endpoint =
 
 -- | Connect a __socket__ to an __endpoint__.
 connect :: Socket socket => socket -> Text -> IO (Either Error ())
-connect socket0 endpoint =
-  withSocket socket0 \socket ->
-    zmq_connect socket endpoint >>= \case
+connect socket endpoint =
+  withSocket socket do
+    zmq_connect (getSocket socket) endpoint >>= \case
       Left errno ->
         let err = enrichError "zmq_connect" errno
          in case errno of
@@ -182,9 +182,9 @@ connect socket0 endpoint =
 
 -- | Disconnect a __socket__ from an __endpoint__.
 disconnect :: Socket socket => socket -> Text -> IO ()
-disconnect socket0 endpoint =
-  withSocket socket0 \socket ->
-    zmq_disconnect socket endpoint >>= \case
+disconnect socket endpoint =
+  withSocket socket do
+    zmq_disconnect (getSocket socket) endpoint >>= \case
       Left errno ->
         let err = enrichError "zmq_disconnect" errno
          in case errno of
@@ -198,8 +198,8 @@ disconnect socket0 endpoint =
       Right () -> pure ()
 
 -- Throws ok errors
-sendOne_ :: Zmq_socket -> ByteString -> Bool -> IO ()
-sendOne_ socket frame more =
+zsendOne :: Zmq_socket -> ByteString -> Bool -> IO ()
+zsendOne socket frame more =
   zmq_send socket frame (if more then ZMQ_SNDMORE else mempty) >>= \case
     Left errno ->
       let err = enrichError "zmq_send" errno
@@ -216,14 +216,15 @@ sendOne_ socket frame more =
 
 -- Send a single frame with ZMQ_DONTWAIT; on EAGAIN, returns False
 -- Throws ok errors
-sendOneDontWait :: Zmq_socket -> Text -> ByteString -> Bool -> IO Bool
-sendOneDontWait socket name frame more = do
-  when debug (debugPrintFrames socket name Outgoing (frame :| []))
-  sendOneDontWait_ socket frame more
+sendOneDontWait :: Socket socket => socket -> ByteString -> Bool -> IO Bool
+sendOneDontWait socket frame more = do
+  when debug (debugPrintFrames socket Outgoing (frame :| []))
+  withSocket socket do
+    zsendOneDontWait (getSocket socket) frame more
 
 -- Throws ok errors
-sendOneDontWait_ :: Zmq_socket -> ByteString -> Bool -> IO Bool
-sendOneDontWait_ socket frame more =
+zsendOneDontWait :: Zmq_socket -> ByteString -> Bool -> IO Bool
+zsendOneDontWait socket frame more =
   zmq_send__unsafe socket frame (if more then ZMQ_DONTWAIT <> ZMQ_SNDMORE else ZMQ_DONTWAIT) >>= \case
     Left errno ->
       let err = enrichError "zmq_send" errno
@@ -241,14 +242,15 @@ sendOneDontWait_ socket frame more =
 
 -- Like sendOneDontWait, but for when we know EAGAIN is impossble (so we dont set ZMQ_DONTWAIT)
 -- Throws ok errors
-sendOneWontBlock :: Zmq_socket -> Text -> ByteString -> Bool -> IO ()
-sendOneWontBlock socket name frame more = do
-  when debug (debugPrintFrames socket name Outgoing (frame :| []))
-  sendOneWontBlock_ socket frame more
+sendOneWontBlock :: Socket socket => socket -> ByteString -> Bool -> IO ()
+sendOneWontBlock socket frame more = do
+  when debug (debugPrintFrames socket Outgoing (frame :| []))
+  withSocket socket do
+    zsendOneWontBlock (getSocket socket) frame more
 
 -- Throws ok errors
-sendOneWontBlock_ :: Zmq_socket -> ByteString -> Bool -> IO ()
-sendOneWontBlock_ socket frame more =
+zsendOneWontBlock :: Zmq_socket -> ByteString -> Bool -> IO ()
+zsendOneWontBlock socket frame more =
   zmq_send__unsafe socket frame (if more then ZMQ_SNDMORE else mempty) >>= \case
     Left errno ->
       let err = enrichError "zmq_send" errno
@@ -264,133 +266,139 @@ sendOneWontBlock_ socket frame more =
     Right _len -> pure ()
 
 -- Throws ok errors
-sendMany :: Zmq_socket -> Text -> List.NonEmpty ByteString -> IO ()
-sendMany socket name frames = do
-  when debug (debugPrintFrames socket name Outgoing frames)
-  sendMany_ socket frames
+sendMany :: Socket socket => socket -> List.NonEmpty ByteString -> IO ()
+sendMany socket frames = do
+  when debug (debugPrintFrames socket Outgoing frames)
+  withSocket socket do
+    zsendMany (getSocket socket) frames
 
 -- Throws ok errors
-sendMany_ :: Zmq_socket -> List.NonEmpty ByteString -> IO ()
-sendMany_ socket = \case
-  frame :| [] -> sendOne_ socket frame False
+zsendMany :: Zmq_socket -> List.NonEmpty ByteString -> IO ()
+zsendMany socket = \case
+  frame :| [] -> zsendOne socket frame False
   frame :| frames ->
     mask_ do
-      sendOne_ socket frame True
-      sendManyWontBlock__ socket frames
+      zsendOne socket frame True
+      zsendManyWontBlock0 socket frames
 
 -- Throws ok errors
-sendManyDontWait :: Zmq_socket -> Text -> List.NonEmpty ByteString -> IO Bool
-sendManyDontWait socket name frames = do
-  when debug (debugPrintFrames socket name Outgoing frames)
-  sendManyDontWait_ socket frames
+sendManyDontWait :: Socket socket => socket -> List.NonEmpty ByteString -> IO Bool
+sendManyDontWait socket frames = do
+  when debug (debugPrintFrames socket Outgoing frames)
+  withSocket socket do
+    zsendManyDontWait (getSocket socket) frames
 
 -- Throws ok errors
-sendManyDontWait_ :: Zmq_socket -> List.NonEmpty ByteString -> IO Bool
-sendManyDontWait_ socket = \case
-  frame :| [] -> sendOneDontWait_ socket frame False
+zsendManyDontWait :: Zmq_socket -> List.NonEmpty ByteString -> IO Bool
+zsendManyDontWait socket = \case
+  frame :| [] -> zsendOneDontWait socket frame False
   frame :| frames ->
     mask_ do
-      sendOneDontWait_ socket frame True >>= \case
+      zsendOneDontWait socket frame True >>= \case
         False -> pure False
         True -> do
-          sendManyWontBlock__ socket frames
+          zsendManyWontBlock0 socket frames
           pure True
 
 -- Throws ok errors
-sendManyWontBlock :: Zmq_socket -> Text -> List.NonEmpty ByteString -> IO ()
-sendManyWontBlock socket name frames = do
-  when debug (debugPrintFrames socket name Outgoing frames)
-  sendManyWontBlock_ socket frames
+sendManyWontBlock :: Socket socket => socket -> List.NonEmpty ByteString -> IO ()
+sendManyWontBlock socket frames = do
+  when debug (debugPrintFrames socket Outgoing frames)
+  withSocket socket do
+    zsendManyWontBlock1 (getSocket socket) frames
 
-sendManyWontBlock_ :: Zmq_socket -> List.NonEmpty ByteString -> IO ()
-sendManyWontBlock_ socket = \case
-  frame :| [] -> sendOneWontBlock_ socket frame False
+zsendManyWontBlock1 :: Zmq_socket -> List.NonEmpty ByteString -> IO ()
+zsendManyWontBlock1 socket = \case
+  frame :| [] -> zsendOneWontBlock socket frame False
   frame :| frames ->
     mask_ do
-      sendOneWontBlock_ socket frame False
-      sendManyWontBlock__ socket frames
+      zsendOneWontBlock socket frame True
+      zsendManyWontBlock0 socket frames
 
 -- Throws ok errors
-sendManyWontBlock__ :: Zmq_socket -> [ByteString] -> IO ()
-sendManyWontBlock__ socket =
+zsendManyWontBlock0 :: Zmq_socket -> [ByteString] -> IO ()
+zsendManyWontBlock0 socket =
   let loop = \case
-        frame : [] -> sendOneWontBlock_ socket frame False
+        frame : [] -> zsendOneWontBlock socket frame False
         frame : frames -> do
-          sendOneWontBlock_ socket frame True
+          zsendOneWontBlock socket frame True
           loop frames
         [] -> undefined -- impossible
    in loop
 
+-- Receive one frame
 -- Throws ok errors
 receiveOne :: Socket socket => socket -> IO ByteString
-receiveOne socket0 =
+receiveOne socket =
   loop
   where
     loop =
-      join do
-        withSocket socket0 \socket ->
-          receiveOneDontWait socket (socketName socket0) <&> \case
-            Nothing -> do
-              blockUntilCanReceive socket
-              loop
-            Just frame -> pure frame
+      receiveOneDontWait socket >>= \case
+        Nothing -> do
+          blockUntilCanReceive socket
+          loop
+        Just frame -> pure frame
 
 -- Receive one frame, or Nothing on EAGAIN
 -- Throws ok errors
-receiveOneDontWait :: Zmq_socket -> Text -> IO (Maybe ByteString)
-receiveOneDontWait socket name =
+receiveOneDontWait :: Socket socket => socket -> IO (Maybe ByteString)
+receiveOneDontWait socket =
   if not debug
     then do
-      mask_ do
-        receiveFrame socket >>= \case
-          Again () -> pure Nothing
-          NoMore frame -> pure (Just frame)
-          More frame -> do
-            receiveRest_ socket
-            pure (Just frame)
+      withSocket socket do
+        mask_ do
+          zreceiveOne zsocket >>= \case
+            Again () -> pure Nothing
+            NoMore frame -> pure (Just frame)
+            More frame -> do
+              receiveRest_ zsocket
+              pure (Just frame)
     else do
       -- When debugging, we want to print all received frames, even though we only return the first
-      receiveManyDontWait socket name <&> \case
+      receiveManyDontWait socket <&> \case
         Nothing -> Nothing
         Just (frame :| _) -> Just frame
+  where
+    zsocket = getSocket socket
 
 -- Receive all frames of a message
 -- Throws ok errors
 receiveMany :: Socket socket => socket -> IO (List.NonEmpty ByteString)
-receiveMany socket0 = do
+receiveMany socket = do
   loop
   where
     loop =
-      join do
-        withSocket socket0 \socket ->
-          receiveManyDontWait socket (socketName socket0) <&> \case
-            Nothing -> do
-              blockUntilCanReceive socket
-              loop
-            Just frames -> pure frames
+      receiveManyDontWait socket >>= \case
+        Nothing -> do
+          blockUntilCanReceive socket
+          loop
+        Just frames -> pure frames
 
 -- Receive all frames of a message, or Nothing on EAGAIN
 -- Throws ok errors
-receiveManyDontWait :: Zmq_socket -> Text -> IO (Maybe (List.NonEmpty ByteString))
-receiveManyDontWait socket name = do
-  maybeFrames <-
-    mask_ do
-      receiveFrame socket >>= \case
-        Again () -> pure Nothing
-        More frame -> do
-          frames <- receiveRest socket
-          pure (Just (frame :| frames))
-        NoMore frame -> pure (Just (frame :| []))
-  when debug (for_ maybeFrames (debugPrintFrames socket name Incoming))
-  pure maybeFrames
+receiveManyDontWait :: Socket socket => socket -> IO (Maybe (List.NonEmpty ByteString))
+receiveManyDontWait socket =
+  withSocket socket do
+    maybeFrames <-
+      mask_ do
+        zreceiveOne zsocket >>= \case
+          Again () -> pure Nothing
+          More frame -> do
+            frames <- zreceiveManyWontBlock0 zsocket
+            pure (Just (frame :| frames))
+          NoMore frame -> pure (Just (frame :| []))
+    when debug (for_ maybeFrames (debugPrintFrames socket Incoming))
+    pure maybeFrames
+  where
+    zsocket = getSocket socket
 
--- Receive the rest of a multiframe message
+-- Receive all frames of a message
 -- Throws ok errors
-receiveRest :: Zmq_socket -> IO [ByteString]
-receiveRest socket =
-  receiveFrameWontBlock socket >>= \case
+zreceiveManyWontBlock0 :: Zmq_socket -> IO [ByteString]
+zreceiveManyWontBlock0 socket =
+  zreceiveOneWontBlock socket >>= \case
     More frame -> do
-      frames <- receiveRest socket
+      frames <- zreceiveManyWontBlock0 socket
       pure (frame : frames)
     NoMore frame -> pure [frame]
     Again v -> absurd v
@@ -398,19 +406,19 @@ receiveRest socket =
 -- Throws ok errors
 receiveRest_ :: Zmq_socket -> IO ()
 receiveRest_ socket =
-  receiveFrameWontBlock socket >>= \case
+  zreceiveOneWontBlock socket >>= \case
     More _ -> receiveRest_ socket
     NoMore _ -> pure ()
     Again v -> absurd v
 
-data ReceiveF a
+data Zreceive a
   = Again a
   | More ByteString
   | NoMore ByteString
 
 -- Throws ok errors
-receiveFrame :: Zmq_socket -> IO (ReceiveF ())
-receiveFrame socket =
+zreceiveOne :: Zmq_socket -> IO (Zreceive ())
+zreceiveOne socket =
   bracket zmq_msg_init zmq_msg_close \frame ->
     zmq_msg_recv_dontwait frame socket >>= \case
       Left errno ->
@@ -430,8 +438,8 @@ receiveFrame socket =
           True -> More bytes
 
 -- Throws ok errors
-receiveFrameWontBlock :: Zmq_socket -> IO (ReceiveF Void)
-receiveFrameWontBlock socket =
+zreceiveOneWontBlock :: Zmq_socket -> IO (Zreceive Void)
+zreceiveOneWontBlock socket =
   bracket zmq_msg_init zmq_msg_close \frame ->
     zmq_msg_recv_dontwait frame socket >>= \case
       Left errno ->
@@ -450,14 +458,14 @@ receiveFrameWontBlock socket =
           True -> More bytes
 
 -- Throws ok errors
-blockUntilCanSend :: Zmq_socket -> IO ()
+blockUntilCanSend :: Socket socket => socket -> IO ()
 blockUntilCanSend socket =
-  blockUntilEvent socket Libzmq.Bindings._ZMQ_POLLOUT
+  blockUntilEvent (getSocket socket) Libzmq.Bindings._ZMQ_POLLOUT
 
 -- Throws ok errors
-blockUntilCanReceive :: Zmq_socket -> IO ()
+blockUntilCanReceive :: Socket socket => socket -> IO ()
 blockUntilCanReceive socket =
-  blockUntilEvent socket Libzmq.Bindings._ZMQ_POLLIN
+  blockUntilEvent (getSocket socket) Libzmq.Bindings._ZMQ_POLLIN
 
 -- Throws ok errors
 blockUntilEvent :: Zmq_socket -> CShort -> IO ()
@@ -487,43 +495,45 @@ data Direction
   = Outgoing
   | Incoming
 
-debugPrintFrames :: Zmq_socket -> Text -> Direction -> List.NonEmpty ByteString -> IO ()
-debugPrintFrames (Zmq_socket socket) name direction frames = do
+debugPrintFrames :: Socket socket => socket -> Direction -> List.NonEmpty ByteString -> IO ()
+debugPrintFrames socket direction frames = do
   let !message =
         Text.encodeUtf8 $
           Text.Lazy.toStrict $
             Text.Builder.toLazyText $
               "== "
                 <> ( if Text.null name
-                       then "Socket " <> Text.Builder.fromString (show socket)
+                       then "Socket " <> Text.Builder.fromString (show (getSocket socket))
                        else Text.Builder.fromText name
                    )
                 <> " ==\n"
-                <> foldMap formatFrame frames
+                <> foldMap (formatFrame direction) frames
                 <> "\n"
   withMVar debuglock \_ ->
     ByteString.hPut IO.stderr message
   where
-    formatFrame :: ByteString -> Text.Builder
-    formatFrame frame =
-      (case direction of Outgoing -> "  >> "; Incoming -> "  << ")
-        <> if ByteString.null frame
-          then "\n"
-          else
-            formatBytes frame
-              <> case Text.decodeUtf8' frame of
-                Left _ -> mempty
-                Right frame1 -> " " <> Text.Builder.fromText frame1
-              <> "\n"
+    name = socketName socket
 
-    formatBytes :: ByteString -> Text.Builder
-    formatBytes bytes =
-      "0x" <> List.foldl' f mempty (ByteString.unpack bytes)
+formatFrame :: Direction -> ByteString -> Text.Builder
+formatFrame direction frame =
+  (case direction of Outgoing -> "  >> "; Incoming -> "  << ")
+    <> if ByteString.null frame
+      then "\n"
+      else
+        formatBytes frame
+          <> case Text.decodeUtf8' frame of
+            Left _ -> mempty
+            Right frame1 -> " " <> Text.Builder.fromText frame1
+          <> "\n"
+
+formatBytes :: ByteString -> Text.Builder
+formatBytes bytes =
+  "0x" <> List.foldl' f mempty (ByteString.unpack bytes)
+  where
+    f :: Text.Builder -> Word8 -> Text.Builder
+    f acc w =
+      if w < 15
+        then acc <> "0" <> x
+        else acc <> x
       where
-        f :: Text.Builder -> Word8 -> Text.Builder
-        f acc w =
-          if w < 15
-            then acc <> "0" <> x
-            else acc <> x
-          where
-            x = Text.Builder.fromString (showHex w "")
+        x = Text.Builder.fromString (showHex w "")

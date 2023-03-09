@@ -13,6 +13,7 @@ module Zmq.Publisher
   )
 where
 
+import Control.Monad (when)
 import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
@@ -111,12 +112,11 @@ disconnect =
 --
 -- /Alias/: 'Zmq.send'
 send :: Publisher -> ByteString -> IO (Either Error ())
-send socket0 frame =
+send socket frame =
   catchingOkErrors do
-    withSocket socket0 \socket ->
-      Socket.sendOneDontWait socket (Socket.socketName socket0) frame False >>= \case
-        True -> pure ()
-        False -> throwOkError (enrichError "zmq_send" EAGAIN)
+    sent <- Socket.sendOneDontWait socket frame False
+    when (not sent) do
+      throwOkError (enrichError "zmq_send" EAGAIN)
 
 -- | Send a __multiframe message__ on a __publisher__ to all peers.
 --
@@ -128,11 +128,10 @@ send socket0 frame =
 --       any peer, and this function will return @EAGAIN@. It is not possible to block until no peer has a full message
 --       queue.
 sends :: Publisher -> [ByteString] -> IO (Either Error ())
-sends socket0 = \case
+sends socket = \case
   [] -> pure (Right ())
   frame : frames ->
     catchingOkErrors do
-      withSocket socket0 \socket ->
-        Socket.sendManyDontWait socket (Socket.socketName socket0) (frame :| frames) >>= \case
-          True -> pure ()
-          False -> throwOkError (enrichError "zmq_send" EAGAIN)
+      sent <- Socket.sendManyDontWait socket (frame :| frames)
+      when (not sent) do
+        throwOkError (enrichError "zmq_send" EAGAIN)

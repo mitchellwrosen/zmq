@@ -521,7 +521,7 @@ zmq_poll :: StorableArray Int Libzmq.Bindings.Zmq_pollitem -> Int64 -> IO (Eithe
 zmq_poll pollitems timeout = do
   (lo, hi) <- MArray.getBounds pollitems
   let numPollitems = fromIntegral @Int @CInt (hi - lo + 1)
-  StorableArray.withStorableArray pollitems \cpollitems -> do
+  StorableArray.withStorableArray pollitems \cpollitems ->
     poll cpollitems numPollitems (fromIntegral @Int64 @CLong timeout) >>= \case
       -1 -> Left <$> zmq_errno
       n -> pure (Right (fromIntegral @CInt @Int n))

@@ -103,21 +103,19 @@ disconnect =
 --
 -- /Alias/: 'Zmq.send'
 send :: Replier -> ByteString -> IO (Either Error ())
-send socket0 frame =
+send socket frame =
   catchingOkErrors do
-    withSocket socket0 \socket ->
-      Socket.sendOneWontBlock socket (Socket.socketName socket0) frame False
+    Socket.sendOneWontBlock socket frame False
 
 -- | Send a __multiframe message__ on a __replier__ to the last peer received from.
 --
 -- If the last peer received from no longer exists, the message is discarded.
 sends :: Replier -> [ByteString] -> IO (Either Error ())
-sends socket0 = \case
+sends socket = \case
   [] -> pure (Right ())
   frame : frames ->
     catchingOkErrors do
-      withSocket socket0 \socket ->
-        Socket.sendManyWontBlock socket (Socket.socketName socket0) (frame :| frames)
+      Socket.sendManyWontBlock socket (frame :| frames)
 
 -- | Receive a __message__ on a __replier__ from any peer (fair-queued).
 --

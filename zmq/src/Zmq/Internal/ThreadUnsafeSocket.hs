@@ -40,9 +40,9 @@ name :: ThreadUnsafeSocket -> Text
 name ThreadUnsafeSocket {_name} =
   _name
 
-with :: ThreadUnsafeSocket -> (Zmq_socket -> IO a) -> IO a
-with ThreadUnsafeSocket {socket} action =
-  Socket.keepingSocketAlive socket (action socket)
+with :: ThreadUnsafeSocket -> IO a -> IO a
+with ThreadUnsafeSocket {socket} =
+  Socket.keepingSocketAlive socket
 
 -- Throws ok errors
 open :: Zmq_socket_type -> Options socket -> IO ThreadUnsafeSocket

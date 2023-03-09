@@ -103,17 +103,17 @@ disconnect =
 --
 -- To subscribe to all topics, subscribe to the empty string.
 subscribe :: Subscriber -> ByteString -> IO (Either Error ())
-subscribe socket0 prefix =
+subscribe socket prefix =
   catchingOkErrors do
-    withSocket socket0 \socket ->
-      Options.setSocketOptions socket (Options.sockopt ZMQ_SUBSCRIBE prefix)
+    withSocket socket do
+      Options.setSocketOptions (Socket.getSocket socket) (Options.sockopt ZMQ_SUBSCRIBE prefix)
 
 -- | Unsubscribe a __subscriber__ from a previously-subscribed __topic__.
 unsubscribe :: Subscriber -> ByteString -> IO (Either Error ())
-unsubscribe socket0 prefix =
+unsubscribe socket prefix =
   catchingOkErrors do
-    withSocket socket0 \socket ->
-      Options.setSocketOptions socket (Options.sockopt ZMQ_UNSUBSCRIBE prefix)
+    withSocket socket do
+      Options.setSocketOptions (Socket.getSocket socket) (Options.sockopt ZMQ_UNSUBSCRIBE prefix)
 
 -- | Receive a __message__ on a __subscriber__ from any peer (fair-queued).
 --

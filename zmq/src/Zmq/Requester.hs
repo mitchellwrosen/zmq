@@ -14,6 +14,7 @@ module Zmq.Requester
   )
 where
 
+import Control.Monad (when)
 import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
@@ -109,33 +110,30 @@ disconnect =
 --
 -- /Alias/: 'Zmq.send'
 send :: Requester -> ByteString -> IO (Either Error ())
-send socket0 frame = do
+send socket frame = do
   catchingOkErrors do
-    withSocket socket0 \socket -> do
-      let loop =
-            Socket.sendOneDontWait socket (Socket.socketName socket0) frame False >>= \case
-              False -> do
-                Socket.blockUntilCanSend socket
-                loop
-              True -> pure ()
-      loop
+    let loop =
+          Socket.sendOneDontWait socket frame False >>= \case
+            False -> do
+              Socket.blockUntilCanSend socket
+              loop
+            True -> pure ()
+    loop
 
 -- | Send a __multiframe message__ on a __requester__ to one peer (round-robin).
 --
 -- This operation blocks until a peer can receive the message.
 sends :: Requester -> [ByteString] -> IO (Either Error ())
-sends socket0 = \case
+sends socket = \case
   [] -> pure (Right ())
   frame : frames ->
     catchingOkErrors do
-      withSocket socket0 \socket -> do
-        let loop =
-              Socket.sendManyDontWait socket (Socket.socketName socket0) (frame :| frames) >>= \case
-                False -> do
-                  Socket.blockUntilCanSend socket
-                  loop
-                True -> pure ()
-        loop
+      let loop = do
+            sent <- Socket.sendManyDontWait socket (frame :| frames)
+            when (not sent) do
+              Socket.blockUntilCanSend socket
+              loop
+      loop
 
 -- | Receive a __message__ on a __requester__ from the last peer sent to.
 --

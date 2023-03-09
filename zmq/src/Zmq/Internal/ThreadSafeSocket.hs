@@ -32,10 +32,10 @@ name :: ThreadSafeSocket -> Text
 name ThreadSafeSocket {_name} =
   _name
 
-with :: ThreadSafeSocket -> (Zmq_socket -> IO a) -> IO a
+with :: ThreadSafeSocket -> IO a -> IO a
 with ThreadSafeSocket {lock, socket} action =
   withMVar lock \_ ->
-    Socket.keepingSocketAlive socket (action socket)
+    Socket.keepingSocketAlive socket action
 
 -- Throws ok errors
 open :: Zmq_socket_type -> Options socket -> IO ThreadSafeSocket
@@ -54,4 +54,3 @@ open socketType options =
             canary#
     )
     socketType
-

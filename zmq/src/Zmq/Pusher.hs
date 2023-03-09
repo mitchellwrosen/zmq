@@ -12,7 +12,7 @@ module Zmq.Pusher
   )
 where
 
-import Control.Monad (join)
+import Control.Monad (when)
 import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
@@ -94,35 +94,25 @@ disconnect =
 --
 -- /Alias/: 'Zmq.send'
 send :: Pusher -> ByteString -> IO (Either Error ())
-send socket0 frame =
+send socket frame =
   catchingOkErrors loop
   where
-    loop =
-      join do
-        withSocket socket0 \socket -> do
-          sent <- Socket.sendOneDontWait socket (Socket.socketName socket0) frame False
-          pure
-            if sent
-              then pure ()
-              else do
-                Socket.blockUntilCanSend socket
-                loop
+    loop = do
+      sent <- Socket.sendOneDontWait socket frame False
+      when (not sent) do
+        Socket.blockUntilCanSend socket
+        loop
 
 -- | Send a __multiframe message__ on a __pusher__ to one peer (round-robin).
 --
 -- This operation blocks until a peer can receive the message.
 sends :: Pusher -> [ByteString] -> IO (Either Error ())
-sends socket0 = \case
+sends socket = \case
   [] -> pure (Right ())
   frame : frames -> do
-    let loop =
-          join do
-            withSocket socket0 \socket -> do
-              sent <- Socket.sendManyDontWait socket (Socket.socketName socket0) (frame :| frames)
-              pure
-                if sent
-                  then pure ()
-                  else do
-                    Socket.blockUntilCanSend socket
-                    loop
+    let loop = do
+          sent <- Socket.sendManyDontWait socket (frame :| frames)
+          when (not sent) do
+            Socket.blockUntilCanSend socket
+            loop
     catchingOkErrors loop

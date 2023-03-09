@@ -114,21 +114,19 @@ unsubscribe xsubscriber prefix =
 --
 -- /Alias/: 'Zmq.send'
 send :: XSubscriber -> ByteString -> IO (Either Error ())
-send socket0 frame =
+send socket frame =
   catchingOkErrors do
-    withSocket socket0 \socket ->
-      Socket.sendOneWontBlock socket (Socket.socketName socket0) frame False
+    Socket.sendOneWontBlock socket frame False
 
 -- | Send a __multiframe message__ on an __xsubscriber__ to all peers.
 --
 -- This operation never blocks. All peers with full messages queues will not receive the message.
 sends :: XSubscriber -> [ByteString] -> IO (Either Error ())
-sends socket0 = \case
+sends socket = \case
   [] -> pure (Right ())
   frame : frames ->
     catchingOkErrors do
-      withSocket socket0 \socket ->
-        Socket.sendManyWontBlock socket (Socket.socketName socket0) (frame :| frames)
+      Socket.sendManyWontBlock socket (frame :| frames)
 
 -- | Receive a __message__ on an __xsubscriber__ from any peer (fair-queued).
 --
