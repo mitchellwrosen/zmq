@@ -5,6 +5,7 @@ version: 0
 
 common component
   default-extensions:
+    AllowAmbiguousTypes
     BlockArguments
     DataKinds
     DeriveAnyClass

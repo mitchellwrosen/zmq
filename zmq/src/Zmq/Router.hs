@@ -21,7 +21,7 @@ import Numeric.Natural (Natural)
 import Zmq.Error (Error, catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Poll (CanPoll)
+import Zmq.Internal.Poll (CanPoll (getSocketType))
 import Zmq.Internal.Socket (CanReceives, Socket (withSocket))
 import Zmq.Internal.Socket qualified as Socket
 import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
@@ -34,9 +34,11 @@ newtype Router
   = Router (ThreadSafeSocket)
   deriving stock (Eq)
   deriving anyclass
-    ( CanPoll,
-      Options.CanSetSendQueueSize
+    ( Options.CanSetSendQueueSize
     )
+
+instance CanPoll Router where
+  getSocketType = ZMQ_ROUTER
 
 instance CanReceives Router where
   receives_ = receives

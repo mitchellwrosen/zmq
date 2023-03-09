@@ -23,7 +23,7 @@ import Numeric.Natural (Natural)
 import Zmq.Error
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Poll (CanPoll)
+import Zmq.Internal.Poll (CanPoll (getSocketType))
 import Zmq.Internal.Socket (CanReceive, CanReceives, Socket (withSocket))
 import Zmq.Internal.Socket qualified as Socket
 import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
@@ -36,9 +36,11 @@ newtype Subscriber
   = Subscriber (ThreadSafeSocket)
   deriving stock (Eq)
   deriving anyclass
-    ( CanPoll,
-      Options.CanSetSendQueueSize
+    ( Options.CanSetSendQueueSize
     )
+
+instance CanPoll Subscriber where
+  getSocketType = ZMQ_SUB
 
 instance CanReceive Subscriber where
   receive_ = receive

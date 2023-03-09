@@ -89,7 +89,7 @@ import Zmq.Internal.Options
     name,
     sendQueueSize,
   )
-import Zmq.Internal.Poll (CanPoll, Sockets, also, poll, pollFor, the)
+import Zmq.Internal.Poll (CanPoll, Sockets, also, poll, pollFor, pollUntil, the)
 import Zmq.Internal.Socket
   ( CanReceive (receive_),
     CanReceives,

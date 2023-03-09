@@ -1,5 +1,5 @@
 module Zmq.Internal.Poll
-  ( CanPoll,
+  ( CanPoll (getSocketType),
     Sockets,
     the,
     also,
@@ -25,7 +25,9 @@ import Zmq.Error (Error, enrichError, unexpectedError)
 import Zmq.Internal.Socket (Socket)
 import Zmq.Internal.Socket qualified as Socket
 
-class Socket socket => CanPoll socket
+class Socket socket => CanPoll socket where
+  -- we only need this for polling, so it's defined here, not in Socket
+  getSocketType :: Zmq_socket_type
 
 newtype Sockets
   = Sockets [SomeSocket]

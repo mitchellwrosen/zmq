@@ -25,7 +25,7 @@ import Numeric.Natural (Natural)
 import Zmq.Error (Error, catchingOkErrors, enrichError, throwOkError)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Poll (CanPoll)
+import Zmq.Internal.Poll (CanPoll (getSocketType))
 import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket))
 import Zmq.Internal.Socket qualified as Socket
 import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
@@ -38,10 +38,12 @@ newtype XPublisher
   = XPublisher ThreadSafeSocket
   deriving stock (Eq)
   deriving anyclass
-    ( CanPoll,
-      Options.CanSetLossy,
+    ( Options.CanSetLossy,
       Options.CanSetSendQueueSize
     )
+
+instance CanPoll XPublisher where
+  getSocketType = ZMQ_XPUB
 
 instance CanReceive XPublisher where
   receive_ = receive

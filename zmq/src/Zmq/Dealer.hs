@@ -24,7 +24,7 @@ import Numeric.Natural (Natural)
 import Zmq.Error (Error (..), catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Poll (CanPoll)
+import Zmq.Internal.Poll (CanPoll (getSocketType))
 import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket))
 import Zmq.Internal.Socket qualified as Socket
 import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
@@ -37,9 +37,11 @@ newtype Dealer
   = Dealer ThreadSafeSocket
   deriving stock (Eq)
   deriving anyclass
-    ( CanPoll,
-      Options.CanSetSendQueueSize
+    ( Options.CanSetSendQueueSize
     )
+
+instance CanPoll Dealer where
+  getSocketType = ZMQ_DEALER
 
 instance CanReceive Dealer where
   receive_ = receive

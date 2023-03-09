@@ -23,7 +23,7 @@ import Libzmq
 import Zmq.Error (Error, catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Poll (CanPoll)
+import Zmq.Internal.Poll (CanPoll (getSocketType))
 import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket))
 import Zmq.Internal.Socket qualified as Socket
 import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
@@ -36,7 +36,9 @@ import Zmq.Subscription (pattern Subscribe, pattern Unsubscribe)
 newtype XSubscriber
   = XSubscriber ThreadSafeSocket
   deriving stock (Eq)
-  deriving anyclass (CanPoll)
+
+instance CanPoll XSubscriber where
+  getSocketType = ZMQ_XSUB
 
 instance CanReceive XSubscriber where
   receive_ = receive
