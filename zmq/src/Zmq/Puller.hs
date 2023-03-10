@@ -21,7 +21,7 @@ import Numeric.Natural (Natural)
 import Zmq.Error
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Poll (CanPoll (getSocketType))
+import Zmq.Internal.Poll (CanPoll (toPollable), Pollable (..))
 import Zmq.Internal.Socket (CanReceive, CanReceives, Socket)
 import Zmq.Internal.Socket qualified as Socket
 import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
@@ -38,7 +38,7 @@ newtype Puller
     )
 
 instance CanPoll Puller where
-  getSocketType = ZMQ_PULL
+  toPollable = PollableNonREQ . Socket.getSocket
 
 instance CanReceive Puller where
   receive_ = receive

@@ -25,7 +25,7 @@ import Numeric.Natural (Natural)
 import Zmq.Error (Error (..), catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Poll (CanPoll (getSocketType))
+import Zmq.Internal.Poll (CanPoll (toPollable), Pollable (..))
 import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket))
 import Zmq.Internal.Socket qualified as Socket
 import Zmq.Internal.ThreadUnsafeSocket (ThreadUnsafeSocket)
@@ -45,7 +45,8 @@ data Requester
     )
 
 instance CanPoll Requester where
-  getSocketType = ZMQ_REQ
+  toPollable (Requester socket messageBuffer) =
+    PollableREQ (ThreadUnsafeSocket.raw socket) messageBuffer
 
 instance CanReceive Requester where
   receive_ = receive

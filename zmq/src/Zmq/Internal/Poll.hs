@@ -1,5 +1,6 @@
 module Zmq.Internal.Poll
-  ( CanPoll (getSocketType),
+  ( CanPoll (toPollable),
+    Pollable (..),
     Sockets,
     the,
     also,
@@ -13,10 +14,13 @@ import Control.Exception
 import Data.Array.Base qualified as Array
 import Data.Array.MArray qualified as MArray
 import Data.Array.Storable (StorableArray)
+import Data.ByteString (ByteString)
 import Data.Coerce (coerce)
+import Data.IORef (IORef)
 import Data.Int (Int64)
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet
+import Data.List.NonEmpty qualified as List (NonEmpty)
 import Data.Word (Word64)
 import GHC.Clock (getMonotonicTimeNSec)
 import Libzmq
@@ -26,14 +30,21 @@ import Zmq.Internal.Socket (Socket)
 import Zmq.Internal.Socket qualified as Socket
 
 class Socket socket => CanPoll socket where
-  -- we only need this for polling, so it's defined here, not in Socket
-  getSocketType :: Zmq_socket_type
+  toPollable :: socket -> Pollable
 
 newtype Sockets
-  = Sockets [SomeSocket]
+  = Sockets [Pollable]
 
-data SomeSocket
-  = forall socket. Socket socket => SomeSocket socket
+data Pollable
+  = -- A REQ socket, with its message buffer (see Note [Requester message buffer])
+    PollableREQ !Zmq_socket !(IORef (Maybe (List.NonEmpty ByteString)))
+  | -- A non-REQ socket
+    PollableNonREQ !Zmq_socket
+
+pollableSocket :: Pollable -> Zmq_socket
+pollableSocket = \case
+  PollableREQ socket _ -> socket
+  PollableNonREQ socket -> socket
 
 the :: CanPoll socket => socket -> Sockets
 the socket =
@@ -41,28 +52,28 @@ the socket =
 
 also :: CanPoll socket => socket -> Sockets -> Sockets
 also socket =
-  coerce (SomeSocket socket :)
+  coerce (toPollable socket :)
 
 -- Keep sockets alive for duration of IO action
 keepingSocketsAlive :: Sockets -> IO a -> IO a
-keepingSocketsAlive (Sockets sockets0) action =
-  go sockets0
+keepingSocketsAlive (Sockets pollables0) action =
+  go pollables0
   where
     go = \case
       [] -> action
-      SomeSocket socket : sockets ->
-        Socket.keepingSocketAlive (Socket.getSocket socket) (go sockets)
+      pollable : pollables ->
+        Socket.keepingSocketAlive (pollableSocket pollable) (go pollables)
 
 socketsArray :: Sockets -> IO (StorableArray Int Zmq_pollitem)
-socketsArray (Sockets sockets0) = do
-  loop 0 [] sockets0
+socketsArray (Sockets pollables0) = do
+  loop 0 [] pollables0
   where
-    loop :: Int -> [Zmq_pollitem] -> [SomeSocket] -> IO (StorableArray Int Zmq_pollitem)
+    loop :: Int -> [Zmq_pollitem] -> [Pollable] -> IO (StorableArray Int Zmq_pollitem)
     loop !len pollitems = \case
       [] -> MArray.newListArray (0, len) pollitems
-      SomeSocket socket : sockets -> do
-        let pollitem = Zmq_pollitem_socket (Socket.getSocket socket) ZMQ_POLLIN
-        loop (len + 1) (pollitem : pollitems) sockets
+      pollable : pollables -> do
+        let pollitem = Zmq_pollitem_socket (pollableSocket pollable) ZMQ_POLLIN
+        loop (len + 1) (pollitem : pollitems) pollables
 
 -- Get indices that have fired
 socketsArrayIndices :: StorableArray Int Zmq_pollitem -> IO IntSet
