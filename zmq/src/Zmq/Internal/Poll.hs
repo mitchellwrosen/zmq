@@ -48,7 +48,7 @@ pollableSocket = \case
 
 the :: CanPoll socket => socket -> Sockets
 the socket =
-  also socket (Sockets [])
+  Sockets [toPollable socket]
 
 also :: CanPoll socket => socket -> Sockets -> Sockets
 also socket =
@@ -94,7 +94,7 @@ poll :: Sockets -> IO (Either Error (Int -> Bool))
 poll sockets = do
   pollitems <- socketsArray sockets
   keepingSocketsAlive sockets do
-    poll_ pollitems (-1) >>= \case
+    zpoll pollitems (-1) >>= \case
       Left err -> pure (Left err)
       Right _n -> do
         indices <- socketsArrayIndices pollitems
@@ -102,10 +102,14 @@ poll sockets = do
 
 -- | milliseconds
 pollFor :: Sockets -> Int -> IO (Either Error (Maybe (Int -> Bool)))
-pollFor sockets timeout = do
+pollFor sockets timeout =
+  pollFor_ sockets (fromIntegral @Int @Int64 timeout)
+
+pollFor_ :: Sockets -> Int64 -> IO (Either Error (Maybe (Int -> Bool)))
+pollFor_ sockets timeout = do
   pollitems <- socketsArray sockets
   keepingSocketsAlive sockets do
-    poll_ pollitems (fromIntegral @Int @Int64 timeout) >>= \case
+    zpoll pollitems timeout >>= \case
       Left err -> pure (Left err)
       Right n ->
         if n == 0
@@ -118,26 +122,15 @@ pollFor sockets timeout = do
 pollUntil :: Sockets -> Word64 -> IO (Either Error (Maybe (Int -> Bool)))
 pollUntil sockets deadline = do
   now <- getMonotonicTimeNSec
-  let millisecondsUntilDeadline =
+  let timeout =
         if now > deadline
           then 0
-          else
-            fromIntegral @Word64 @Int64
-              -- If sleeping for longer than max int64 (lol), then sleep for max int64
-              (min ((deadline - now) `div` 1_000_000) 9_223_372_036_854_775_807)
-  pollitems <- socketsArray sockets
-  keepingSocketsAlive sockets do
-    poll_ pollitems millisecondsUntilDeadline >>= \case
-      Left err -> pure (Left err)
-      Right n ->
-        if n == 0
-          then pure (Right Nothing)
-          else do
-            indices <- socketsArrayIndices pollitems
-            pure (Right (Just (`IntSet.member` indices)))
+          -- safe downcast: can't overflow Int64 after dividing by 1,000,000
+          else fromIntegral @Word64 @Int64 ((deadline - now) `div` 1_000_000)
+  pollFor_ sockets timeout
 
-poll_ :: StorableArray Int Zmq_pollitem -> Int64 -> IO (Either Error Int)
-poll_ pollitems timeout = do
+zpoll :: StorableArray Int Zmq_pollitem -> Int64 -> IO (Either Error Int)
+zpoll pollitems timeout = do
   zmq_poll pollitems timeout >>= \case
     Left errno ->
       let err = enrichError "zmq_poll" errno
