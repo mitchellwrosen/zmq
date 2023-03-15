@@ -58,6 +58,13 @@ module Libzmq.Bindings
     zmq_proxy,
     zmq_proxy_steerable,
 
+    -- ** Probe library capabilities
+    zmq_has,
+
+    -- ** Encryption
+    zmq_z85_encode,
+    zmq_z85_decode,
+
     -- * Types
     Zmq_fd,
     Zmq_msg,

@@ -1,5 +1,6 @@
 module Libzmq.Bindings.Internal.Functions (module Libzmq.Bindings.Internal.Functions) where
 
+import Data.Word (Word8)
 import Foreign.C.String (CString)
 import Foreign.C.Types (CChar (..), CInt (..), CLong (..), CSize (..))
 import Foreign.Ptr (FunPtr, Ptr)
@@ -285,3 +286,27 @@ foreign import capi interruptible "zmq.h zmq_proxy"
 -- http://api.zeromq.org/master:zmq-proxy-steerable
 foreign import capi interruptible "zmq.h zmq_proxy_steerable"
   zmq_proxy_steerable :: Ptr frontend -> Ptr backend -> Ptr capture -> Ptr control -> IO CInt
+
+------------------------------------------------------------------------------------------------------------------------
+-- Probe library capabilities
+
+-- | Check whether a ØMQ capability is available.
+--
+-- http://api.zeromq.org/master:zmq-has
+foreign import capi unsafe "zmq.h zmq_has"
+  zmq_has :: CString -> IO CInt
+
+------------------------------------------------------------------------------------------------------------------------
+-- Encryption
+
+-- | Encode bytes in Z85.
+--
+-- http://api.zeromq.org/master:zmq-z85-encode
+foreign import capi unsafe "zmq.h zmq_z85_encode"
+  zmq_z85_encode :: Ptr CChar -> Ptr Word8 -> CSize -> IO CString
+
+-- | Decode Z85 as bytes.
+--
+-- http://api.zeromq.org/master:zmq-z85-decode
+foreign import capi unsafe "zmq.h zmq_z85_decode"
+  zmq_z85_decode :: Ptr Word8 -> CString -> IO (Ptr Word8)
