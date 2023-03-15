@@ -560,6 +560,16 @@ zmq_proxy_steerable (Zmq_socket frontend) (Zmq_socket backend) maybeCapture (Zmq
         Just (Zmq_socket p) -> p
 
 ------------------------------------------------------------------------------------------------------------------------
+-- Probe library capabilities
+
+-- | Check whether a ØMQ capability is available.
+--
+-- http://api.zeromq.org/master:zmq-has
+zmq_has :: Text -> IO Bool
+zmq_has capability =
+  (== 1) <$> Text.withCString capability Libzmq.Bindings.zmq_has
+
+------------------------------------------------------------------------------------------------------------------------
 -- Misc. utils
 
 sizeof :: forall a. Storable a => CSize

@@ -58,6 +58,9 @@ module Libzmq
     zmq_proxy,
     zmq_proxy_steerable,
 
+    -- ** Probe library capabilities
+    zmq_has,
+
     -- * Types
     Zmq_ctx_option
       ( ZMQ_BLOCKY,
