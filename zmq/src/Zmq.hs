@@ -85,8 +85,10 @@ where
 
 import Control.Exception (throwIO)
 import Data.ByteString (ByteString)
-import Data.Text (Text)
+import Data.ByteString.Short.Base64.URL qualified as Base64
+import Data.Text.Short qualified as Text.Short
 import Libzmq
+import System.Random.Stateful qualified as Random
 import Zmq.Dealer (Dealer)
 import Zmq.Error (Error (..), catchingOkErrors, enrichError, throwOkError, unexpectedError)
 import Zmq.Internal.Context
@@ -134,8 +136,10 @@ open :: Socket socket => Options socket -> IO (Either Error socket)
 open =
   openSocket
 
-monitor :: Socket socket => socket -> Text -> IO (Either Error Pair)
-monitor socket endpoint =
+monitor :: Socket socket => socket -> IO (Either Error Pair)
+monitor socket = do
+  endpointBytes <- Random.uniformShortByteString 16 Random.globalStdGen
+  let endpoint = Text.Short.toText ("inproc://" <> Base64.encodeBase64Unpadded endpointBytes)
   catchingOkErrors do
     zmq_socket_monitor (Socket.getSocket socket) endpoint ZMQ_EVENT_ALL >>= \case
       Left errno ->
