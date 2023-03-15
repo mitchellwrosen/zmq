@@ -61,6 +61,9 @@ module Libzmq
     -- ** Probe library capabilities
     zmq_has,
 
+    -- ** Encryption
+    zmq_z85_encode,
+
     -- * Types
     Zmq_ctx_option
       ( ZMQ_BLOCKY,

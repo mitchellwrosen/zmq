@@ -14,12 +14,8 @@ import Data.Text.Encoding qualified as Text
 import Data.Text.Foreign qualified as Text
 import Data.Void (Void)
 import Data.Word (Word8)
-import Foreign (Storable (peek, poke, sizeOf), alloca)
-import Foreign.C (CUInt)
-import Foreign.C.String (CString)
-import Foreign.C.Types (CChar (..), CInt (..), CLong (..), CSize (..))
-import Foreign.Marshal.Alloc (free, malloc)
-import Foreign.Ptr (Ptr, castPtr, nullPtr)
+import Foreign (Ptr, Storable (peek, poke, sizeOf), alloca, allocaBytes, castPtr, free, malloc, nullPtr)
+import Foreign.C (CChar (..), CInt (..), CLong (..), CSize (..), CString, CUInt)
 import Libzmq.Bindings qualified
 import Libzmq.Internal.Types
   ( Zmq_ctx (..),
@@ -158,7 +154,7 @@ zmq_msg_free (Zmq_msg message) =
 zmq_msg_gets :: Zmq_msg -> Text -> IO (Either Zmq_error Text)
 zmq_msg_gets (Zmq_msg message) property = do
   value <- Text.withCString property (Libzmq.Bindings.zmq_msg_gets message)
-  if value == nullPtr then Left <$> zmq_errno else Right <$> Text.fromPtr0 (castPtr value)
+  if value == nullPtr then Left <$> zmq_errno else Right <$> Text.fromPtr0 (castPtr @CChar @Word8 value)
 
 -- | Get a ØMQ message option.
 --
@@ -568,6 +564,22 @@ zmq_proxy_steerable (Zmq_socket frontend) (Zmq_socket backend) maybeCapture (Zmq
 zmq_has :: Text -> IO Bool
 zmq_has capability =
   (== 1) <$> Text.withCString capability Libzmq.Bindings.zmq_has
+
+------------------------------------------------------------------------------------------------------------------------
+-- Encryption
+
+-- | Encode bytes in Z85.
+--
+-- http://api.zeromq.org/master:zmq-z85-encode
+zmq_z85_encode :: ByteString -> Either Zmq_error Text
+zmq_z85_encode bytes =
+  unsafeDupablePerformIO do
+    ByteString.Unsafe.unsafeUseAsCStringLen bytes \(cbytes, len) ->
+      allocaBytes (div (len * 5) 4 + 1) \buffer -> do
+        result <- Libzmq.Bindings.zmq_z85_encode buffer (castPtr @CChar @Word8 cbytes) (fromIntegral @Int @CSize len)
+        if result == nullPtr
+          then Left <$> zmq_errno
+          else Right <$> Text.fromPtr0 (castPtr @CChar @Word8 buffer)
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Misc. utils
