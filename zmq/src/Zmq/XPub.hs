@@ -1,5 +1,5 @@
-module Zmq.XPublisher
-  ( XPublisher,
+module Zmq.XPub
+  ( XPub,
     defaultOptions,
     lossy,
     sendQueueSize,
@@ -34,46 +34,46 @@ import Zmq.Internal.ThreadSafeSocket qualified as ThreadSafeSocket
 -- | A thread-safe __xpublisher__ socket.
 --
 -- Valid peers: __subscriber__, __xsubscriber__
-newtype XPublisher
-  = XPublisher ThreadSafeSocket
+newtype XPub
+  = XPub ThreadSafeSocket
   deriving stock (Eq)
   deriving anyclass
     ( Options.CanSetLossy,
       Options.CanSetSendQueueSize
     )
 
-instance CanPoll XPublisher where
+instance CanPoll XPub where
   toPollable = PollableNonREQ . Socket.getSocket
 
-instance CanReceive XPublisher where
+instance CanReceive XPub where
   receive_ = receive
 
-instance CanReceives XPublisher where
+instance CanReceives XPub where
   receives_ = receives
 
-instance CanSend XPublisher where
+instance CanSend XPub where
   send_ = send
 
-instance Socket XPublisher where
+instance Socket XPub where
   openSocket = open
   getSocket = coerce ThreadSafeSocket.raw
-  withSocket (XPublisher socket) = ThreadSafeSocket.with socket
+  withSocket (XPub socket) = ThreadSafeSocket.with socket
   socketName = coerce ThreadSafeSocket.name
 
-defaultOptions :: Options XPublisher
+defaultOptions :: Options XPub
 defaultOptions =
   Options.defaultOptions
 
-lossy :: Options XPublisher
+lossy :: Options XPub
 lossy =
   Options.lossy
 
-sendQueueSize :: Natural -> Options XPublisher
+sendQueueSize :: Natural -> Options XPub
 sendQueueSize =
   Options.sendQueueSize
 
 -- | Open an __xpublisher__.
-open :: Options XPublisher -> IO (Either Error XPublisher)
+open :: Options XPub -> IO (Either Error XPub)
 open options =
   catchingOkErrors do
     coerce do
@@ -87,28 +87,28 @@ open options =
 -- | Bind an __xpublisher__ to an __endpoint__.
 --
 -- /Alias/: 'Zmq.bind'
-bind :: XPublisher -> Text -> IO (Either Error ())
+bind :: XPub -> Text -> IO (Either Error ())
 bind =
   Socket.bind
 
 -- | Unbind an __xpublisher__ from an __endpoint__.
 --
 -- /Alias/: 'Zmq.unbind'
-unbind :: XPublisher -> Text -> IO ()
+unbind :: XPub -> Text -> IO ()
 unbind =
   Socket.unbind
 
 -- | Connect an __xpublisher__ to an __endpoint__.
 --
 -- /Alias/: 'Zmq.connect'
-connect :: XPublisher -> Text -> IO (Either Error ())
+connect :: XPub -> Text -> IO (Either Error ())
 connect =
   Socket.connect
 
 -- | Disconnect an __xpublisher__ from an __endpoint__.
 --
 -- /Alias/: 'Zmq.disconnect'
-disconnect :: XPublisher -> Text -> IO ()
+disconnect :: XPub -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
@@ -123,7 +123,7 @@ disconnect =
 --       queue.
 --
 -- /Alias/: 'Zmq.send'
-send :: XPublisher -> ByteString -> IO (Either Error ())
+send :: XPub -> ByteString -> IO (Either Error ())
 send socket frame =
   catchingOkErrors do
     sent <- Socket.sendOneDontWait socket frame False
@@ -139,7 +139,7 @@ send socket frame =
 --     * If the 'lossy' option is not set, and any peer has a full message queue, then the message will not be sent to
 --       any peer, and this function will return @EAGAIN@. It is not possible to block until no peer has a full message
 --       queue.
-sends :: XPublisher -> [ByteString] -> IO (Either Error ())
+sends :: XPub -> [ByteString] -> IO (Either Error ())
 sends socket = \case
   [] -> pure (Right ())
   frame : frames ->
@@ -151,14 +151,14 @@ sends socket = \case
 -- | Receive a __message__ on an __xpublisher__ from any peer (fair-queued).
 --
 -- /Alias/: 'Zmq.receive'
-receive :: XPublisher -> IO (Either Error ByteString)
+receive :: XPub -> IO (Either Error ByteString)
 receive socket =
   catchingOkErrors (Socket.receiveOne socket)
 
 -- | Receive a __multiframe message__ on an __xpublisher__ from any peer (fair-queued).
 --
 -- /Alias/: 'Zmq.receives'
-receives :: XPublisher -> IO (Either Error [ByteString])
+receives :: XPub -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do
     frame :| frames <- Socket.receiveMany socket

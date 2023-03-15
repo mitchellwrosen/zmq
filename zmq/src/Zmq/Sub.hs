@@ -1,5 +1,5 @@
-module Zmq.Subscriber
-  ( Subscriber,
+module Zmq.Sub
+  ( Sub,
     defaultOptions,
     sendQueueSize,
     open,
@@ -32,38 +32,38 @@ import Zmq.Internal.ThreadSafeSocket qualified as ThreadSafeSocket
 -- | A thread-safe __subscriber__ socket.
 --
 -- Valid peers: __publisher__, __xpublisher__
-newtype Subscriber
-  = Subscriber (ThreadSafeSocket)
+newtype Sub
+  = Sub (ThreadSafeSocket)
   deriving stock (Eq)
   deriving anyclass
     ( Options.CanSetSendQueueSize
     )
 
-instance CanPoll Subscriber where
+instance CanPoll Sub where
   toPollable = PollableNonREQ . Socket.getSocket
 
-instance CanReceive Subscriber where
+instance CanReceive Sub where
   receive_ = receive
 
-instance CanReceives Subscriber where
+instance CanReceives Sub where
   receives_ = receives
 
-instance Socket Subscriber where
+instance Socket Sub where
   openSocket = open
   getSocket = coerce ThreadSafeSocket.raw
-  withSocket (Subscriber socket) = ThreadSafeSocket.with socket
+  withSocket (Sub socket) = ThreadSafeSocket.with socket
   socketName = coerce ThreadSafeSocket.name
 
-defaultOptions :: Options Subscriber
+defaultOptions :: Options Sub
 defaultOptions =
   Options.defaultOptions
 
-sendQueueSize :: Natural -> Options Subscriber
+sendQueueSize :: Natural -> Options Sub
 sendQueueSize =
   Options.sendQueueSize
 
 -- | Open a __subscriber__.
-open :: Options Subscriber -> IO (Either Error Subscriber)
+open :: Options Sub -> IO (Either Error Sub)
 open options =
   catchingOkErrors do
     coerce do
@@ -76,42 +76,42 @@ open options =
 -- | Bind a __subscriber__ to an __endpoint__.
 --
 -- /Alias/: 'Zmq.bind'
-bind :: Subscriber -> Text -> IO (Either Error ())
+bind :: Sub -> Text -> IO (Either Error ())
 bind =
   Socket.bind
 
 -- | Unbind a __subscriber__ from an __endpoint__.
 --
 -- /Alias/: 'Zmq.unbind'
-unbind :: Subscriber -> Text -> IO ()
+unbind :: Sub -> Text -> IO ()
 unbind =
   Socket.unbind
 
 -- | Connect a __subscriber__ to an __endpoint__.
 --
 -- /Alias/: 'Zmq.connect'
-connect :: Subscriber -> Text -> IO (Either Error ())
+connect :: Sub -> Text -> IO (Either Error ())
 connect =
   Socket.connect
 
 -- | Disconnect a __subscriber__ from an __endpoint__.
 --
 -- /Alias/: 'Zmq.disconnect'
-disconnect :: Subscriber -> Text -> IO ()
+disconnect :: Sub -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
 -- | Subscribe a __subscriber__ to a __topic__ (prefix matching).
 --
 -- To subscribe to all topics, subscribe to the empty string.
-subscribe :: Subscriber -> ByteString -> IO (Either Error ())
+subscribe :: Sub -> ByteString -> IO (Either Error ())
 subscribe socket prefix =
   catchingOkErrors do
     withSocket socket do
       Options.setSocketOptions (Socket.getSocket socket) (Options.sockopt ZMQ_SUBSCRIBE prefix)
 
 -- | Unsubscribe a __subscriber__ from a previously-subscribed __topic__.
-unsubscribe :: Subscriber -> ByteString -> IO (Either Error ())
+unsubscribe :: Sub -> ByteString -> IO (Either Error ())
 unsubscribe socket prefix =
   catchingOkErrors do
     withSocket socket do
@@ -120,14 +120,14 @@ unsubscribe socket prefix =
 -- | Receive a __message__ on a __subscriber__ from any peer (fair-queued).
 --
 -- /Alias/: 'Zmq.receive'
-receive :: Subscriber -> IO (Either Error ByteString)
+receive :: Sub -> IO (Either Error ByteString)
 receive socket =
   catchingOkErrors (Socket.receiveOne socket)
 
 -- | Receive a __multiframe message__ on a __subscriber__ from any peer (fair-queued).
 --
 -- /Alias/: 'Zmq.receives'
-receives :: Subscriber -> IO (Either Error [ByteString])
+receives :: Sub -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do
     frame :| frames <- Socket.receiveMany socket

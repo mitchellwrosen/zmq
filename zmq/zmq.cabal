@@ -50,14 +50,14 @@ library
     Zmq.Dealer
     Zmq.Pub
     Zmq.Pair
-    Zmq.Puller
-    Zmq.Pusher
-    Zmq.Replier
-    Zmq.Requester
+    Zmq.Pull
+    Zmq.Push
+    Zmq.Rep
+    Zmq.Req
     Zmq.Router
-    Zmq.Subscriber
-    Zmq.XPublisher
-    Zmq.XSubscriber
+    Zmq.Sub
+    Zmq.XPub
+    Zmq.XSub
   hs-source-dirs: src
   other-modules:
     Zmq.Internal.Context

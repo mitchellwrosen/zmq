@@ -1,5 +1,5 @@
-module Zmq.Pusher
-  ( Pusher,
+module Zmq.Push
+  ( Push,
     defaultOptions,
     sendQueueSize,
     open,
@@ -30,32 +30,32 @@ import Zmq.Internal.ThreadSafeSocket qualified as ThreadSafeSocket
 -- | A thread-safe __pusher__ socket.
 --
 -- Valid peers: __puller__
-newtype Pusher
-  = Pusher ThreadSafeSocket
+newtype Push
+  = Push ThreadSafeSocket
   deriving stock (Eq)
   deriving anyclass
     ( Options.CanSetSendQueueSize
     )
 
-instance CanSend Pusher where
+instance CanSend Push where
   send_ = send
 
-instance Socket Pusher where
+instance Socket Push where
   openSocket = open
   getSocket = coerce ThreadSafeSocket.raw
-  withSocket (Pusher socket) = ThreadSafeSocket.with socket
+  withSocket (Push socket) = ThreadSafeSocket.with socket
   socketName = coerce ThreadSafeSocket.name
 
-defaultOptions :: Options Pusher
+defaultOptions :: Options Push
 defaultOptions =
   Options.defaultOptions
 
-sendQueueSize :: Natural -> Options Pusher
+sendQueueSize :: Natural -> Options Push
 sendQueueSize =
   Options.sendQueueSize
 
 -- | Open a __pusher__.
-open :: Options Pusher -> IO (Either Error Pusher)
+open :: Options Push -> IO (Either Error Push)
 open options =
   catchingOkErrors do
     coerce (ThreadSafeSocket.open ZMQ_PUSH options)
@@ -63,28 +63,28 @@ open options =
 -- | Bind a __pusher__ to an __endpoint__.
 --
 -- /Alias/: 'Zmq.bind'
-bind :: Pusher -> Text -> IO (Either Error ())
+bind :: Push -> Text -> IO (Either Error ())
 bind =
   Socket.bind
 
 -- | Unbind a __pusher__ from an __endpoint__.
 --
 -- /Alias/: 'Zmq.unbind'
-unbind :: Pusher -> Text -> IO ()
+unbind :: Push -> Text -> IO ()
 unbind =
   Socket.unbind
 
 -- | Connect a __pusher__ to an __endpoint__.
 --
 -- /Alias/: 'Zmq.connect'
-connect :: Pusher -> Text -> IO (Either Error ())
+connect :: Push -> Text -> IO (Either Error ())
 connect =
   Socket.connect
 
 -- | Disconnect a __pusher__ from an __endpoint__.
 --
 -- /Alias/: 'Zmq.disconnect'
-disconnect :: Pusher -> Text -> IO ()
+disconnect :: Push -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
@@ -93,7 +93,7 @@ disconnect =
 -- This operation blocks until a peer can receive the message.
 --
 -- /Alias/: 'Zmq.send'
-send :: Pusher -> ByteString -> IO (Either Error ())
+send :: Push -> ByteString -> IO (Either Error ())
 send socket frame =
   catchingOkErrors loop
   where
@@ -106,7 +106,7 @@ send socket frame =
 -- | Send a __multiframe message__ on a __pusher__ to one peer (round-robin).
 --
 -- This operation blocks until a peer can receive the message.
-sends :: Pusher -> [ByteString] -> IO (Either Error ())
+sends :: Push -> [ByteString] -> IO (Either Error ())
 sends socket = \case
   [] -> pure (Right ())
   frame : frames -> do

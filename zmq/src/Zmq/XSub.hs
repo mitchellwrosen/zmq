@@ -1,5 +1,5 @@
-module Zmq.XSubscriber
-  ( XSubscriber,
+module Zmq.XSub
+  ( XSub,
     defaultOptions,
     open,
     bind,
@@ -33,34 +33,34 @@ import Zmq.Subscription (pattern Subscribe, pattern Unsubscribe)
 -- | A thread-safe __xsubscriber__ socket.
 --
 -- Valid peers: __publisher__, __xpublisher__
-newtype XSubscriber
-  = XSubscriber ThreadSafeSocket
+newtype XSub
+  = XSub ThreadSafeSocket
   deriving stock (Eq)
 
-instance CanPoll XSubscriber where
+instance CanPoll XSub where
   toPollable = PollableNonREQ . Socket.getSocket
 
-instance CanReceive XSubscriber where
+instance CanReceive XSub where
   receive_ = receive
 
-instance CanReceives XSubscriber where
+instance CanReceives XSub where
   receives_ = receives
 
-instance CanSend XSubscriber where
+instance CanSend XSub where
   send_ = send
 
-instance Socket XSubscriber where
+instance Socket XSub where
   openSocket = open
   getSocket = coerce ThreadSafeSocket.raw
-  withSocket (XSubscriber socket) = ThreadSafeSocket.with socket
+  withSocket (XSub socket) = ThreadSafeSocket.with socket
   socketName = coerce ThreadSafeSocket.name
 
-defaultOptions :: Options XSubscriber
+defaultOptions :: Options XSub
 defaultOptions =
   Options.defaultOptions
 
 -- | Open an __xsubscriber__.
-open :: Options XSubscriber -> IO (Either Error XSubscriber)
+open :: Options XSub -> IO (Either Error XSub)
 open options =
   catchingOkErrors do
     coerce do
@@ -73,49 +73,49 @@ open options =
 -- | Bind an __xsubscriber__ to an __endpoint__.
 --
 -- /Alias/: 'Zmq.bind'
-bind :: XSubscriber -> Text -> IO (Either Error ())
+bind :: XSub -> Text -> IO (Either Error ())
 bind =
   Socket.bind
 
 -- | Unbind an __xsubscriber__ from an __endpoint__.
 --
 -- /Alias/: 'Zmq.unbind'
-unbind :: XSubscriber -> Text -> IO ()
+unbind :: XSub -> Text -> IO ()
 unbind =
   Socket.unbind
 
 -- | Connect an __xsubscriber__ to an __endpoint__.
 --
 -- /Alias/: 'Zmq.connect'
-connect :: XSubscriber -> Text -> IO (Either Error ())
+connect :: XSub -> Text -> IO (Either Error ())
 connect =
   Socket.connect
 
 -- | Disconnect an __xsubscriber__ from an __endpoint__.
 --
 -- /Alias/: 'Zmq.disconnect'
-disconnect :: XSubscriber -> Text -> IO ()
+disconnect :: XSub -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
 -- | Subscribe an __xsubscriber__ to a __topic__ (prefix matching).
 --
 -- To subscribe to all topics, subscribe to the empty string.
-subscribe :: XSubscriber -> ByteString -> IO (Either Error ())
-subscribe xsubscriber prefix =
-  send xsubscriber (Subscribe prefix)
+subscribe :: XSub -> ByteString -> IO (Either Error ())
+subscribe socket prefix =
+  send socket (Subscribe prefix)
 
 -- | Unsubscribe an __xsubscriber__ from a previously-subscribed __topic__.
-unsubscribe :: XSubscriber -> ByteString -> IO (Either Error ())
-unsubscribe xsubscriber prefix =
-  send xsubscriber (Unsubscribe prefix)
+unsubscribe :: XSub -> ByteString -> IO (Either Error ())
+unsubscribe socket prefix =
+  send socket (Unsubscribe prefix)
 
 -- | Send a __message__ on an __xsubscriber__ to all peers.
 --
 -- This operation never blocks. All peers with full messages queues will not receive the message.
 --
 -- /Alias/: 'Zmq.send'
-send :: XSubscriber -> ByteString -> IO (Either Error ())
+send :: XSub -> ByteString -> IO (Either Error ())
 send socket frame =
   catchingOkErrors do
     Socket.sendOneWontBlock socket frame False
@@ -123,7 +123,7 @@ send socket frame =
 -- | Send a __multiframe message__ on an __xsubscriber__ to all peers.
 --
 -- This operation never blocks. All peers with full messages queues will not receive the message.
-sends :: XSubscriber -> [ByteString] -> IO (Either Error ())
+sends :: XSub -> [ByteString] -> IO (Either Error ())
 sends socket = \case
   [] -> pure (Right ())
   frame : frames ->
@@ -133,14 +133,14 @@ sends socket = \case
 -- | Receive a __message__ on an __xsubscriber__ from any peer (fair-queued).
 --
 -- /Alias/: 'Zmq.receive'
-receive :: XSubscriber -> IO (Either Error ByteString)
+receive :: XSub -> IO (Either Error ByteString)
 receive socket =
   catchingOkErrors (Socket.receiveOne socket)
 
 -- | Receive a __multiframe message__ on an __xsubscriber__ from any peer (fair-queued).
 --
 -- /Alias/: 'Zmq.receives'
-receives :: XSubscriber -> IO (Either Error [ByteString])
+receives :: XSub -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do
     frame :| frames <- Socket.receiveMany socket

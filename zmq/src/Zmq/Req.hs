@@ -1,5 +1,5 @@
-module Zmq.Requester
-  ( Requester,
+module Zmq.Req
+  ( Req,
     defaultOptions,
     sendQueueSize,
     open,
@@ -34,45 +34,45 @@ import Zmq.Internal.ThreadUnsafeSocket qualified as ThreadUnsafeSocket
 -- | A __requester__ socket.
 --
 -- Valid peers: __replier__, __router__
-data Requester
-  = Requester
+data Req
+  = Req
       !ThreadUnsafeSocket
-      -- The last message we received, if any. See Note [Requester message buffer] for details.
+      -- The last message we received, if any. See Note [Req message buffer] for details.
       !(IORef (Maybe (List.NonEmpty ByteString)))
   deriving stock (Eq)
   deriving anyclass
     ( Options.CanSetSendQueueSize
     )
 
-instance CanPoll Requester where
-  toPollable (Requester socket messageBuffer) =
+instance CanPoll Req where
+  toPollable (Req socket messageBuffer) =
     PollableREQ (ThreadUnsafeSocket.raw socket) messageBuffer
 
-instance CanReceive Requester where
+instance CanReceive Req where
   receive_ = receive
 
-instance CanReceives Requester where
+instance CanReceives Req where
   receives_ = receives
 
-instance CanSend Requester where
+instance CanSend Req where
   send_ = send
 
-instance Socket Requester where
+instance Socket Req where
   openSocket = open
-  getSocket (Requester socket _) = ThreadUnsafeSocket.raw socket
-  withSocket (Requester socket _) = ThreadUnsafeSocket.with socket
-  socketName (Requester socket _) = ThreadUnsafeSocket.name socket
+  getSocket (Req socket _) = ThreadUnsafeSocket.raw socket
+  withSocket (Req socket _) = ThreadUnsafeSocket.with socket
+  socketName (Req socket _) = ThreadUnsafeSocket.name socket
 
-defaultOptions :: Options Requester
+defaultOptions :: Options Req
 defaultOptions =
   Options.defaultOptions
 
-sendQueueSize :: Natural -> Options Requester
+sendQueueSize :: Natural -> Options Req
 sendQueueSize =
   Options.sendQueueSize
 
 -- | Open a __requester__.
-open :: Options Requester -> IO (Either Error Requester)
+open :: Options Req -> IO (Either Error Req)
 open options =
   catchingOkErrors do
     socket <-
@@ -83,33 +83,33 @@ open options =
             <> options
         )
     messageBuffer <- newIORef Nothing
-    pure (Requester socket messageBuffer)
+    pure (Req socket messageBuffer)
 
 -- | Bind a __requester__ to an __endpoint__.
 --
 -- /Alias/: 'Zmq.bind'
-bind :: Requester -> Text -> IO (Either Error ())
+bind :: Req -> Text -> IO (Either Error ())
 bind =
   Socket.bind
 
 -- | Unbind a __requester__ from an __endpoint__.
 --
 -- /Alias/: 'Zmq.unbind'
-unbind :: Requester -> Text -> IO ()
+unbind :: Req -> Text -> IO ()
 unbind =
   Socket.unbind
 
 -- | Connect a __requester__ to an __endpoint__.
 --
 -- /Alias/: 'Zmq.connect'
-connect :: Requester -> Text -> IO (Either Error ())
+connect :: Req -> Text -> IO (Either Error ())
 connect =
   Socket.connect
 
 -- | Disconnect a __requester__ from an __endpoint__.
 --
 -- /Alias/: 'Zmq.disconnect'
-disconnect :: Requester -> Text -> IO ()
+disconnect :: Req -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
@@ -118,7 +118,7 @@ disconnect =
 -- This operation blocks until a peer can receive the message.
 --
 -- /Alias/: 'Zmq.send'
-send :: Requester -> ByteString -> IO (Either Error ())
+send :: Req -> ByteString -> IO (Either Error ())
 send socket frame = do
   catchingOkErrors do
     let loop =
@@ -132,7 +132,7 @@ send socket frame = do
 -- | Send a __multiframe message__ on a __requester__ to one peer (round-robin).
 --
 -- This operation blocks until a peer can receive the message.
-sends :: Requester -> [ByteString] -> IO (Either Error ())
+sends :: Req -> [ByteString] -> IO (Either Error ())
 sends socket = \case
   [] -> pure (Right ())
   frame : frames ->
@@ -147,8 +147,8 @@ sends socket = \case
 -- | Receive a __message__ on a __requester__ from the last peer sent to.
 --
 -- /Alias/: 'Zmq.receive'
-receive :: Requester -> IO (Either Error ByteString)
-receive socket@(Requester _ messageBuffer) =
+receive :: Req -> IO (Either Error ByteString)
+receive socket@(Req _ messageBuffer) =
   -- Remember: this socket isn't thread safe, so we don't have to be very careful with our readIORef/writeIORefs
   readIORef messageBuffer >>= \case
     Nothing -> catchingOkErrors (Socket.receiveOne socket)
@@ -159,8 +159,8 @@ receive socket@(Requester _ messageBuffer) =
 -- | Receive a __multiframe message__ on a __requester__ from the last peer sent to.
 --
 -- /Alias/: 'Zmq.receives'
-receives :: Requester -> IO (Either Error [ByteString])
-receives socket@(Requester _ messageBuffer) =
+receives :: Req -> IO (Either Error [ByteString])
+receives socket@(Req _ messageBuffer) =
   -- Remember: this socket isn't thread safe, so we don't have to be very careful with our readIORef/writeIORefs
   readIORef messageBuffer >>= \case
     Nothing ->

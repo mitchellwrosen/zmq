@@ -1,5 +1,5 @@
-module Zmq.Replier
-  ( Replier,
+module Zmq.Rep
+  ( Rep,
     defaultOptions,
     sendQueueSize,
     open,
@@ -32,41 +32,41 @@ import Zmq.Internal.ThreadUnsafeSocket qualified as ThreadUnsafeSocket
 -- | A __replier__ socket.
 --
 -- Valid peers: __dealer__, __requester__
-newtype Replier
-  = Replier ThreadUnsafeSocket
+newtype Rep
+  = Rep ThreadUnsafeSocket
   deriving stock (Eq)
   deriving anyclass
     ( Options.CanSetSendQueueSize
     )
 
-instance CanPoll Replier where
+instance CanPoll Rep where
   toPollable = PollableNonREQ . Socket.getSocket
 
-instance CanReceive Replier where
+instance CanReceive Rep where
   receive_ = receive
 
-instance CanReceives Replier where
+instance CanReceives Rep where
   receives_ = receives
 
-instance CanSend Replier where
+instance CanSend Rep where
   send_ = send
 
-instance Socket Replier where
+instance Socket Rep where
   openSocket = open
   getSocket = coerce ThreadUnsafeSocket.raw
-  withSocket (Replier socket) = ThreadUnsafeSocket.with socket
+  withSocket (Rep socket) = ThreadUnsafeSocket.with socket
   socketName = coerce ThreadUnsafeSocket.name
 
-defaultOptions :: Options Replier
+defaultOptions :: Options Rep
 defaultOptions =
   Options.defaultOptions
 
-sendQueueSize :: Natural -> Options Replier
+sendQueueSize :: Natural -> Options Rep
 sendQueueSize =
   Options.sendQueueSize
 
 -- | Open a __replier__.
-open :: Options Replier -> IO (Either Error Replier)
+open :: Options Rep -> IO (Either Error Rep)
 open options =
   catchingOkErrors do
     coerce (ThreadUnsafeSocket.open ZMQ_REP options)
@@ -74,28 +74,28 @@ open options =
 -- | Bind a __replier__ to an __endpoint__.
 --
 -- /Alias/: 'Zmq.bind'
-bind :: Replier -> Text -> IO (Either Error ())
+bind :: Rep -> Text -> IO (Either Error ())
 bind =
   Socket.bind
 
 -- | Unbind a __replier__ from an __endpoint__.
 --
 -- /Alias/: 'Zmq.unbind'
-unbind :: Replier -> Text -> IO ()
+unbind :: Rep -> Text -> IO ()
 unbind =
   Socket.unbind
 
 -- | Connect a __replier__ to an __endpoint__.
 --
 -- /Alias/: 'Zmq.connect'
-connect :: Replier -> Text -> IO (Either Error ())
+connect :: Rep -> Text -> IO (Either Error ())
 connect =
   Socket.connect
 
 -- | Disconnect a __replier__ from an __endpoint__.
 --
 -- /Alias/: 'Zmq.disconnect'
-disconnect :: Replier -> Text -> IO ()
+disconnect :: Rep -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
@@ -104,7 +104,7 @@ disconnect =
 -- If the last peer received from no longer exists, the message is discarded.
 --
 -- /Alias/: 'Zmq.send'
-send :: Replier -> ByteString -> IO (Either Error ())
+send :: Rep -> ByteString -> IO (Either Error ())
 send socket frame =
   catchingOkErrors do
     Socket.sendOneWontBlock socket frame False
@@ -112,7 +112,7 @@ send socket frame =
 -- | Send a __multiframe message__ on a __replier__ to the last peer received from.
 --
 -- If the last peer received from no longer exists, the message is discarded.
-sends :: Replier -> [ByteString] -> IO (Either Error ())
+sends :: Rep -> [ByteString] -> IO (Either Error ())
 sends socket = \case
   [] -> pure (Right ())
   frame : frames ->
@@ -122,14 +122,14 @@ sends socket = \case
 -- | Receive a __message__ on a __replier__ from any peer (fair-queued).
 --
 -- /Alias/: 'Zmq.receive'
-receive :: Replier -> IO (Either Error ByteString)
+receive :: Rep -> IO (Either Error ByteString)
 receive socket =
   catchingOkErrors (Socket.receiveOne socket)
 
 -- | Receive a __multiframe message__ on a __replier__ from any peer (fair-queued).
 --
 -- /Alias/: 'Zmq.receives'
-receives :: Replier -> IO (Either Error [ByteString])
+receives :: Rep -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do
     frame :| frames <- Socket.receiveMany socket

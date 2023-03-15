@@ -1,5 +1,5 @@
-module Zmq.Puller
-  ( Puller,
+module Zmq.Pull
+  ( Pull,
     defaultOptions,
     sendQueueSize,
     open,
@@ -30,38 +30,38 @@ import Zmq.Internal.ThreadSafeSocket qualified as ThreadSafeSocket
 -- | A thread-safe __puller__ socket.
 --
 -- Valid peers: __pusher__
-newtype Puller
-  = Puller ThreadSafeSocket
+newtype Pull
+  = Pull ThreadSafeSocket
   deriving stock (Eq)
   deriving anyclass
     ( Options.CanSetSendQueueSize
     )
 
-instance CanPoll Puller where
+instance CanPoll Pull where
   toPollable = PollableNonREQ . Socket.getSocket
 
-instance CanReceive Puller where
+instance CanReceive Pull where
   receive_ = receive
 
-instance CanReceives Puller where
+instance CanReceives Pull where
   receives_ = receives
 
-instance Socket Puller where
+instance Socket Pull where
   openSocket = open
   getSocket = coerce ThreadSafeSocket.raw
-  withSocket (Puller socket) = ThreadSafeSocket.with socket
+  withSocket (Pull socket) = ThreadSafeSocket.with socket
   socketName = coerce ThreadSafeSocket.name
 
-defaultOptions :: Options Puller
+defaultOptions :: Options Pull
 defaultOptions =
   Options.defaultOptions
 
-sendQueueSize :: Natural -> Options Puller
+sendQueueSize :: Natural -> Options Pull
 sendQueueSize =
   Options.sendQueueSize
 
 -- | Open a __puller__.
-open :: Options Puller -> IO (Either Error Puller)
+open :: Options Pull -> IO (Either Error Pull)
 open options =
   catchingOkErrors do
     coerce (ThreadSafeSocket.open ZMQ_PULL options)
@@ -69,42 +69,42 @@ open options =
 -- | Bind a __puller__ to an __endpoint__.
 --
 -- /Alias/: 'Zmq.bind'
-bind :: Puller -> Text -> IO (Either Error ())
+bind :: Pull -> Text -> IO (Either Error ())
 bind =
   Socket.bind
 
 -- | Unbind a __puller__ from an __endpoint__.
 --
 -- /Alias/: 'Zmq.unbind'
-unbind :: Puller -> Text -> IO ()
+unbind :: Pull -> Text -> IO ()
 unbind =
   Socket.unbind
 
 -- | Connect a __puller__ to an __endpoint__.
 --
 -- /Alias/: 'Zmq.connect'
-connect :: Puller -> Text -> IO (Either Error ())
+connect :: Pull -> Text -> IO (Either Error ())
 connect =
   Socket.connect
 
 -- | Disconnect a __puller__ from an __endpoint__.
 --
 -- /Alias/: 'Zmq.disconnect'
-disconnect :: Puller -> Text -> IO ()
+disconnect :: Pull -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
 -- | Receive a __message__ on a __puller__ from one peer (fair-queued).
 --
 -- /Alias/: 'Zmq.receive'
-receive :: Puller -> IO (Either Error ByteString)
+receive :: Pull -> IO (Either Error ByteString)
 receive socket =
   catchingOkErrors (Socket.receiveOne socket)
 
 -- | Receive a __multiframe message__ on a __puller__ from one peer (fair-queued).
 --
 -- /Alias/: 'Zmq.receives'
-receives :: Puller -> IO (Either Error [ByteString])
+receives :: Pull -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do
     frame :| frames <- Socket.receiveMany socket

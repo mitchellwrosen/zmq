@@ -39,14 +39,14 @@ module Zmq
     -- * Socket types
     Dealer,
     Pub,
-    Puller,
-    Pusher,
-    Replier,
-    Requester,
+    Pull,
+    Push,
+    Rep,
+    Req,
     Router,
-    Subscriber,
-    XPublisher,
-    XSubscriber,
+    Sub,
+    XPub,
+    XSub,
 
     -- * Subscription message
     pattern Subscribe,
@@ -113,15 +113,15 @@ import Zmq.Internal.Socket
     unbind,
   )
 import Zmq.Pub (Pub)
-import Zmq.Puller (Puller)
-import Zmq.Pusher (Pusher)
-import Zmq.Replier (Replier)
-import Zmq.Requester (Requester)
+import Zmq.Pull (Pull)
+import Zmq.Push (Push)
+import Zmq.Rep (Rep)
+import Zmq.Req (Req)
 import Zmq.Router (Router)
-import Zmq.Subscriber (Subscriber)
+import Zmq.Sub (Sub)
 import Zmq.Subscription (pattern Subscribe, pattern Unsubscribe)
-import Zmq.XPublisher (XPublisher)
-import Zmq.XSubscriber (XSubscriber)
+import Zmq.XPub (XPub)
+import Zmq.XSub (XSub)
 
 open :: Socket socket => Options socket -> IO (Either Error socket)
 open =
