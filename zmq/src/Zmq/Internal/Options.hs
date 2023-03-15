@@ -17,6 +17,7 @@ module Zmq.Internal.Options
     CanSetSendQueueSize,
     setSocketOptions,
     sockopt,
+    curveClient,
     curveServer,
     lossy,
     name,
@@ -25,6 +26,8 @@ module Zmq.Internal.Options
 where
 
 import Control.Exception
+import Data.ByteString (ByteString)
+import Data.Coerce (coerce)
 import Data.Int (Int32)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -32,7 +35,7 @@ import Libzmq
 import Numeric.Natural (Natural)
 import Zmq.Error (enrichError, throwOkError, unexpectedError)
 import {-# SOURCE #-} Zmq.Internal.Context (Context)
-import Zmq.Internal.Curve (CurveSecretKey (..))
+import Zmq.Internal.Curve (CurvePublicKey (..), CurveSecretKey (..), deriveCurvePublicKey)
 import {-# SOURCE #-} Zmq.Internal.Socket (Socket)
 
 -- | Options.
@@ -125,6 +128,21 @@ setSocketOptions socket = \case
   SocketOptions f _name -> f socket
   _ -> pure ()
 
+-- | Become a CURVE client.
+curveClient :: Socket socket => CurveSecretKey -> CurvePublicKey -> Options socket
+curveClient clientSecretKey (CurvePublicKey serverPublicKey) =
+  SocketOptions f Text.empty
+  where
+    CurvePublicKey clientPublicKey =
+      deriveCurvePublicKey clientSecretKey
+
+    f :: Zmq_socket -> IO ()
+    f socket = do
+      setSocketOption socket ZMQ_CURVE_SERVERKEY serverPublicKey
+      setSocketOption socket ZMQ_CURVE_PUBLICKEY clientPublicKey
+      setSocketOption socket ZMQ_CURVE_SECRETKEY (coerce @CurveSecretKey @ByteString clientSecretKey)
+
+-- | Become a CURVE server.
 curveServer :: Socket socket => CurveSecretKey -> Options socket
 curveServer (CurveSecretKey secretKey) =
   SocketOptions f Text.empty

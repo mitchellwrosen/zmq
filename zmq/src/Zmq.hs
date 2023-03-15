@@ -11,6 +11,7 @@ module Zmq
     open,
 
     -- ** Options
+    curveClient,
     curveServer,
     lossy,
     name,
@@ -54,7 +55,7 @@ module Zmq
     -- * Encryption
     CurvePublicKey (..),
     CurveSecretKey (..),
-    generateCurveKeys,
+    generateCurveSecretKey,
     deriveCurvePublicKey,
 
     -- * Options
@@ -90,6 +91,7 @@ import Zmq.Internal.Options
   ( CanSetLossy,
     CanSetSendQueueSize,
     Options,
+    curveClient,
     curveServer,
     defaultOptions,
     ioThreads,

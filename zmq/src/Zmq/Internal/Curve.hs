@@ -1,7 +1,7 @@
 module Zmq.Internal.Curve
   ( CurvePublicKey (..),
     CurveSecretKey (..),
-    generateCurveKeys,
+    generateCurveSecretKey,
     deriveCurvePublicKey,
   )
 where
@@ -22,15 +22,14 @@ newtype CurveSecretKey
   = CurveSecretKey ByteString
   deriving newtype (Eq, Show)
 
--- | Generate a CURVE key pair.
-generateCurveKeys :: IO (CurvePublicKey, CurveSecretKey)
-generateCurveKeys =
+-- | Generate a CURVE secret key.
+generateCurveSecretKey :: IO CurveSecretKey
+generateCurveSecretKey =
   zmq_curve_keypair >>= \case
     Left err -> throwIO (enrichError "zmq_curve_keypair" err)
-    Right (publicKey85, secretKey85) -> do
-      publicKey <- decode85 publicKey85
+    Right (_publicKey85, secretKey85) -> do
       secretKey <- decode85 secretKey85
-      pure (CurvePublicKey publicKey, CurveSecretKey secretKey)
+      pure (CurveSecretKey secretKey)
 
 -- | Derive a CURVE public key from a CURVE secret key.
 deriveCurvePublicKey :: CurveSecretKey -> CurvePublicKey
