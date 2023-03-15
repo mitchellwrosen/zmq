@@ -4,5 +4,4 @@ packages:
   zmq,
   zmq-guide-examples
 
--- package *
---   ghc-options: -finfo-table-map -fdistinct-constructor-tables
+with-compiler: ghc-9.2.4

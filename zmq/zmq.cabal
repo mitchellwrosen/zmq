@@ -60,6 +60,7 @@ library
   hs-source-dirs: src
   other-modules:
     Zmq.Internal.Context
+    Zmq.Internal.Curve
     Zmq.Internal.Options
     Zmq.Internal.Poll
     Zmq.Internal.Socket

@@ -70,6 +70,11 @@ module Zmq
 
     -- * Version
     version,
+
+    -- * Temporarily exported
+    CurvePublicKey (..),
+    CurveSecretKey (..),
+    generateCurveKeys,
   )
 where
 
@@ -78,6 +83,7 @@ import Libzmq (Zmq_error (..), zmq_version)
 import Zmq.Dealer (Dealer)
 import Zmq.Error (Error (..))
 import Zmq.Internal.Context
+import Zmq.Internal.Curve
 import Zmq.Internal.Options
   ( CanSetLossy,
     CanSetSendQueueSize,
