@@ -291,9 +291,9 @@ zreceiveManyWontBlock0 socket =
 -- Throws ok errors
 receiveRest_ :: Zmq_socket -> IO ()
 receiveRest_ socket =
-  zhs_recv_frame_wontblock socket >>= \case
-    More _ -> receiveRest_ socket
-    NoMore _ -> pure ()
+  zhs_recv_frame_wontblock_ socket >>= \case
+    False -> pure ()
+    True -> receiveRest_ socket
 
 -- Throws ok errors
 blockUntilCanSend :: Socket socket => socket -> IO ()
@@ -495,6 +495,21 @@ zhs_recv_frame_wontblock socket =
               ETERM -> throwOkError err
               _ -> unexpectedError err
       Right _len -> zhs_frame frame
+
+zhs_recv_frame_wontblock_ :: Zmq_socket -> IO Bool
+zhs_recv_frame_wontblock_ socket =
+  zhs_with_frame \frame ->
+    zmq_msg_recv_dontwait frame socket >>= \case
+      Left errno ->
+        let err = enrichError "zmq_msg_recv" errno
+         in case errno of
+              EFSM -> throwIO err
+              EINTR -> throwOkError err
+              ENOTSOCK -> throwIO err
+              ENOTSUP -> throwIO err
+              ETERM -> throwOkError err
+              _ -> unexpectedError err
+      Right _len -> zmq_msg_more frame
 
 zhs_with_frame :: (Zmq_msg -> IO a) -> IO a
 zhs_with_frame =
