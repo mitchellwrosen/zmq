@@ -55,4 +55,7 @@ library
     Libzmq.Bindings.Internal.Constants
     Libzmq.Bindings.Internal.Functions
     Libzmq.Bindings.Internal.Types
-  pkgconfig-depends: libzmq >= 4.3 && < 4.4
+  if os(windows)
+    extra-libraries: zmq
+  else
+    pkgconfig-depends: libzmq >= 4.3 && < 4.4
