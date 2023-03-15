@@ -168,7 +168,8 @@ foreign import capi unsafe "zmq.h zmq_msg_size"
 -- | Accept incoming connections on a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-bind
-foreign import capi unsafe "zmq.h zmq_bind"
+foreign import capi interruptible "zmq.h zmq_bind"
+  -- N.B. use safe FFI because I've seen zmq_bind block, though I haven't found docs that say when/why
   zmq_bind :: Ptr socket -> Ptr CChar -> IO CInt
 
 -- | Close a ØMQ socket.
