@@ -5,7 +5,10 @@ module Libzmq.Bindings.Internal.Types (module Libzmq.Bindings.Internal.Types) wh
 #include <zmq.h>
 
 import Data.Coerce (coerce)
-import Foreign.C.Types (CChar, CInt, CShort, CUInt)
+import Foreign.C.Types (CChar, CInt, CShort)
+#if defined(_WIN32) && !defined(_WIN64)
+import Foreign.C.Types (CUInt)
+#endif
 import Foreign.Ptr (Ptr)
 import Foreign.Storable (Storable (..))
 

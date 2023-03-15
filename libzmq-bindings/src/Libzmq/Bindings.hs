@@ -54,6 +54,9 @@ module Libzmq.Bindings
     zmq_poll,
     zmq_poll__unsafe,
 
+    -- ** Message proxying
+    zmq_proxy,
+
     -- * Types
     Zmq_fd,
     Zmq_msg,

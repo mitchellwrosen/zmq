@@ -257,7 +257,7 @@ foreign import capi unsafe "zmq.h zmq_unbind"
   zmq_unbind :: Ptr socket -> Ptr CChar -> IO CInt
 
 ------------------------------------------------------------------------------------------------------------------------
--- I/O multiplexing
+-- Input/output multiplexing
 
 -- | Input/output multiplexing.
 --
@@ -270,3 +270,12 @@ foreign import capi interruptible "zmq.h zmq_poll"
 -- http://api.zeromq.org/master:zmq-poll
 foreign import capi unsafe "zmq.h zmq_poll"
   zmq_poll__unsafe :: Ptr Zmq_pollitem -> CInt -> CLong -> IO CInt
+
+------------------------------------------------------------------------------------------------------------------------
+-- Message proxying
+
+-- | Start a built-in ØMQ proxy.
+--
+-- http://api.zeromq.org/master:zmq-proxy
+foreign import capi interruptible "zmq.h zmq_proxy"
+  zmq_proxy :: Ptr frontend -> Ptr backend -> Ptr capture -> IO CInt
