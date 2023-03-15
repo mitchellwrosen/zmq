@@ -19,7 +19,7 @@ import System.Random.Stateful (globalStdGen, uniformRM)
 import Text.Printf (printf)
 import Zmq qualified
 import Zmq.Dealer qualified
-import Zmq.Publisher qualified
+import Zmq.Pub qualified
 import Zmq.Puller qualified
 import Zmq.Pusher qualified
 import Zmq.Replier qualified
@@ -101,7 +101,7 @@ wuserver :: IO ()
 wuserver =
   Zmq.run Zmq.defaultOptions do
     -- Prepare our publisher
-    publisher <- unwrap (Zmq.Publisher.open (Zmq.name "publisher"))
+    publisher <- unwrap (Zmq.Pub.open (Zmq.name "publisher"))
     unwrap (Zmq.bind publisher "tcp://*:5556")
 
     forever do
@@ -382,7 +382,7 @@ tasksink2 =
     unwrap (Zmq.bind receiver "tcp://*:5558")
 
     -- Socket for worker control
-    controller <- unwrap (Zmq.Publisher.open (Zmq.name "controller"))
+    controller <- unwrap (Zmq.Pub.open (Zmq.name "controller"))
     unwrap (Zmq.bind controller "tcp://*:5559")
 
     -- Wait for start of batch
@@ -449,7 +449,7 @@ syncpub = do
   Zmq.run Zmq.defaultOptions do
     -- Socket to talk to clients
     let sndhwm = 1_100_000 :: Natural
-    publisher <- unwrap (Zmq.Publisher.open (Zmq.name "publisher" <> Zmq.sendQueueSize sndhwm))
+    publisher <- unwrap (Zmq.Pub.open (Zmq.name "publisher" <> Zmq.sendQueueSize sndhwm))
 
     unwrap (Zmq.bind publisher "tcp://*:5561")
 
@@ -507,13 +507,13 @@ psenvpub :: IO ()
 psenvpub =
   Zmq.run Zmq.defaultOptions do
     -- Prepare our publisher
-    publisher <- unwrap (Zmq.Publisher.open (Zmq.name "publisher"))
+    publisher <- unwrap (Zmq.Pub.open (Zmq.name "publisher"))
     unwrap (Zmq.bind publisher "tcp://*:5563")
 
     forever do
       -- Write two messages, each with an envelope and content
-      unwrap (Zmq.Publisher.sends publisher ["A", "We don't want to see this"])
-      unwrap (Zmq.Publisher.sends publisher ["B", "We would like to see this"])
+      unwrap (Zmq.Pub.sends publisher ["A", "We don't want to see this"])
+      unwrap (Zmq.Pub.sends publisher ["B", "We would like to see this"])
       threadDelay 1_000_000
 
 -- Pubsub envelope subscriber
@@ -850,7 +850,7 @@ peering1 self peers =
     putStrLn ("I: preparing broker at " ++ self ++ "...")
 
     -- Bind state backend to endpoint
-    statebe <- unwrap (Zmq.Publisher.open (Zmq.name "statebe"))
+    statebe <- unwrap (Zmq.Pub.open (Zmq.name "statebe"))
     unwrap (Zmq.bind statebe ("ipc://" <> Text.pack self <> "-state.ipc"))
 
     -- Connect statefe to all peers
@@ -882,7 +882,7 @@ peering1 self peers =
                 Nothing -> do
                   val <- uniformRM (0 :: Int, 9) globalStdGen
                   unwrap $
-                    Zmq.Publisher.sends
+                    Zmq.Pub.sends
                       statebe
                       [ ByteString.Char8.pack self,
                         ByteString.Char8.pack (show val)

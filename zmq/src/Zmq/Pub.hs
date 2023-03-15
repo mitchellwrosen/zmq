@@ -1,5 +1,5 @@
-module Zmq.Publisher
-  ( Publisher,
+module Zmq.Pub
+  ( Pub,
     defaultOptions,
     lossy,
     sendQueueSize,
@@ -31,37 +31,37 @@ import Zmq.Internal.ThreadSafeSocket qualified as ThreadSafeSocket
 -- | A thread-safe __publisher__ socket.
 --
 -- Valid peers: __subscriber__, __xsubscriber__
-newtype Publisher
-  = Publisher ThreadSafeSocket
+newtype Pub
+  = Pub ThreadSafeSocket
   deriving stock (Eq)
   deriving anyclass
     ( Options.CanSetLossy,
       Options.CanSetSendQueueSize
     )
 
-instance CanSend Publisher where
+instance CanSend Pub where
   send_ = send
 
-instance Socket Publisher where
+instance Socket Pub where
   openSocket = open
   getSocket = coerce ThreadSafeSocket.raw
-  withSocket (Publisher socket) = ThreadSafeSocket.with socket
+  withSocket (Pub socket) = ThreadSafeSocket.with socket
   socketName = coerce ThreadSafeSocket.name
 
-defaultOptions :: Options Publisher
+defaultOptions :: Options Pub
 defaultOptions =
   Options.defaultOptions
 
-lossy :: Options Publisher
+lossy :: Options Pub
 lossy =
   Options.lossy
 
-sendQueueSize :: Natural -> Options Publisher
+sendQueueSize :: Natural -> Options Pub
 sendQueueSize =
   Options.sendQueueSize
 
 -- | Open a __publisher__.
-open :: Options Publisher -> IO (Either Error Publisher)
+open :: Options Pub -> IO (Either Error Pub)
 open options =
   catchingOkErrors do
     coerce do
@@ -75,28 +75,28 @@ open options =
 -- | Bind a __publisher__ to an __endpoint__.
 --
 -- /Alias/: 'Zmq.bind'
-bind :: Publisher -> Text -> IO (Either Error ())
+bind :: Pub -> Text -> IO (Either Error ())
 bind =
   Socket.bind
 
 -- | Unbind a __publisher__ from an __endpoint__.
 --
 -- /Alias/: 'Zmq.unbind'
-unbind :: Publisher -> Text -> IO ()
+unbind :: Pub -> Text -> IO ()
 unbind =
   Socket.unbind
 
 -- | Connect a __publisher__ to an __endpoint__.
 --
 -- /Alias/: 'Zmq.connect'
-connect :: Publisher -> Text -> IO (Either Error ())
+connect :: Pub -> Text -> IO (Either Error ())
 connect =
   Socket.connect
 
 -- | Disconnect a __publisher__ from an __endpoint__.
 --
 -- /Alias/: 'Zmq.disconnect'
-disconnect :: Publisher -> Text -> IO ()
+disconnect :: Pub -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
@@ -111,7 +111,7 @@ disconnect =
 --       queue.
 --
 -- /Alias/: 'Zmq.send'
-send :: Publisher -> ByteString -> IO (Either Error ())
+send :: Pub -> ByteString -> IO (Either Error ())
 send socket frame =
   catchingOkErrors do
     sent <- Socket.sendOneDontWait socket frame False
@@ -127,7 +127,7 @@ send socket frame =
 --     * If the 'lossy' option is not set, and any peer has a full message queue, then the message will not be sent to
 --       any peer, and this function will return @EAGAIN@. It is not possible to block until no peer has a full message
 --       queue.
-sends :: Publisher -> [ByteString] -> IO (Either Error ())
+sends :: Pub -> [ByteString] -> IO (Either Error ())
 sends socket = \case
   [] -> pure (Right ())
   frame : frames ->

@@ -38,7 +38,7 @@ module Zmq
 
     -- * Socket types
     Dealer,
-    Publisher,
+    Pub,
     Puller,
     Pusher,
     Replier,
@@ -112,7 +112,7 @@ import Zmq.Internal.Socket
     receives_,
     unbind,
   )
-import Zmq.Publisher (Publisher)
+import Zmq.Pub (Pub)
 import Zmq.Puller (Puller)
 import Zmq.Pusher (Pusher)
 import Zmq.Replier (Replier)
