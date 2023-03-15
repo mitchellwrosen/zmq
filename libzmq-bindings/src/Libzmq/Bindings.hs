@@ -271,7 +271,7 @@ module Libzmq.Bindings
     _ZMQ_PROTOCOL_ERROR_ZMTP_UNEXPECTED_COMMAND,
     _ZMQ_PROTOCOL_ERROR_ZMTP_UNSPECIFIED,
 
-    -- ** I/O multiplexing
+    -- ** Input/output multiplexing
     _ZMQ_POLLIN,
     _ZMQ_POLLOUT,
     _ZMQ_POLLERR,

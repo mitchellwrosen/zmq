@@ -1,16 +1,35 @@
 cabal-version: 3.0
 
+author: Mitchell Rosen
+bug-reports: https://github.com/mitchellwrosen/zmq/issues
+category: FFI
+copyright: Copyright (C) 2023 Mitchell Rosen
+homepage: https://github.com/mitchellwrosen/zmq
+license: BSD-3-Clause
+license-file: LICENSE
+maintainer: Mitchell Rosen <mitchellwrosen@gmail.com>
 name: libzmq-bindings
-version: 0
-description: libzmq 4.3.4 bindings
+synopsis: libzmq-4.3 bindings
+tested-with: GHC == 9.2.7, GHC == 9.4.4, GHC == 9.6.1
+version: 0.1.0
+
+description:
+  Bindings to `libzmq-4.3`, without draft API support.
+
+extra-source-files:
+  CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/mitchellwrosen/zmq.git
+  subdir: libzmq-bindings
 
 library
   build-depends:
-    base,
+    base ^>= 4.16 || ^>= 4.17 || ^>= 4.18,
   build-tool-depends: hsc2hs:hsc2hs ^>= 0.68
   default-extensions:
     CApiFFI
-  default-extensions:
     DerivingStrategies
     InterruptibleFFI
   default-language: GHC2021
@@ -36,4 +55,4 @@ library
     Libzmq.Bindings.Internal.Constants
     Libzmq.Bindings.Internal.Functions
     Libzmq.Bindings.Internal.Types
-  pkgconfig-depends: libzmq == 4.3.4
+  pkgconfig-depends: libzmq >= 4.3 && < 4.4
