@@ -569,6 +569,20 @@ zmq_has capability =
 ------------------------------------------------------------------------------------------------------------------------
 -- Encryption
 
+-- | Generate a Z85-encoded ØMQ CURVE keypair.
+--
+-- http://api.zeromq.org/master:zmq-curve-keypair
+zmq_curve_keypair :: IO (Either Zmq_error (Text, Text))
+zmq_curve_keypair =
+  allocaBytes 41 \publicKeyBuffer ->
+    allocaBytes 41 \secretKeyBuffer -> do
+      Libzmq.Bindings.zmq_curve_keypair publicKeyBuffer secretKeyBuffer >>= \case
+        -1 -> Left <$> zmq_errno
+        _ -> do
+          publicKey <- Text.fromPtr0 (castPtr @CChar @Word8 publicKeyBuffer)
+          secretKey <- Text.fromPtr0 (castPtr @CChar @Word8 secretKeyBuffer)
+          pure (Right (publicKey, secretKey))
+
 -- | Decode Z85 as bytes.
 --
 -- http://api.zeromq.org/master:zmq-z85-decode
