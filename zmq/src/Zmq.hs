@@ -10,6 +10,12 @@ module Zmq
     Socket,
     open,
 
+    -- ** Options
+    curveServer,
+    lossy,
+    name,
+    sendQueueSize,
+
     -- ** Peering
     bind,
     unbind,
@@ -29,11 +35,6 @@ module Zmq
     pollFor,
     pollUntil,
 
-    -- ** Options
-    lossy,
-    name,
-    sendQueueSize,
-
     -- * Socket types
     Dealer,
     Publisher,
@@ -49,6 +50,12 @@ module Zmq
     -- * Subscription message
     pattern Subscribe,
     pattern Unsubscribe,
+
+    -- * Encryption
+    CurvePublicKey (..),
+    CurveSecretKey (..),
+    generateCurveKeys,
+    deriveCurvePublicKey,
 
     -- * Options
     Options,
@@ -70,11 +77,6 @@ module Zmq
 
     -- * Version
     version,
-
-    -- * Temporarily exported
-    CurvePublicKey (..),
-    CurveSecretKey (..),
-    generateCurveKeys,
   )
 where
 
@@ -88,6 +90,7 @@ import Zmq.Internal.Options
   ( CanSetLossy,
     CanSetSendQueueSize,
     Options,
+    curveServer,
     defaultOptions,
     ioThreads,
     lossy,

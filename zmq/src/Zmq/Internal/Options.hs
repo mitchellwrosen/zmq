@@ -17,6 +17,7 @@ module Zmq.Internal.Options
     CanSetSendQueueSize,
     setSocketOptions,
     sockopt,
+    curveServer,
     lossy,
     name,
     sendQueueSize,
@@ -31,6 +32,7 @@ import Libzmq
 import Numeric.Natural (Natural)
 import Zmq.Error (enrichError, throwOkError, unexpectedError)
 import {-# SOURCE #-} Zmq.Internal.Context (Context)
+import Zmq.Internal.Curve (CurveSecretKey (..))
 import {-# SOURCE #-} Zmq.Internal.Socket (Socket)
 
 -- | Options.
@@ -122,6 +124,14 @@ setSocketOptions :: Zmq_socket -> Options socket -> IO ()
 setSocketOptions socket = \case
   SocketOptions f _name -> f socket
   _ -> pure ()
+
+curveServer :: Socket socket => CurveSecretKey -> Options socket
+curveServer (CurveSecretKey secretKey) =
+  SocketOptions f Text.empty
+  where
+    f socket = do
+      setSocketOption socket ZMQ_CURVE_SERVER 1
+      setSocketOption socket ZMQ_CURVE_SECRETKEY secretKey
 
 lossy :: CanSetLossy socket => Options socket
 lossy =
