@@ -49,6 +49,7 @@ library
     Zmq
     Zmq.Dealer
     Zmq.Publisher
+    Zmq.Pair
     Zmq.Puller
     Zmq.Pusher
     Zmq.Replier

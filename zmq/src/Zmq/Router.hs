@@ -109,7 +109,7 @@ sends socket = \case
         True -> pure ()
         False -> Socket.sendMany socket message
 
--- | Receive a __multiframe message__ on an __router__ from any peer (fair-queued).
+-- | Receive a __multiframe message__ on a __router__ from any peer (fair-queued).
 --
 -- /Alias/: 'Zmq.receives'
 receives :: Router -> IO (Either Error [ByteString])

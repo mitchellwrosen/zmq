@@ -1,5 +1,5 @@
-module Zmq.Dealer
-  ( Dealer,
+module Zmq.Pair
+  ( Pair,
     defaultOptions,
     sendQueueSize,
     open,
@@ -30,82 +30,82 @@ import Zmq.Internal.Socket qualified as Socket
 import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
 import Zmq.Internal.ThreadSafeSocket qualified as ThreadSafeSocket
 
--- | A thread-safe __dealer__ socket.
+-- | A thread-safe __pair__ socket.
 --
--- Valid peers: __dealer__, __replier__, __router__
-newtype Dealer
-  = Dealer ThreadSafeSocket
+-- Valid peers: __pair__
+newtype Pair
+  = Pair ThreadSafeSocket
   deriving stock (Eq)
   deriving anyclass
     ( Options.CanSetSendQueueSize
     )
 
-instance CanPoll Dealer where
+instance CanPoll Pair where
   toPollable = PollableNonREQ . Socket.getSocket
 
-instance CanReceive Dealer where
+instance CanReceive Pair where
   receive_ = receive
 
-instance CanReceives Dealer where
+instance CanReceives Pair where
   receives_ = receives
 
-instance CanSend Dealer where
+instance CanSend Pair where
   send_ = send
 
-instance Socket Dealer where
+instance Socket Pair where
   openSocket = open
   getSocket = coerce ThreadSafeSocket.raw
-  withSocket (Dealer socket) = ThreadSafeSocket.with socket
+  withSocket (Pair socket) = ThreadSafeSocket.with socket
   socketName = coerce ThreadSafeSocket.name
 
-defaultOptions :: Options Dealer
+defaultOptions :: Options Pair
 defaultOptions =
   Options.defaultOptions
 
-sendQueueSize :: Natural -> Options Dealer
+sendQueueSize :: Natural -> Options Pair
 sendQueueSize =
   Options.sendQueueSize
 
--- | Open a __dealer__.
-open :: Options Dealer -> IO (Either Error Dealer)
+-- | Open a __pair__.
+open :: Options Pair -> IO (Either Error Pair)
 open options =
   catchingOkErrors do
-    coerce (ThreadSafeSocket.open ZMQ_DEALER options)
+    coerce (ThreadSafeSocket.open ZMQ_PAIR options)
 
--- | Bind a __dealer__ to an __endpoint__.
+-- | Bind a __pair__ to an __endpoint__.
 --
 -- /Alias/: 'Zmq.bind'
-bind :: Dealer -> Text -> IO (Either Error ())
+bind :: Pair -> Text -> IO (Either Error ())
 bind =
   Socket.bind
 
--- | Unbind a __dealer__ from an __endpoint__.
+-- | Unbind a __pair__ from an __endpoint__.
 --
 -- /Alias/: 'Zmq.unbind'
-unbind :: Dealer -> Text -> IO ()
+unbind :: Pair -> Text -> IO ()
 unbind =
   Socket.unbind
 
--- | Connect a __dealer__ to an __endpoint__.
+-- | Connect a __pair__ to an __endpoint__.
 --
 -- /Alias/: 'Zmq.connect'
-connect :: Dealer -> Text -> IO (Either Error ())
+connect :: Pair -> Text -> IO (Either Error ())
 connect =
   Socket.connect
 
--- | Disconnect a __dealer__ from an __endpoint__.
+-- | Disconnect a __pair__ from an __endpoint__.
 --
 -- /Alias/: 'Zmq.disconnect'
-disconnect :: Dealer -> Text -> IO ()
+disconnect :: Pair -> Text -> IO ()
 disconnect =
   Socket.disconnect
 
--- | Send a __message__ on a __dealer__ to one peer (round-robin).
+-- | Send a __message__ on a __pair__ to the peer.
 --
--- This operation blocks until a peer can receive the message.
+-- This operation blocks until the peer can receive the message.
 --
 -- /Alias/: 'Zmq.send'
-send :: Dealer -> ByteString -> IO (Either Error ())
+send :: Pair -> ByteString -> IO (Either Error ())
 send socket frame =
   catchingOkErrors loop
   where
@@ -115,10 +115,10 @@ send socket frame =
         Socket.blockUntilCanSend socket
         loop
 
--- | Send a __multiframe message__ on a __dealer__ to one peer (round-robin).
+-- | Send a __multiframe message__ on a __pair__ to the peer.
 --
--- This operation blocks until a peer can receive the message.
-sends :: Dealer -> [ByteString] -> IO (Either Error ())
+-- This operation blocks until the peer can receive the message.
+sends :: Pair -> [ByteString] -> IO (Either Error ())
 sends socket = \case
   [] -> pure (Right ())
   frame : frames -> do
@@ -129,17 +129,17 @@ sends socket = \case
             loop
     catchingOkErrors loop
 
--- | Receive a __message__ on a __dealer__ from any peer (fair-queued).
+-- | Receive a __message__ on a __pair__ from the peer.
 --
 -- /Alias/: 'Zmq.receive'
-receive :: Dealer -> IO (Either Error ByteString)
+receive :: Pair -> IO (Either Error ByteString)
 receive socket =
   catchingOkErrors (Socket.receiveOne socket)
 
--- | Receive a __multiframe message__ on a __dealer__ from any peer (fair-queued).
+-- | Receive a __multiframe message__ on a __pair__ from the peer.
 --
 -- /Alias/: 'Zmq.receives'
-receives :: Dealer -> IO (Either Error [ByteString])
+receives :: Pair -> IO (Either Error [ByteString])
 receives socket =
   catchingOkErrors do
     frame :| frames <- Socket.receiveMany socket
