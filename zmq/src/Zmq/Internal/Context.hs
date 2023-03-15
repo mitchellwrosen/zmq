@@ -80,7 +80,7 @@ terminateContext Context {context, socketFinalizersRef} = do
   for_ (reverse finalizers) runSocketFinalizer
 
   -- Terminate the context
-  let loop maybeErr = do
+  let loop maybeErr =
         zmq_ctx_term context >>= \case
           Left errno ->
             let err = enrichError "zmq_ctx_term" errno

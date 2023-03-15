@@ -160,8 +160,8 @@ monitor :: Socket socket => Text -> Options socket
 monitor endpoint =
   SocketOptions f Text.empty
   where
-    f socket =
-      zmq_socket_monitor socket endpoint undefined >>= \case
+    f socket = do
+      zmq_socket_monitor socket endpoint ZMQ_EVENT_ALL >>= \case
         Left errno ->
           let err = enrichError "zmq_socket_monitor" errno
            in case errno of
