@@ -14,6 +14,7 @@ module Zmq
     curveClient,
     curveServer,
     lossy,
+    monitor,
     name,
     sendQueueSize,
 
@@ -97,6 +98,7 @@ import Zmq.Internal.Options
     ioThreads,
     lossy,
     maxSockets,
+    monitor,
     name,
     sendQueueSize,
   )
