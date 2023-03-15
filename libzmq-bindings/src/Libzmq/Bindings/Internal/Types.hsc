@@ -39,10 +39,10 @@ instance Storable Zmq_msg where
 
 -- | A ØMQ poll item.
 data Zmq_pollitem = Zmq_pollitem
-  { socket :: !(Ptr ()),
-    fd :: !Zmq_fd,
-    events :: !CShort,
-    revents :: !CShort
+  { socket :: {-# UNPACK #-} !(Ptr ()),
+    fd :: {-# UNPACK #-} !Zmq_fd,
+    events :: {-# UNPACK #-} !CShort,
+    revents :: {-# UNPACK #-} !CShort
   }
   deriving stock (Eq, Ord, Show)
 
