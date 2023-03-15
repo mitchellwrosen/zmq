@@ -549,6 +549,204 @@ data Zmq_socket
   = Zmq_socket (Ptr ())
   deriving stock (Eq, Ord, Show)
 
+-- | A set of ØMQ socket events.
+newtype Zmq_socket_events
+  = Zmq_socket_events CInt
+  deriving stock (Eq, Ord)
+
+instance Monoid Zmq_socket_events where
+  mempty = Zmq_socket_events 0
+  mappend = (<>)
+
+instance Semigroup Zmq_socket_events where
+  Zmq_socket_events x <> Zmq_socket_events y =
+    Zmq_socket_events (x .|. y)
+
+instance Show Zmq_socket_events where
+  show event =
+    [ "ZMQ_EVENT_ACCEPTED" <$ guard (hasAccepted event),
+      "ZMQ_EVENT_ACCEPT_FAILED" <$ guard (hasAcceptFailed event),
+      "ZMQ_EVENT_ALL" <$ guard (hasAll event),
+      "ZMQ_EVENT_BIND_FAILED" <$ guard (hasBindFailed event),
+      "ZMQ_EVENT_CLOSED" <$ guard (hasClosed event),
+      "ZMQ_EVENT_CLOSE_FAILED" <$ guard (hasCloseFailed event),
+      "ZMQ_EVENT_CONNECTED" <$ guard (hasConnected event),
+      "ZMQ_EVENT_CONNECT_DELAYED" <$ guard (hasConnectDelayed event),
+      "ZMQ_EVENT_CONNECT_RETRIED" <$ guard (hasConnectRetried event),
+      "ZMQ_EVENT_DISCONNECTED" <$ guard (hasDisconnected event),
+      "ZMQ_EVENT_HANDSHAKE_FAILED_AUTH" <$ guard (hasHandshakeFailedAuth event),
+      "ZMQ_EVENT_HANDSHAKE_FAILED_NO_DETAIL" <$ guard (hasHandshakeFailedNoDetail event),
+      "ZMQ_EVENT_HANDSHAKE_FAILED_PROTOCOL" <$ guard (hasHandshakeFailedProtocol event),
+      "ZMQ_EVENT_HANDSHAKE_SUCCEEDED" <$ guard (hasHandshakeSucceeded event),
+      "ZMQ_EVENT_LISTENING" <$ guard (hasListening event),
+      "ZMQ_EVENT_MONITOR_STOPPED" <$ guard (hasMonitorStopped event)
+    ]
+      & catMaybes
+      & List.intersperse "<>"
+      & \case
+        [] -> "mempty"
+        events -> unwords events
+
+pattern ZMQ_EVENT_ACCEPTED :: Zmq_socket_events
+pattern ZMQ_EVENT_ACCEPTED <-
+  ((== Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_ACCEPTED) -> True)
+  where
+    ZMQ_EVENT_ACCEPTED = Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_ACCEPTED
+
+pattern ZMQ_EVENT_ACCEPT_FAILED :: Zmq_socket_events
+pattern ZMQ_EVENT_ACCEPT_FAILED <-
+  ((== Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_ACCEPT_FAILED) -> True)
+  where
+    ZMQ_EVENT_ACCEPT_FAILED = Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_ACCEPT_FAILED
+
+pattern ZMQ_EVENT_ALL :: Zmq_socket_events
+pattern ZMQ_EVENT_ALL <-
+  ((== Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_ALL) -> True)
+  where
+    ZMQ_EVENT_ALL = Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_ALL
+
+pattern ZMQ_EVENT_BIND_FAILED :: Zmq_socket_events
+pattern ZMQ_EVENT_BIND_FAILED <-
+  ((== Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_BIND_FAILED) -> True)
+  where
+    ZMQ_EVENT_BIND_FAILED = Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_BIND_FAILED
+
+pattern ZMQ_EVENT_CLOSED :: Zmq_socket_events
+pattern ZMQ_EVENT_CLOSED <-
+  ((== Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_CLOSED) -> True)
+  where
+    ZMQ_EVENT_CLOSED = Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_CLOSED
+
+pattern ZMQ_EVENT_CLOSE_FAILED :: Zmq_socket_events
+pattern ZMQ_EVENT_CLOSE_FAILED <-
+  ((== Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_CLOSE_FAILED) -> True)
+  where
+    ZMQ_EVENT_CLOSE_FAILED = Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_CLOSE_FAILED
+
+pattern ZMQ_EVENT_CONNECTED :: Zmq_socket_events
+pattern ZMQ_EVENT_CONNECTED <-
+  ((== Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_CONNECTED) -> True)
+  where
+    ZMQ_EVENT_CONNECTED = Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_CONNECTED
+
+pattern ZMQ_EVENT_CONNECT_DELAYED :: Zmq_socket_events
+pattern ZMQ_EVENT_CONNECT_DELAYED <-
+  ((== Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_CONNECT_DELAYED) -> True)
+  where
+    ZMQ_EVENT_CONNECT_DELAYED = Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_CONNECT_DELAYED
+
+pattern ZMQ_EVENT_CONNECT_RETRIED :: Zmq_socket_events
+pattern ZMQ_EVENT_CONNECT_RETRIED <-
+  ((== Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_CONNECT_RETRIED) -> True)
+  where
+    ZMQ_EVENT_CONNECT_RETRIED = Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_CONNECT_RETRIED
+
+pattern ZMQ_EVENT_DISCONNECTED :: Zmq_socket_events
+pattern ZMQ_EVENT_DISCONNECTED <-
+  ((== Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_DISCONNECTED) -> True)
+  where
+    ZMQ_EVENT_DISCONNECTED = Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_DISCONNECTED
+
+pattern ZMQ_EVENT_HANDSHAKE_FAILED_AUTH :: Zmq_socket_events
+pattern ZMQ_EVENT_HANDSHAKE_FAILED_AUTH <-
+  ((== Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_HANDSHAKE_FAILED_AUTH) -> True)
+  where
+    ZMQ_EVENT_HANDSHAKE_FAILED_AUTH = Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_HANDSHAKE_FAILED_AUTH
+
+pattern ZMQ_EVENT_HANDSHAKE_FAILED_NO_DETAIL :: Zmq_socket_events
+pattern ZMQ_EVENT_HANDSHAKE_FAILED_NO_DETAIL <-
+  ((== Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_HANDSHAKE_FAILED_NO_DETAIL) -> True)
+  where
+    ZMQ_EVENT_HANDSHAKE_FAILED_NO_DETAIL = Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_HANDSHAKE_FAILED_NO_DETAIL
+
+pattern ZMQ_EVENT_HANDSHAKE_FAILED_PROTOCOL :: Zmq_socket_events
+pattern ZMQ_EVENT_HANDSHAKE_FAILED_PROTOCOL <-
+  ((== Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_HANDSHAKE_FAILED_PROTOCOL) -> True)
+  where
+    ZMQ_EVENT_HANDSHAKE_FAILED_PROTOCOL = Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_HANDSHAKE_FAILED_PROTOCOL
+
+pattern ZMQ_EVENT_HANDSHAKE_SUCCEEDED :: Zmq_socket_events
+pattern ZMQ_EVENT_HANDSHAKE_SUCCEEDED <-
+  ((== Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_HANDSHAKE_SUCCEEDED) -> True)
+  where
+    ZMQ_EVENT_HANDSHAKE_SUCCEEDED = Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_HANDSHAKE_SUCCEEDED
+
+pattern ZMQ_EVENT_LISTENING :: Zmq_socket_events
+pattern ZMQ_EVENT_LISTENING <-
+  ((== Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_LISTENING) -> True)
+  where
+    ZMQ_EVENT_LISTENING = Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_LISTENING
+
+pattern ZMQ_EVENT_MONITOR_STOPPED :: Zmq_socket_events
+pattern ZMQ_EVENT_MONITOR_STOPPED <-
+  ((== Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_MONITOR_STOPPED) -> True)
+  where
+    ZMQ_EVENT_MONITOR_STOPPED = Zmq_socket_events Libzmq.Bindings._ZMQ_EVENT_MONITOR_STOPPED
+
+hasAccepted :: Zmq_socket_events -> Bool
+hasAccepted (Zmq_socket_events n) =
+  n .&. Libzmq.Bindings._ZMQ_EVENT_ACCEPTED /= 0
+
+hasAcceptFailed :: Zmq_socket_events -> Bool
+hasAcceptFailed (Zmq_socket_events n) =
+  n .&. Libzmq.Bindings._ZMQ_EVENT_ACCEPT_FAILED /= 0
+
+hasAll :: Zmq_socket_events -> Bool
+hasAll (Zmq_socket_events n) =
+  n .&. Libzmq.Bindings._ZMQ_EVENT_ALL /= 0
+
+hasBindFailed :: Zmq_socket_events -> Bool
+hasBindFailed (Zmq_socket_events n) =
+  n .&. Libzmq.Bindings._ZMQ_EVENT_BIND_FAILED /= 0
+
+hasClosed :: Zmq_socket_events -> Bool
+hasClosed (Zmq_socket_events n) =
+  n .&. Libzmq.Bindings._ZMQ_EVENT_CLOSED /= 0
+
+hasCloseFailed :: Zmq_socket_events -> Bool
+hasCloseFailed (Zmq_socket_events n) =
+  n .&. Libzmq.Bindings._ZMQ_EVENT_CLOSE_FAILED /= 0
+
+hasConnected :: Zmq_socket_events -> Bool
+hasConnected (Zmq_socket_events n) =
+  n .&. Libzmq.Bindings._ZMQ_EVENT_CONNECTED /= 0
+
+hasConnectDelayed :: Zmq_socket_events -> Bool
+hasConnectDelayed (Zmq_socket_events n) =
+  n .&. Libzmq.Bindings._ZMQ_EVENT_CONNECT_DELAYED /= 0
+
+hasConnectRetried :: Zmq_socket_events -> Bool
+hasConnectRetried (Zmq_socket_events n) =
+  n .&. Libzmq.Bindings._ZMQ_EVENT_CONNECT_RETRIED /= 0
+
+hasDisconnected :: Zmq_socket_events -> Bool
+hasDisconnected (Zmq_socket_events n) =
+  n .&. Libzmq.Bindings._ZMQ_EVENT_DISCONNECTED /= 0
+
+hasHandshakeFailedAuth :: Zmq_socket_events -> Bool
+hasHandshakeFailedAuth (Zmq_socket_events n) =
+  n .&. Libzmq.Bindings._ZMQ_EVENT_HANDSHAKE_FAILED_AUTH /= 0
+
+hasHandshakeFailedNoDetail :: Zmq_socket_events -> Bool
+hasHandshakeFailedNoDetail (Zmq_socket_events n) =
+  n .&. Libzmq.Bindings._ZMQ_EVENT_HANDSHAKE_FAILED_NO_DETAIL /= 0
+
+hasHandshakeFailedProtocol :: Zmq_socket_events -> Bool
+hasHandshakeFailedProtocol (Zmq_socket_events n) =
+  n .&. Libzmq.Bindings._ZMQ_EVENT_HANDSHAKE_FAILED_PROTOCOL /= 0
+
+hasHandshakeSucceeded :: Zmq_socket_events -> Bool
+hasHandshakeSucceeded (Zmq_socket_events n) =
+  n .&. Libzmq.Bindings._ZMQ_EVENT_HANDSHAKE_SUCCEEDED /= 0
+
+hasListening :: Zmq_socket_events -> Bool
+hasListening (Zmq_socket_events n) =
+  n .&. Libzmq.Bindings._ZMQ_EVENT_LISTENING /= 0
+
+hasMonitorStopped :: Zmq_socket_events -> Bool
+hasMonitorStopped (Zmq_socket_events n) =
+  n .&. Libzmq.Bindings._ZMQ_EVENT_MONITOR_STOPPED /= 0
+
 -- | A ØMQ socket option.
 data Zmq_socket_option a where
   ZMQ_AFFINITY :: Zmq_socket_option Word64

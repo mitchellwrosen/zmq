@@ -26,6 +26,7 @@ import Libzmq.Internal.Types
     Zmq_msg_option (..),
     Zmq_send_option (..),
     Zmq_socket (..),
+    Zmq_socket_events (..),
     Zmq_socket_option (..),
     Zmq_socket_type (..),
     pattern EINVAL,
@@ -327,8 +328,8 @@ zmq_getsockopt_word (Zmq_socket socket) option =
 -- | Monitor a ØMQ socket's events.
 --
 -- http://api.zeromq.org/master:zmq-socket-monitor
-zmq_socket_monitor :: Zmq_socket -> Text -> CInt -> IO (Either Zmq_error ())
-zmq_socket_monitor (Zmq_socket socket) endpoint events =
+zmq_socket_monitor :: Zmq_socket -> Text -> Zmq_socket_events -> IO (Either Zmq_error ())
+zmq_socket_monitor (Zmq_socket socket) endpoint (Zmq_socket_events events) =
   Text.withCString endpoint \cendpoint ->
     Libzmq.Bindings.zmq_socket_monitor socket cendpoint events >>= \case
       -1 -> Left <$> zmq_errno

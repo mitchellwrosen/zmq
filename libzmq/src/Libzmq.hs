@@ -131,6 +131,24 @@ module Libzmq
     pattern ZMQ_DONTWAIT,
     pattern ZMQ_SNDMORE,
     Zmq_socket,
+    Zmq_socket_events
+      ( ZMQ_EVENT_ACCEPTED,
+        ZMQ_EVENT_ACCEPT_FAILED,
+        ZMQ_EVENT_ALL,
+        ZMQ_EVENT_BIND_FAILED,
+        ZMQ_EVENT_CLOSED,
+        ZMQ_EVENT_CLOSE_FAILED,
+        ZMQ_EVENT_CONNECTED,
+        ZMQ_EVENT_CONNECT_DELAYED,
+        ZMQ_EVENT_CONNECT_RETRIED,
+        ZMQ_EVENT_DISCONNECTED,
+        ZMQ_EVENT_HANDSHAKE_FAILED_AUTH,
+        ZMQ_EVENT_HANDSHAKE_FAILED_NO_DETAIL,
+        ZMQ_EVENT_HANDSHAKE_FAILED_PROTOCOL,
+        ZMQ_EVENT_HANDSHAKE_SUCCEEDED,
+        ZMQ_EVENT_LISTENING,
+        ZMQ_EVENT_MONITOR_STOPPED
+      ),
     Zmq_socket_option (..),
     Zmq_socket_type
       ( ZMQ_DEALER,
@@ -157,6 +175,7 @@ module Libzmq
     Libzmq.Bindings.Zmq_pollitem (..),
     Zmq_send_option (Zmq_send_option),
     Zmq_socket (Zmq_socket),
+    Zmq_socket_events (Zmq_socket_events),
     Zmq_socket_type (Zmq_socket_type),
   )
 where
