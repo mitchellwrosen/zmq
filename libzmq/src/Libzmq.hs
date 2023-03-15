@@ -65,6 +65,7 @@ module Libzmq
     zmq_z85_encode,
     zmq_z85_decode,
     zmq_curve_keypair,
+    zmq_curve_public,
 
     -- * Types
     Zmq_ctx_option
