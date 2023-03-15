@@ -56,6 +56,7 @@ module Libzmq.Bindings
 
     -- ** Message proxying
     zmq_proxy,
+    zmq_proxy_steerable,
 
     -- * Types
     Zmq_fd,

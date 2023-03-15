@@ -279,3 +279,9 @@ foreign import capi unsafe "zmq.h zmq_poll"
 -- http://api.zeromq.org/master:zmq-proxy
 foreign import capi interruptible "zmq.h zmq_proxy"
   zmq_proxy :: Ptr frontend -> Ptr backend -> Ptr capture -> IO CInt
+
+-- | Start a built-in ØMQ proxy with control flow.
+--
+-- http://api.zeromq.org/master:zmq-proxy-steerable
+foreign import capi interruptible "zmq.h zmq_proxy_steerable"
+  zmq_proxy_steerable :: Ptr frontend -> Ptr backend -> Ptr capture -> Ptr control -> IO CInt
