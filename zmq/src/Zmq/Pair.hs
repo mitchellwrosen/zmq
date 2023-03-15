@@ -3,9 +3,11 @@ module Zmq.Pair
     defaultOptions,
     sendQueueSize,
     open,
+    open_,
     bind,
     unbind,
     connect,
+    connect_,
     disconnect,
     send,
     sends,
@@ -69,8 +71,11 @@ sendQueueSize =
 -- | Open a __pair__.
 open :: Options Pair -> IO (Either Error Pair)
 open options =
-  catchingOkErrors do
-    coerce (ThreadSafeSocket.open ZMQ_PAIR options)
+  catchingOkErrors (open_ options)
+
+open_ :: Options Pair -> IO Pair
+open_ options =
+  coerce (ThreadSafeSocket.open ZMQ_PAIR options)
 
 -- | Bind a __pair__ to an __endpoint__.
 --
@@ -92,6 +97,10 @@ unbind =
 connect :: Pair -> Text -> IO (Either Error ())
 connect =
   Socket.connect
+
+connect_ :: Pair -> Text -> IO ()
+connect_ =
+  Socket.connect_
 
 -- | Disconnect a __pair__ from an __endpoint__.
 --

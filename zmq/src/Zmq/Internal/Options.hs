@@ -20,7 +20,6 @@ module Zmq.Internal.Options
     curveClient,
     curveServer,
     lossy,
-    monitor,
     name,
     sendQueueSize,
   )
@@ -155,21 +154,6 @@ curveServer (CurveSecretKey secretKey) =
 lossy :: CanSetLossy socket => Options socket
 lossy =
   sockopt ZMQ_XPUB_NODROP 0
-
-monitor :: Socket socket => Text -> Options socket
-monitor endpoint =
-  SocketOptions f Text.empty
-  where
-    f socket = do
-      zmq_socket_monitor socket endpoint ZMQ_EVENT_ALL >>= \case
-        Left errno ->
-          let err = enrichError "zmq_socket_monitor" errno
-           in case errno of
-                EINVAL -> throwIO err
-                ETERM -> throwOkError err
-                EPROTONOSUPPORT -> throwIO err
-                _ -> unexpectedError err
-        Right () -> pure ()
 
 name :: Socket socket => Text -> Options socket
 name =

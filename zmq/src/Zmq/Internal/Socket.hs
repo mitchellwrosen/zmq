@@ -11,6 +11,7 @@ module Zmq.Internal.Socket
     bind,
     unbind,
     connect,
+    connect_,
     disconnect,
     sendOneDontWait,
     sendOneWontBlock,
@@ -54,7 +55,7 @@ import Numeric (showHex)
 import System.IO qualified as IO
 import System.IO.Unsafe (unsafePerformIO)
 import System.Posix.Types (Fd (..))
-import Zmq.Error (Error, enrichError, throwOkError, unexpectedError)
+import Zmq.Error (Error, catchingOkErrors, enrichError, throwOkError, unexpectedError)
 import Zmq.Internal.Context (Context (..), globalContextRef)
 import {-# SOURCE #-} Zmq.Internal.Options (Options)
 import Zmq.Internal.SocketFinalizer (makeSocketFinalizer)
@@ -166,19 +167,24 @@ unbind socket endpoint =
 -- | Connect a __socket__ to an __endpoint__.
 connect :: Socket socket => socket -> Text -> IO (Either Error ())
 connect socket endpoint =
+  catchingOkErrors (connect_ socket endpoint)
+
+-- Throws ok errors
+connect_ :: Socket socket => socket -> Text -> IO ()
+connect_ socket endpoint =
   withSocket socket do
     zmq_connect (getSocket socket) endpoint >>= \case
       Left errno ->
         let err = enrichError "zmq_connect" errno
          in case errno of
               EINVAL -> throwIO err
-              EMTHREAD -> pure (Left err)
+              EMTHREAD -> throwOkError err
               ENOCOMPATPROTO -> throwIO err
               ENOTSOCK -> throwIO err
               EPROTONOSUPPORT -> throwIO err
-              ETERM -> pure (Left err)
+              ETERM -> throwOkError err
               _ -> unexpectedError err
-      Right () -> pure (Right ())
+      Right () -> pure ()
 
 -- | Disconnect a __socket__ from an __endpoint__.
 disconnect :: Socket socket => socket -> Text -> IO ()

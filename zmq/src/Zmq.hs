@@ -9,12 +9,12 @@ module Zmq
     -- * Socket
     Socket,
     open,
+    monitor,
 
     -- ** Options
     curveClient,
     curveServer,
     lossy,
-    monitor,
     name,
     sendQueueSize,
 
@@ -39,6 +39,7 @@ module Zmq
 
     -- * Socket types
     Dealer,
+    Pair,
     Pub,
     Pull,
     Push,
@@ -82,10 +83,12 @@ module Zmq
   )
 where
 
+import Control.Exception (throwIO)
 import Data.ByteString (ByteString)
-import Libzmq (Zmq_error (..), zmq_version)
+import Data.Text (Text)
+import Libzmq
 import Zmq.Dealer (Dealer)
-import Zmq.Error (Error (..))
+import Zmq.Error (Error (..), catchingOkErrors, enrichError, throwOkError, unexpectedError)
 import Zmq.Internal.Context
 import Zmq.Internal.Curve
 import Zmq.Internal.Options
@@ -98,7 +101,6 @@ import Zmq.Internal.Options
     ioThreads,
     lossy,
     maxSockets,
-    monitor,
     name,
     sendQueueSize,
   )
@@ -114,6 +116,9 @@ import Zmq.Internal.Socket
     receives_,
     unbind,
   )
+import Zmq.Internal.Socket qualified as Socket
+import Zmq.Pair (Pair)
+import Zmq.Pair qualified as Pair
 import Zmq.Pub (Pub)
 import Zmq.Pull (Pull)
 import Zmq.Push (Push)
@@ -128,6 +133,22 @@ import Zmq.XSub (XSub)
 open :: Socket socket => Options socket -> IO (Either Error socket)
 open =
   openSocket
+
+monitor :: Socket socket => socket -> Text -> IO (Either Error Pair)
+monitor socket endpoint =
+  catchingOkErrors do
+    zmq_socket_monitor (Socket.getSocket socket) endpoint ZMQ_EVENT_ALL >>= \case
+      Left errno ->
+        let err = enrichError "zmq_socket_monitor" errno
+         in case errno of
+              EINVAL -> throwIO err
+              ETERM -> throwOkError err
+              EPROTONOSUPPORT -> throwIO err
+              _ -> unexpectedError err
+      Right () -> do
+        pair <- Pair.open_ (name (Socket.socketName socket <> "-monitor"))
+        Pair.connect_ pair endpoint
+        pure pair
 
 send :: CanSend socket => socket -> ByteString -> IO (Either Error ())
 send =
