@@ -12,6 +12,7 @@ import Data.Int (Int64)
 import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
 import Data.Text.Foreign qualified as Text
+import Data.Text.Internal (Text (Text))
 import Data.Void (Void)
 import Data.Word (Word8)
 import Foreign (Ptr, Storable (peek, poke, sizeOf), alloca, allocaBytes, castPtr, free, malloc, nullPtr)
@@ -567,6 +568,20 @@ zmq_has capability =
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Encryption
+
+-- | Decode Z85 as bytes.
+--
+-- http://api.zeromq.org/master:zmq-z85-decode
+zmq_z85_decode :: Text -> Either Zmq_error ByteString
+zmq_z85_decode string@(Text _ _ len) =
+  unsafeDupablePerformIO do
+    Text.withCString string \cstring -> do
+      let decodedLen = div (4 * len) 5
+      allocaBytes decodedLen \buffer -> do
+        result <- Libzmq.Bindings.zmq_z85_decode buffer cstring
+        if result == nullPtr
+          then Left <$> zmq_errno
+          else Right <$> ByteString.packCStringLen (castPtr @Word8 @CChar buffer, decodedLen)
 
 -- | Encode bytes in Z85.
 --

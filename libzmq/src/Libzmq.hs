@@ -63,6 +63,7 @@ module Libzmq
 
     -- ** Encryption
     zmq_z85_encode,
+    zmq_z85_decode,
 
     -- * Types
     Zmq_ctx_option
