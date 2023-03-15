@@ -599,16 +599,17 @@ zmq_curve_keypair =
 -- | Derive a Z85-encoded ØMQ CURVE public key from a Z85-encoded ØMQ CURVE private key.
 --
 -- http://api.zeromq.org/master:zmq-curve-public
-zmq_curve_public :: Text -> IO (Either Zmq_error Text)
+zmq_curve_public :: Text -> Either Zmq_error Text
 zmq_curve_public secretKey@(Text _ _ secretKeyLen) =
   -- zmq doesn't check this is exactly 40 bytes, so we do
   if secretKeyLen /= 40
-    then pure (Left EINVAL)
-    else Text.withCString secretKey \csecretKey ->
-      allocaBytes 41 \cpublicKey ->
-        Libzmq.Bindings.zmq_curve_public cpublicKey csecretKey >>= \case
-          -1 -> Left <$> zmq_errno
-          _ -> Right <$> Text.fromPtr0 (castPtr @CChar @Word8 cpublicKey)
+    then Left EINVAL
+    else unsafeDupablePerformIO do
+      Text.withCString secretKey \csecretKey ->
+        allocaBytes 41 \cpublicKey ->
+          Libzmq.Bindings.zmq_curve_public cpublicKey csecretKey >>= \case
+            -1 -> Left <$> zmq_errno
+            _ -> Right <$> Text.fromPtr0 (castPtr @CChar @Word8 cpublicKey)
 
 -- | Decode Z85 as bytes.
 --
