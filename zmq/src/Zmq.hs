@@ -136,7 +136,7 @@ open :: Socket socket => Options socket -> IO (Either Error socket)
 open =
   openSocket
 
-monitor :: Socket socket => socket -> IO (Either Error Pair)
+monitor :: Socket socket => socket -> IO (Either Error (IO (Either Error [ByteString])))
 monitor socket = do
   endpointBytes <- Random.uniformShortByteString 16 Random.globalStdGen
   let endpoint = Text.Short.toText ("inproc://" <> Base64.encodeBase64Unpadded endpointBytes)
@@ -152,7 +152,7 @@ monitor socket = do
       Right () -> do
         pair <- Pair.open_ (name (Socket.socketName socket <> "-monitor"))
         Pair.connect_ pair endpoint
-        pure pair
+        pure (Pair.receives pair)
 
 send :: CanSend socket => socket -> ByteString -> IO (Either Error ())
 send =
