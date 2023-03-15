@@ -3,26 +3,26 @@ module Zmq
     run,
 
     -- ** Main options
-    ioThreads,
-    maxSockets,
+    Options.ioThreads,
+    Options.maxSockets,
 
     -- * Socket
-    Socket,
+    Socket.Socket,
     open,
     monitor,
 
     -- ** Options
-    curveClient,
-    curveServer,
-    lossy,
-    name,
-    sendQueueSize,
+    Options.curveClient,
+    Options.curveServer,
+    Options.lossy,
+    Options.name,
+    Options.sendQueueSize,
 
     -- ** Peering
-    bind,
-    unbind,
-    connect,
-    disconnect,
+    Socket.bind,
+    Socket.unbind,
+    Socket.connect,
+    Socket.disconnect,
 
     -- ** Messaging
     send,
@@ -61,22 +61,22 @@ module Zmq
     deriveCurvePublicKey,
 
     -- * Options
-    Options,
-    defaultOptions,
+    Options.Options,
+    Options.defaultOptions,
 
     -- * Errors
     Error (..),
     Zmq_error (..),
 
     -- * Socket subclasses
-    CanSend,
-    CanReceive,
-    CanReceives,
+    Socket.CanSend,
+    Socket.CanReceive,
+    Socket.CanReceives,
     CanPoll,
 
     -- ** Options
-    CanSetLossy,
-    CanSetSendQueueSize,
+    Options.CanSetLossy,
+    Options.CanSetSendQueueSize,
 
     -- * Version
     version,
@@ -86,6 +86,7 @@ where
 import Control.Exception (throwIO)
 import Data.ByteString (ByteString)
 import Data.ByteString.Short.Base64.URL qualified as Base64
+import Data.Text qualified as Text
 import Data.Text.Short qualified as Text.Short
 import Libzmq
 import System.Random.Stateful qualified as Random
@@ -93,31 +94,8 @@ import Zmq.Dealer (Dealer)
 import Zmq.Error (Error (..), catchingOkErrors, enrichError, throwOkError, unexpectedError)
 import Zmq.Internal.Context
 import Zmq.Internal.Curve
-import Zmq.Internal.Options
-  ( CanSetLossy,
-    CanSetSendQueueSize,
-    Options,
-    curveClient,
-    curveServer,
-    defaultOptions,
-    ioThreads,
-    lossy,
-    maxSockets,
-    name,
-    sendQueueSize,
-  )
+import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll, Sockets, also, poll, pollFor, pollUntil, the)
-import Zmq.Internal.Socket
-  ( CanReceive (receive_),
-    CanReceives,
-    CanSend (send_),
-    Socket (openSocket),
-    bind,
-    connect,
-    disconnect,
-    receives_,
-    unbind,
-  )
 import Zmq.Internal.Socket qualified as Socket
 import Zmq.Pair (Pair)
 import Zmq.Pair qualified as Pair
@@ -132,11 +110,11 @@ import Zmq.Subscription (pattern Subscribe, pattern Unsubscribe)
 import Zmq.XPub (XPub)
 import Zmq.XSub (XSub)
 
-open :: Socket socket => Options socket -> IO (Either Error socket)
+open :: Socket.Socket socket => Options.Options socket -> IO (Either Error socket)
 open =
-  openSocket
+  Socket.openSocket
 
-monitor :: Socket socket => socket -> IO (Either Error (IO (Either Error [ByteString])))
+monitor :: Socket.Socket socket => socket -> IO (Either Error (IO (Either Error [ByteString])))
 monitor socket = do
   endpointBytes <- Random.uniformShortByteString 16 Random.globalStdGen
   let endpoint = Text.Short.toText ("inproc://" <> Base64.encodeBase64Unpadded endpointBytes)
@@ -150,21 +128,23 @@ monitor socket = do
               EPROTONOSUPPORT -> throwIO err
               _ -> unexpectedError err
       Right () -> do
-        pair <- Pair.open_ (name (Socket.socketName socket <> "-monitor"))
+        pair <- Pair.open_ (if Text.null name then Options.name (name <> "-monitor") else Options.defaultOptions)
         Pair.connect_ pair endpoint
         pure (Pair.receives pair)
+  where
+    name = Socket.socketName socket
 
-send :: CanSend socket => socket -> ByteString -> IO (Either Error ())
+send :: Socket.CanSend socket => socket -> ByteString -> IO (Either Error ())
 send =
-  send_
+  Socket.send_
 
-receive :: CanReceive socket => socket -> IO (Either Error ByteString)
+receive :: Socket.CanReceive socket => socket -> IO (Either Error ByteString)
 receive =
-  receive_
+  Socket.receive_
 
-receives :: CanReceives socket => socket -> IO (Either Error [ByteString])
+receives :: Socket.CanReceives socket => socket -> IO (Either Error [ByteString])
 receives =
-  receives_
+  Socket.receives_
 
 version :: (Int, Int, Int)
 version =
