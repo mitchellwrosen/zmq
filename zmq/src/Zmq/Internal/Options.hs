@@ -34,7 +34,6 @@ import Data.Text qualified as Text
 import Libzmq
 import Numeric.Natural (Natural)
 import Zmq.Error (enrichError, throwOkError, unexpectedError)
-import {-# SOURCE #-} Zmq.Internal.Context (Context)
 import Zmq.Internal.Curve (CurvePublicKey (..), CurveSecretKey (..), deriveCurvePublicKey)
 import {-# SOURCE #-} Zmq.Internal.Socket (Socket)
 
@@ -92,7 +91,7 @@ setContextOptions context = \case
 -- you can set this value to 0.
 --
 -- /Default/: 1
-ioThreads :: Natural -> Options Context
+ioThreads :: Natural -> Options ()
 ioThreads n =
   ContextOptions \context ->
     setContextOption context ZMQ_IO_THREADS (natToInt n)
@@ -100,7 +99,7 @@ ioThreads n =
 -- | The maximum number of sockets that can be open at once, after which @open@ will return 'Zmq.EMFILE'.
 --
 -- /Default/: 1023
-maxSockets :: Natural -> Options Context
+maxSockets :: Natural -> Options ()
 maxSockets n =
   ContextOptions \context ->
     setContextOption context ZMQ_MAX_SOCKETS (natToInt (min 1 n)) -- 0 is invalid

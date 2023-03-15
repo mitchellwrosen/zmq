@@ -56,7 +56,7 @@ import System.IO qualified as IO
 import System.IO.Unsafe (unsafePerformIO)
 import System.Posix.Types (Fd (..))
 import Zmq.Error (Error, catchingOkErrors, enrichError, throwOkError, unexpectedError)
-import Zmq.Internal.Context (Context (..), globalContextRef)
+import Zmq.Internal.Context (globalContextRef, globalSocketFinalizersRef)
 import {-# SOURCE #-} Zmq.Internal.Options (Options)
 import Zmq.Internal.SocketFinalizer (makeSocketFinalizer)
 
@@ -96,7 +96,7 @@ data ThingAndCanary a
 -- Throws ok errors
 openWith :: (Zmq_socket -> IO (ThingAndCanary a)) -> Zmq_socket_type -> IO a
 openWith wrap socketType = do
-  Context context socketsRef <- readIORef globalContextRef
+  context <- readIORef globalContextRef
   mask_ do
     zmq_socket context socketType >>= \case
       Left errno ->
@@ -110,7 +110,7 @@ openWith wrap socketType = do
       Right socket -> do
         ThingAndCanary thing canary <- wrap socket
         finalizer <- makeSocketFinalizer (zmq_close socket) canary
-        atomicModifyIORef' socketsRef \finalizers -> (finalizer : finalizers, ())
+        atomicModifyIORef' globalSocketFinalizersRef \finalizers -> (finalizer : finalizers, ())
         pure thing
 
 -- Throws ok errors
