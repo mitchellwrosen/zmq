@@ -46,19 +46,22 @@ with ThreadUnsafeSocket {socket} =
 
 -- Throws ok errors
 open :: Zmq_socket_type -> Options socket -> IO ThreadUnsafeSocket
-open socketType options =
-  Socket.openWith
-    ( \socket -> do
-        canary@(IORef (STRef canary#)) <- newIORef ()
-        Options.setSocketOptions socket options
-        pure $
-          Socket.ThingAndCanary
-            ThreadUnsafeSocket
-              { socket,
-                _name = Options.optionsName options,
-                canary
-              }
-            canary#
-    )
-    socketType
-
+open socketType options = do
+  socket <-
+    Socket.openWith
+      ( \socket -> do
+          canary@(IORef (STRef canary#)) <- newIORef ()
+          pure $
+            Socket.ThingAndCanary
+              ThreadUnsafeSocket
+                { socket,
+                  _name = Options.optionsName options,
+                  canary
+                }
+              canary#
+      )
+      socketType
+  -- It's important that we call setSocketOptions after openWith returns, because setSocketOptions might throw an
+  -- exception, in which case we want to properly finalize the socket
+  Options.setSocketOptions (raw socket) options
+  pure socket

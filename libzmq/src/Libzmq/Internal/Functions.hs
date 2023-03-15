@@ -335,6 +335,15 @@ zmq_socket_monitor (Zmq_socket socket) endpoint (Zmq_socket_events events) =
       -1 -> Left <$> zmq_errno
       _ -> pure (Right ())
 
+-- | Unmonitor a ØMQ socket's events.
+--
+-- http://api.zeromq.org/master:zmq-socket-monitor
+zmq_socket_unmonitor :: Zmq_socket -> IO (Either Zmq_error ())
+zmq_socket_unmonitor (Zmq_socket socket) =
+  Libzmq.Bindings.zmq_socket_monitor socket nullPtr 0 >>= \case
+    -1 -> Left <$> zmq_errno
+    _ -> pure (Right ())
+
 -- | Receive a message from a ØMQ socket.
 --
 -- http://api.zeromq.org/master:zmq-recv

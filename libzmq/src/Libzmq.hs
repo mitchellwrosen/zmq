@@ -50,6 +50,7 @@ module Libzmq
     zmq_recv,
     zmq_recv_dontwait,
     zmq_socket_monitor,
+    zmq_socket_unmonitor,
 
     -- ** Input/output multiplexing
     zmq_poll,

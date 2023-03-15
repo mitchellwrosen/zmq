@@ -39,18 +39,22 @@ with ThreadSafeSocket {lock, socket} action =
 
 -- Throws ok errors
 open :: Zmq_socket_type -> Options socket -> IO ThreadSafeSocket
-open socketType options =
-  Socket.openWith
-    ( \socket -> do
-        lock@(MVar canary#) <- newMVar ()
-        Options.setSocketOptions socket options
-        pure $
-          Socket.ThingAndCanary
-            ThreadSafeSocket
-              { lock,
-                socket,
-                _name = Options.optionsName options
-              }
-            canary#
-    )
-    socketType
+open socketType options = do
+  socket <-
+    Socket.openWith
+      ( \socket -> do
+          lock@(MVar canary#) <- newMVar ()
+          pure $
+            Socket.ThingAndCanary
+              ThreadSafeSocket
+                { lock,
+                  socket,
+                  _name = Options.optionsName options
+                }
+              canary#
+      )
+      socketType
+  -- It's important that we call setSocketOptions after openWith returns, because setSocketOptions might throw an
+  -- exception, in which case we want to properly finalize the socket
+  Options.setSocketOptions (raw socket) options
+  pure socket
