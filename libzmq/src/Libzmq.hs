@@ -4,7 +4,6 @@ module Libzmq
   ( -- * Functions
 
     -- ** Error
-    zmq_errno,
     zmq_strerror,
 
     -- ** Version
@@ -20,7 +19,6 @@ module Libzmq
     -- ** Message
     zmq_msg_init,
     zmq_msg_init_size,
-    -- zmq_msg_init_data,
     zmq_msg_send,
     zmq_msg_send_dontwait,
     zmq_msg_recv,
@@ -53,8 +51,12 @@ module Libzmq
     zmq_recv_dontwait,
     zmq_socket_monitor,
 
-    -- ** I/O multiplexing
+    -- ** Input/output multiplexing
     zmq_poll,
+
+    -- ** Message proxying
+    zmq_proxy,
+    zmq_proxy_steerable,
 
     -- * Types
     Zmq_ctx_option

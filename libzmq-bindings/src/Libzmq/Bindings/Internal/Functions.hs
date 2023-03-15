@@ -322,8 +322,3 @@ foreign import capi unsafe "zmq.h zmq_z85_decode"
 -- http://api.zeromq.org/master:zmq-z85-encode
 foreign import capi unsafe "zmq.h zmq_z85_encode"
   zmq_z85_encode :: Ptr CChar -> Ptr Word8 -> CSize -> IO CString
-
--- /*  Derive the z85-encoded public key from the z85-encoded secret key.        */
--- /*  Returns 0 on success.                                                     */
--- ZMQ_EXPORT int zmq_curve_public (char *z85_public_key_,
---                                  const char *z85_secret_key_);

@@ -12,6 +12,7 @@ import Data.Int (Int64)
 import Data.Text (Text)
 import Data.Text.Encoding qualified as Text
 import Data.Text.Foreign qualified as Text
+import Data.Void (Void)
 import Data.Word (Word8)
 import Foreign (Storable (peek, poke, sizeOf), alloca)
 import Foreign.C (CUInt)
@@ -36,9 +37,7 @@ import System.IO.Unsafe (unsafeDupablePerformIO)
 ------------------------------------------------------------------------------------------------------------------------
 -- Error
 
--- | Get the ØMQ error number for the calling thread.
---
--- http://api.zeromq.org/master:zmq-errno
+-- Get errno. Not exported on purpose: we return Eithers intead.
 zmq_errno :: IO Zmq_error
 zmq_errno =
   coerce Libzmq.Bindings.zmq_errno
@@ -148,7 +147,7 @@ zmq_msg_data (Zmq_msg message) = do
   bytes <- Libzmq.Bindings.zmq_msg_data message
   ByteString.packCStringLen (bytes, fromIntegral @CSize @Int size)
 
--- | Free a ØMQ message initialized by 'zmq_msg_init', 'zmq_msg_init_data', or 'zmq_msg_init_size'.
+-- | Free a ØMQ message initialized by 'zmq_msg_init' or 'zmq_msg_init_size'.
 zmq_msg_free :: Zmq_msg -> IO ()
 zmq_msg_free (Zmq_msg message) =
   free message
@@ -510,7 +509,7 @@ zmq_unbind (Zmq_socket socket) endpoint =
     _ -> Left <$> zmq_errno
 
 ------------------------------------------------------------------------------------------------------------------------
--- I/O multiplexing
+-- Input/output multiplexing
 
 -- TODO replace StorableArray with raw ForeignPtr to drop `array` dependency
 
@@ -530,6 +529,35 @@ zmq_poll pollitems timeout = do
       if timeout == 0
         then Libzmq.Bindings.zmq_poll__unsafe
         else Libzmq.Bindings.zmq_poll
+
+-- | Start a built-in ØMQ proxy.
+--
+-- http://api.zeromq.org/master:zmq-proxy
+zmq_proxy :: Zmq_socket -> Zmq_socket -> Maybe Zmq_socket -> IO (Either Zmq_error Void)
+zmq_proxy (Zmq_socket frontend) (Zmq_socket backend) maybeCapture = do
+  _ <- Libzmq.Bindings.zmq_proxy frontend backend capture
+  Left <$> zmq_errno
+  where
+    capture :: Ptr ()
+    capture =
+      case maybeCapture of
+        Nothing -> nullPtr
+        Just (Zmq_socket p) -> p
+
+-- | Start a built-in ØMQ proxy with control flow.
+--
+-- http://api.zeromq.org/master:zmq-proxy-steerable
+zmq_proxy_steerable :: Zmq_socket -> Zmq_socket -> Maybe Zmq_socket -> Zmq_socket -> IO (Either Zmq_error ())
+zmq_proxy_steerable (Zmq_socket frontend) (Zmq_socket backend) maybeCapture (Zmq_socket control) =
+  Libzmq.Bindings.zmq_proxy_steerable frontend backend capture control >>= \case
+    -1 -> Left <$> zmq_errno
+    _ -> pure (Right ())
+  where
+    capture :: Ptr ()
+    capture =
+      case maybeCapture of
+        Nothing -> nullPtr
+        Just (Zmq_socket p) -> p
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Misc. utils
