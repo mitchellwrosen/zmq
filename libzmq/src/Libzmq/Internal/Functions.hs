@@ -16,7 +16,7 @@ import Data.Text.Internal (Text (Text))
 import Data.Void (Void)
 import Data.Word (Word8)
 import Foreign (Ptr, Storable (peek, poke, sizeOf), alloca, allocaBytes, castPtr, free, malloc, nullPtr)
-import Foreign.C (CChar (..), CInt (..), CLong (..), CSize (..), CString, CUInt)
+import Foreign.C (CChar (..), CInt (..), CLong (..), CSize (..), CUInt)
 import Libzmq.Bindings qualified
 import Libzmq.Internal.Types
   ( Zmq_ctx (..),
@@ -327,10 +327,12 @@ zmq_getsockopt_word (Zmq_socket socket) option =
 -- | Monitor a ØMQ socket's events.
 --
 -- http://api.zeromq.org/master:zmq-socket-monitor
---
--- FIXME not implemented
-zmq_socket_monitor :: Zmq_socket -> CString -> CInt -> IO CInt
-zmq_socket_monitor = undefined
+zmq_socket_monitor :: Zmq_socket -> Text -> CInt -> IO (Either Zmq_error ())
+zmq_socket_monitor (Zmq_socket socket) endpoint events =
+  Text.withCString endpoint \cendpoint ->
+    Libzmq.Bindings.zmq_socket_monitor socket cendpoint events >>= \case
+      -1 -> Left <$> zmq_errno
+      _ -> pure (Right ())
 
 -- | Receive a message from a ØMQ socket.
 --
