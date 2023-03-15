@@ -557,10 +557,10 @@ data Zmq_socket_option a where
   ZMQ_CONFLATE :: Zmq_socket_option Int32
   ZMQ_CONNECT_ROUTING_ID :: Zmq_socket_option ByteString
   ZMQ_CONNECT_TIMEOUT :: Zmq_socket_option Int32
-  -- ZMQ_CURVE_PUBLICKEY
-  -- ZMQ_CURVE_SECRETKEY
+  ZMQ_CURVE_PUBLICKEY :: Zmq_socket_option ByteString
+  ZMQ_CURVE_SECRETKEY :: Zmq_socket_option ByteString
   ZMQ_CURVE_SERVER :: Zmq_socket_option Int32
-  -- ZMQ_CURVE_SERVERKEY
+  ZMQ_CURVE_SERVERKEY :: Zmq_socket_option ByteString
   ZMQ_GSSAPI_PLAINTEXT :: Zmq_socket_option Int32
   ZMQ_GSSAPI_PRINCIPAL :: Zmq_socket_option Text
   ZMQ_GSSAPI_PRINCIPAL_NAMETYPE :: Zmq_socket_option Int32

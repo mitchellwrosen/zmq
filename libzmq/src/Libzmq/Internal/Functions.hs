@@ -408,7 +408,10 @@ zmq_setsockopt socket = \case
   ZMQ_CONFLATE -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_CONFLATE
   ZMQ_CONNECT_ROUTING_ID -> zmq_setsockopt_bytestring socket Libzmq.Bindings._ZMQ_CONNECT_ROUTING_ID
   ZMQ_CONNECT_TIMEOUT -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_CONNECT_TIMEOUT
+  ZMQ_CURVE_PUBLICKEY -> zmq_setsockopt_bytestring32 socket Libzmq.Bindings._ZMQ_CURVE_PUBLICKEY
+  ZMQ_CURVE_SECRETKEY -> zmq_setsockopt_bytestring32 socket Libzmq.Bindings._ZMQ_CURVE_SECRETKEY
   ZMQ_CURVE_SERVER -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_CURVE_SERVER
+  ZMQ_CURVE_SERVERKEY -> zmq_setsockopt_bytestring32 socket Libzmq.Bindings._ZMQ_CURVE_SERVERKEY
   ZMQ_GSSAPI_PLAINTEXT -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_GSSAPI_PLAINTEXT
   ZMQ_GSSAPI_PRINCIPAL -> zmq_setsockopt_text socket Libzmq.Bindings._ZMQ_GSSAPI_PRINCIPAL
   ZMQ_GSSAPI_PRINCIPAL_NAMETYPE -> zmq_setsockopt_storable socket Libzmq.Bindings._ZMQ_GSSAPI_PRINCIPAL_NAMETYPE
@@ -473,6 +476,15 @@ zmq_setsockopt_bytestring (Zmq_socket socket) option bytes =
     Libzmq.Bindings.zmq_setsockopt socket option cstring (fromIntegral @Int @CSize len) >>= \case
       0 -> pure (Right ())
       _ -> Left <$> zmq_errno
+
+zmq_setsockopt_bytestring32 :: Zmq_socket -> CInt -> ByteString -> IO (Either Zmq_error ())
+zmq_setsockopt_bytestring32 (Zmq_socket socket) option bytes =
+  if ByteString.length bytes /= 32
+    then pure (Left EINVAL)
+    else ByteString.Unsafe.unsafeUseAsCStringLen bytes \(cstring, len) ->
+      Libzmq.Bindings.zmq_setsockopt socket option cstring (fromIntegral @Int @CSize len) >>= \case
+        0 -> pure (Right ())
+        _ -> Left <$> zmq_errno
 
 zmq_setsockopt_storable :: forall a. Storable a => Zmq_socket -> CInt -> a -> IO (Either Zmq_error ())
 zmq_setsockopt_storable (Zmq_socket socket) option value =
