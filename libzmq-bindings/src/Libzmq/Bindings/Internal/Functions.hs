@@ -299,14 +299,31 @@ foreign import capi unsafe "zmq.h zmq_has"
 ------------------------------------------------------------------------------------------------------------------------
 -- Encryption
 
--- | Encode bytes in Z85.
+-- | Generate a Z85-encoded ØMQ CURVE keypair.
 --
--- http://api.zeromq.org/master:zmq-z85-encode
-foreign import capi unsafe "zmq.h zmq_z85_encode"
-  zmq_z85_encode :: Ptr CChar -> Ptr Word8 -> CSize -> IO CString
+-- http://api.zeromq.org/master:zmq-curve-keypair
+foreign import capi unsafe "zmq.h zmq_curve_keypair"
+  zmq_curve_keypair :: Ptr CChar -> Ptr CChar -> IO CInt
+
+-- | Derive a Z85-encoded ØMQ CURVE public key from a Z85-encoded ØMQ CURVE private key.
+--
+-- http://api.zeromq.org/master:zmq-curve-public
+foreign import capi unsafe "zmq.h zmq_curve_public"
+  zmq_curve_public :: Ptr CChar -> CString -> IO CInt
 
 -- | Decode Z85 as bytes.
 --
 -- http://api.zeromq.org/master:zmq-z85-decode
 foreign import capi unsafe "zmq.h zmq_z85_decode"
   zmq_z85_decode :: Ptr Word8 -> CString -> IO (Ptr Word8)
+
+-- | Encode bytes in Z85.
+--
+-- http://api.zeromq.org/master:zmq-z85-encode
+foreign import capi unsafe "zmq.h zmq_z85_encode"
+  zmq_z85_encode :: Ptr CChar -> Ptr Word8 -> CSize -> IO CString
+
+-- /*  Derive the z85-encoded public key from the z85-encoded secret key.        */
+-- /*  Returns 0 on success.                                                     */
+-- ZMQ_EXPORT int zmq_curve_public (char *z85_public_key_,
+--                                  const char *z85_secret_key_);
