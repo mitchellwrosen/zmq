@@ -29,7 +29,7 @@ type Zmq_fd = CInt
 -- | A ØMQ message.
 newtype Zmq_msg
   = Zmq_msg (Ptr CChar)
-  deriving stock (Eq, Ord, Show)
+  deriving stock (Eq, Ord)
 
 instance Storable Zmq_msg where
   alignment _ = #{alignment zmq_msg_t}
@@ -44,7 +44,7 @@ data Zmq_pollitem = Zmq_pollitem
     events :: {-# UNPACK #-} !CShort,
     revents :: {-# UNPACK #-} !CShort
   }
-  deriving stock (Eq, Ord, Show)
+  deriving stock (Eq, Ord)
 
 instance Storable Zmq_pollitem where
   alignment _ = #{alignment zmq_pollitem_t}

@@ -102,7 +102,7 @@ pattern ZMQ_THREAD_SCHED_POLICY <-
 -- | A ØMQ context.
 newtype Zmq_ctx
   = Zmq_ctx (Ptr ())
-  deriving stock (Eq, Ord, Show)
+  deriving stock (Eq, Ord)
 
 -- | A ØMQ error.
 newtype Zmq_error
@@ -459,7 +459,7 @@ pattern ZMQ_SHARED <-
 -- | A ØMQ message.
 newtype Zmq_msg
   = Zmq_msg (Ptr Libzmq.Bindings.Zmq_msg)
-  deriving stock (Eq, Ord, Show)
+  deriving stock (Eq, Ord)
   deriving newtype (Storable)
 
 -- | A file descripter ØMQ pollitem.
@@ -545,9 +545,9 @@ hasSndmore (Zmq_send_option n) =
   n .&. Libzmq.Bindings._ZMQ_SNDMORE /= 0
 
 -- | A ØMQ socket.
-data Zmq_socket
+newtype Zmq_socket
   = Zmq_socket (Ptr ())
-  deriving stock (Eq, Ord, Show)
+  deriving stock (Eq, Ord)
 
 -- | A set of ØMQ socket events.
 newtype Zmq_socket_events
