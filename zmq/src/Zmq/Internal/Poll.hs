@@ -27,10 +27,9 @@ import GHC.Clock (getMonotonicTimeNSec)
 import Libzmq
 import Libzmq.Bindings qualified
 import Zmq.Error (Error, enrichError, unexpectedError)
-import Zmq.Internal.Socket (Socket)
 import Zmq.Internal.Socket qualified as Socket
 
-class Socket socket => CanPoll socket where
+class {- Socket socket -} CanPoll socket where
   toPollable :: socket -> Pollable
 
 data Sockets

@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Zmq.Req
   ( Req,
     defaultOptions,
@@ -16,9 +18,8 @@ where
 
 import Control.Monad (when)
 import Data.ByteString (ByteString)
-import Data.IORef (IORef, newIORef, readIORef, writeIORef)
+import Data.IORef (newIORef, readIORef, writeIORef)
 import Data.List.NonEmpty (pattern (:|))
-import Data.List.NonEmpty qualified as List (NonEmpty)
 import Data.Text (Text)
 import Libzmq
 import Numeric.Natural (Natural)
@@ -26,27 +27,20 @@ import Zmq.Error (Error (..), catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll (toPollable), Pollable (..))
-import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket))
-import Zmq.Internal.Socket qualified as Socket
-import Zmq.Internal.ThreadUnsafeSocket (ThreadUnsafeSocket)
-import Zmq.Internal.ThreadUnsafeSocket qualified as ThreadUnsafeSocket
+import Zmq.Internal.Socket1 (CanReceive, CanReceives, CanSend, Socket (..))
+import Zmq.Internal.Socket1 qualified as Socket
 
 -- | A __requester__ socket.
 --
 -- Valid peers: __replier__, __router__
-data Req
-  = Req
-      !ThreadUnsafeSocket
-      -- The last message we received, if any. See Note [Req message buffer] for details.
-      !(IORef (Maybe (List.NonEmpty ByteString)))
-  deriving stock (Eq)
-  deriving anyclass
-    ( Options.CanSetSendQueueSize
-    )
+type Req =
+  Socket "REQ"
+
+instance Options.CanSetSendQueueSize Req
 
 instance CanPoll Req where
-  toPollable (Req socket messageBuffer) =
-    PollableREQ (ThreadUnsafeSocket.raw socket) messageBuffer
+  toPollable Socket {zsocket, extra = Socket.ReqExtra messageBuffer} =
+    PollableREQ zsocket messageBuffer
 
 instance CanReceive Req where
   receive_ = receive
@@ -56,12 +50,6 @@ instance CanReceives Req where
 
 instance CanSend Req where
   send_ = send
-
-instance Socket Req where
-  openSocket = open
-  getSocket (Req socket _) = ThreadUnsafeSocket.raw socket
-  withSocket (Req socket _) = ThreadUnsafeSocket.with socket
-  socketName (Req socket _) = ThreadUnsafeSocket.name socket
 
 defaultOptions :: Options Req
 defaultOptions =
@@ -75,15 +63,14 @@ sendQueueSize =
 open :: Options Req -> IO (Either Error Req)
 open options =
   catchingOkErrors do
-    socket <-
-      ThreadUnsafeSocket.open
-        ZMQ_REQ
-        ( Options.sockopt ZMQ_REQ_CORRELATE 1
-            <> Options.sockopt ZMQ_REQ_RELAXED 1
-            <> options
-        )
     messageBuffer <- newIORef Nothing
-    pure (Req socket messageBuffer)
+    Socket.openSocket
+      ZMQ_REQ
+      ( Options.sockopt ZMQ_REQ_CORRELATE 1
+          <> Options.sockopt ZMQ_REQ_RELAXED 1
+          <> options
+      )
+      (Socket.ReqExtra messageBuffer)
 
 -- | Bind a __requester__ to an __endpoint__.
 --
@@ -119,12 +106,12 @@ disconnect =
 --
 -- /Alias/: 'Zmq.send'
 send :: Req -> ByteString -> IO (Either Error ())
-send socket frame = do
+send socket@Socket {zsocket} frame = do
   catchingOkErrors do
     let loop =
           Socket.sendOneDontWait socket frame False >>= \case
             False -> do
-              Socket.blockUntilCanSend socket
+              Socket.blockUntilCanSend zsocket
               loop
             True -> pure ()
     loop
@@ -133,14 +120,14 @@ send socket frame = do
 --
 -- This operation blocks until a peer can receive the message.
 sends :: Req -> [ByteString] -> IO (Either Error ())
-sends socket = \case
+sends socket@Socket {zsocket} = \case
   [] -> pure (Right ())
   frame : frames ->
     catchingOkErrors do
       let loop = do
             sent <- Socket.sendManyDontWait socket (frame :| frames)
             when (not sent) do
-              Socket.blockUntilCanSend socket
+              Socket.blockUntilCanSend zsocket
               loop
       loop
 
@@ -148,7 +135,7 @@ sends socket = \case
 --
 -- /Alias/: 'Zmq.receive'
 receive :: Req -> IO (Either Error ByteString)
-receive socket@(Req _ messageBuffer) =
+receive socket@Socket {extra = Socket.ReqExtra messageBuffer} =
   -- Remember: this socket isn't thread safe, so we don't have to be very careful with our readIORef/writeIORefs
   readIORef messageBuffer >>= \case
     Nothing -> catchingOkErrors (Socket.receiveOne socket)
@@ -160,7 +147,7 @@ receive socket@(Req _ messageBuffer) =
 --
 -- /Alias/: 'Zmq.receives'
 receives :: Req -> IO (Either Error [ByteString])
-receives socket@(Req _ messageBuffer) =
+receives socket@Socket {extra = Socket.ReqExtra messageBuffer} =
   -- Remember: this socket isn't thread safe, so we don't have to be very careful with our readIORef/writeIORefs
   readIORef messageBuffer >>= \case
     Nothing ->

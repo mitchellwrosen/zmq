@@ -2,6 +2,10 @@
 
 module Zmq.Internal.Socket1
   ( Socket (..),
+    Extra (..),
+    CanSend (..),
+    CanReceive (..),
+    CanReceives (..),
     openSocket,
     bind,
     unbind,
@@ -44,6 +48,7 @@ import Data.Text.Lazy.Builder qualified as Text.Builder
 import Data.Word (Word8)
 import Foreign (Ptr)
 import Foreign.C.Types (CInt, CShort)
+import GHC.Base (Symbol)
 import GHC.Exts (keepAlive#)
 import GHC.IO (IO (..), unIO)
 import GHC.MVar (MVar (..))
@@ -55,25 +60,75 @@ import System.IO.Unsafe (unsafePerformIO)
 import System.Posix.Types (Fd (..))
 import Zmq.Error (Error, catchingOkErrors, enrichError, throwOkError, unexpectedError)
 import Zmq.Internal.Context (globalContextRef, globalSocketFinalizersRef)
+import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.SocketFinalizer (makeSocketFinalizer)
+import Zmq.Internal.X (X)
 
 -- TODO eq, ord
-data Socket a = Socket
+data Socket (a :: Symbol) = Socket
   { zsocket :: !Zmq_socket,
     lock :: !(MVar ()),
-    name :: !Text
+    name :: !Text,
+    extra :: !(Extra a)
   }
 
+instance X (Socket "DEALER")
+
+instance X (Socket "PAIR")
+
+instance X (Socket "PUB")
+
+instance X (Socket "PULL")
+
+instance X (Socket "PUSH")
+
+instance X (Socket "REP")
+
+instance X (Socket "REQ")
+
+instance X (Socket "ROUTER")
+
+instance X (Socket "SUB")
+
+instance X (Socket "XPUB")
+
+instance X (Socket "XSUB")
+
+data Extra (a :: Symbol) where
+  -- The last message we received, if any. See Note [Req message buffer] for details.
+  ReqExtra :: !(IORef (Maybe (List.NonEmpty ByteString))) -> Extra "REQ"
+
+class X a => CanSend a where
+  send_ :: a -> ByteString -> IO (Either Error ())
+  send_ = undefined -- hide "minimal complete definition" haddock
+
+class X a => CanReceive a where
+  receive_ :: a -> IO (Either Error ByteString)
+  receive_ = undefined -- hide "minimal complete definition" haddock
+
+class X a => CanReceives a where
+  receives_ :: a -> IO (Either Error [ByteString])
+  receives_ = undefined -- hide "minimal complete definition" haddock
+
 -- Throws ok errors
-openSocket :: Zmq_socket_type -> Text -> IO (Socket a)
-openSocket socketType name = do
+openSocket :: Zmq_socket_type -> Options.Options (Socket a) -> Extra a -> IO (Socket a)
+openSocket socketType options extra = do
   context <- readIORef globalContextRef
-  mask_ do
-    zsocket <- zhs_socket context socketType
-    lock@(MVar canary#) <- newMVar ()
-    finalizer <- makeSocketFinalizer (zmq_close zsocket) canary#
-    atomicModifyIORef' globalSocketFinalizersRef \finalizers -> (finalizer : finalizers, ())
-    pure Socket {zsocket, lock, name}
+  lock@(MVar canary#) <- newMVar ()
+  zsocket <-
+    mask_ do
+      zsocket <- zhs_socket context socketType
+      finalizer <- makeSocketFinalizer (zmq_close zsocket) canary#
+      atomicModifyIORef' globalSocketFinalizersRef \finalizers -> (finalizer : finalizers, ())
+      pure zsocket
+  Options.setSocketOptions zsocket options
+  pure
+    Socket
+      { zsocket,
+        lock,
+        name = Options.optionsName options,
+        extra
+      }
 
 usingSocket :: Socket a -> IO b -> IO b
 usingSocket Socket {lock, zsocket} action =

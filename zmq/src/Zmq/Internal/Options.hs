@@ -52,8 +52,10 @@ instance Semigroup (Options socket) where
   SocketOptions x0 x1 <> SocketOptions y0 y1 = SocketOptions (x0 <> y0) (if Text.null y1 then x1 else y1)
   _ <> _ = DefaultOptions -- type system should prevent this
 
+-- class X socket => CanSetLossy socket
 class CanSetLossy socket
 
+-- class X socket => CanSetSendQueueSize socket
 class CanSetSendQueueSize socket
 
 -- | Default options.

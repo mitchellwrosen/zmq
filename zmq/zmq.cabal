@@ -51,8 +51,8 @@ library
   exposed-modules:
     Zmq
     Zmq.Dealer
-    Zmq.Pub
     Zmq.Pair
+    Zmq.Pub
     Zmq.Pull
     Zmq.Push
     Zmq.Rep
