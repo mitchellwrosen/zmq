@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Zmq.Pull
   ( Pull,
     defaultOptions,
@@ -13,7 +15,6 @@ module Zmq.Pull
 where
 
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
@@ -22,23 +23,16 @@ import Zmq.Error
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll (toPollable), Pollable (..))
-import Zmq.Internal.Socket (CanReceive, CanReceives, Socket)
+import Zmq.Internal.Socket (CanReceive, CanReceives, Socket (..))
 import Zmq.Internal.Socket qualified as Socket
-import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
-import Zmq.Internal.ThreadSafeSocket qualified as ThreadSafeSocket
 
 -- | A thread-safe __puller__ socket.
 --
 -- Valid peers: __pusher__
-newtype Pull
-  = Pull ThreadSafeSocket
-  deriving stock (Eq)
-  deriving anyclass
-    ( Options.CanSetSendQueueSize
-    )
+type Pull =
+  Socket "PULL"
 
-instance CanPoll Pull where
-  toPollable = PollableNonREQ . Socket.getSocket
+instance Options.CanSetSendQueueSize Pull
 
 instance CanReceive Pull where
   receive_ = receive
@@ -46,11 +40,9 @@ instance CanReceive Pull where
 instance CanReceives Pull where
   receives_ = receives
 
-instance Socket Pull where
-  openSocket = open
-  getSocket = coerce ThreadSafeSocket.raw
-  withSocket (Pull socket) = ThreadSafeSocket.with socket
-  socketName = coerce ThreadSafeSocket.name
+instance CanPoll Pull where
+  toPollable Socket {zsocket} =
+    PollableNonREQ zsocket
 
 defaultOptions :: Options Pull
 defaultOptions =
@@ -64,7 +56,7 @@ sendQueueSize =
 open :: Options Pull -> IO (Either Error Pull)
 open options =
   catchingOkErrors do
-    coerce (ThreadSafeSocket.open ZMQ_PULL options)
+    Socket.openSocket ZMQ_PULL options Socket.PullExtra
 
 -- | Bind a __puller__ to an __endpoint__.
 --

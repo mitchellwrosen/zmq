@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Zmq.Pair
   ( Pair,
     defaultOptions,
@@ -18,7 +20,6 @@ where
 
 import Control.Monad (when)
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
@@ -27,23 +28,19 @@ import Zmq.Error (Error (..), catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll (toPollable), Pollable (..))
-import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket))
+import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (..))
 import Zmq.Internal.Socket qualified as Socket
-import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
-import Zmq.Internal.ThreadSafeSocket qualified as ThreadSafeSocket
 
 -- | A thread-safe __pair__ socket.
 --
 -- Valid peers: __pair__
-newtype Pair
-  = Pair ThreadSafeSocket
-  deriving stock (Eq)
-  deriving anyclass
-    ( Options.CanSetSendQueueSize
-    )
+type Pair =
+  Socket "PAIR"
 
-instance CanPoll Pair where
-  toPollable = PollableNonREQ . Socket.getSocket
+instance Options.CanSetSendQueueSize Pair
+
+instance CanSend Pair where
+  send_ = send
 
 instance CanReceive Pair where
   receive_ = receive
@@ -51,14 +48,9 @@ instance CanReceive Pair where
 instance CanReceives Pair where
   receives_ = receives
 
-instance CanSend Pair where
-  send_ = send
-
-instance Socket Pair where
-  openSocket = open
-  getSocket = coerce ThreadSafeSocket.raw
-  withSocket (Pair socket) = ThreadSafeSocket.with socket
-  socketName = coerce ThreadSafeSocket.name
+instance CanPoll Pair where
+  toPollable Socket {zsocket} =
+    PollableNonREQ zsocket
 
 defaultOptions :: Options Pair
 defaultOptions =
@@ -75,7 +67,7 @@ open options =
 
 open_ :: Options Pair -> IO Pair
 open_ options =
-  coerce (ThreadSafeSocket.open ZMQ_PAIR options)
+  Socket.openSocket ZMQ_PAIR options Socket.PairExtra
 
 -- | Bind a __pair__ to an __endpoint__.
 --
@@ -115,26 +107,26 @@ disconnect =
 --
 -- /Alias/: 'Zmq.send'
 send :: Pair -> ByteString -> IO (Either Error ())
-send socket frame =
+send socket@Socket {zsocket} frame =
   catchingOkErrors loop
   where
     loop = do
       sent <- Socket.sendOneDontWait socket frame False
       when (not sent) do
-        Socket.blockUntilCanSend socket
+        Socket.blockUntilCanSend zsocket
         loop
 
 -- | Send a __multiframe message__ on a __pair__ to the peer.
 --
 -- This operation blocks until the peer can receive the message.
 sends :: Pair -> [ByteString] -> IO (Either Error ())
-sends socket = \case
+sends socket@Socket {zsocket} = \case
   [] -> pure (Right ())
   frame : frames -> do
     let loop = do
           sent <- Socket.sendManyDontWait socket (frame :| frames)
           when (not sent) do
-            Socket.blockUntilCanSend socket
+            Socket.blockUntilCanSend zsocket
             loop
     catchingOkErrors loop
 

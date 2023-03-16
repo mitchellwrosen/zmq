@@ -68,9 +68,7 @@ library
     Zmq.Internal.Options
     Zmq.Internal.Poll
     Zmq.Internal.Socket
-    Zmq.Internal.Socket1
     Zmq.Internal.SocketFinalizer
-    Zmq.Internal.ThreadSafeSocket
     Zmq.Internal.X
     Zmq.Error
     Zmq.Subscription

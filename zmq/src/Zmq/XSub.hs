@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Zmq.XSub
   ( XSub,
     defaultOptions,
@@ -16,7 +18,6 @@ module Zmq.XSub
 where
 
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
@@ -24,21 +25,18 @@ import Zmq.Error (Error, catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll (toPollable), Pollable (PollableNonREQ))
-import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket))
+import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (..))
 import Zmq.Internal.Socket qualified as Socket
-import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
-import Zmq.Internal.ThreadSafeSocket qualified as ThreadSafeSocket
 import Zmq.Subscription (pattern Subscribe, pattern Unsubscribe)
 
 -- | A thread-safe __xsubscriber__ socket.
 --
 -- Valid peers: __publisher__, __xpublisher__
-newtype XSub
-  = XSub ThreadSafeSocket
-  deriving stock (Eq)
+type XSub =
+  Socket "XSUB"
 
-instance CanPoll XSub where
-  toPollable = PollableNonREQ . Socket.getSocket
+instance CanSend XSub where
+  send_ = send
 
 instance CanReceive XSub where
   receive_ = receive
@@ -46,14 +44,9 @@ instance CanReceive XSub where
 instance CanReceives XSub where
   receives_ = receives
 
-instance CanSend XSub where
-  send_ = send
-
-instance Socket XSub where
-  openSocket = open
-  getSocket = coerce ThreadSafeSocket.raw
-  withSocket (XSub socket) = ThreadSafeSocket.with socket
-  socketName = coerce ThreadSafeSocket.name
+instance CanPoll XSub where
+  toPollable Socket {zsocket} =
+    PollableNonREQ zsocket
 
 defaultOptions :: Options XSub
 defaultOptions =
@@ -63,12 +56,12 @@ defaultOptions =
 open :: Options XSub -> IO (Either Error XSub)
 open options =
   catchingOkErrors do
-    coerce do
-      ThreadSafeSocket.open
-        ZMQ_XSUB
-        ( Options.sockopt ZMQ_SNDHWM 0 -- don't drop subscriptions
-            <> options
-        )
+    Socket.openSocket
+      ZMQ_XSUB
+      ( Options.sockopt ZMQ_SNDHWM 0 -- don't drop subscriptions
+          <> options
+      )
+      Socket.XSubExtra
 
 -- | Bind an __xsubscriber__ to an __endpoint__.
 --

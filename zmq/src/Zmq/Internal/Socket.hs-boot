@@ -1,5 +1,7 @@
 module Zmq.Internal.Socket (Socket) where
 
-import Data.Kind (Type)
+import GHC.TypeLits (Symbol)
 
-class Socket (socket :: Type)
+type role Socket nominal
+
+data Socket (a :: Symbol)

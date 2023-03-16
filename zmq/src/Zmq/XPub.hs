@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Zmq.XPub
   ( XPub,
     defaultOptions,
@@ -17,7 +19,6 @@ where
 
 import Control.Monad (when)
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
@@ -26,24 +27,18 @@ import Zmq.Error (Error, catchingOkErrors, enrichError, throwOkError)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll (toPollable), Pollable (..))
-import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket))
+import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (..))
 import Zmq.Internal.Socket qualified as Socket
-import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
-import Zmq.Internal.ThreadSafeSocket qualified as ThreadSafeSocket
 
 -- | A thread-safe __xpublisher__ socket.
 --
 -- Valid peers: __subscriber__, __xsubscriber__
-newtype XPub
-  = XPub ThreadSafeSocket
-  deriving stock (Eq)
-  deriving anyclass
-    ( Options.CanSetLossy,
-      Options.CanSetSendQueueSize
-    )
+type XPub =
+  Socket "XPUB"
 
-instance CanPoll XPub where
-  toPollable = PollableNonREQ . Socket.getSocket
+instance Options.CanSetLossy XPub
+
+instance Options.CanSetSendQueueSize XPub
 
 instance CanReceive XPub where
   receive_ = receive
@@ -54,11 +49,9 @@ instance CanReceives XPub where
 instance CanSend XPub where
   send_ = send
 
-instance Socket XPub where
-  openSocket = open
-  getSocket = coerce ThreadSafeSocket.raw
-  withSocket (XPub socket) = ThreadSafeSocket.with socket
-  socketName = coerce ThreadSafeSocket.name
+instance CanPoll XPub where
+  toPollable Socket {zsocket} =
+    PollableNonREQ zsocket
 
 defaultOptions :: Options XPub
 defaultOptions =
@@ -76,13 +69,13 @@ sendQueueSize =
 open :: Options XPub -> IO (Either Error XPub)
 open options =
   catchingOkErrors do
-    coerce do
-      ThreadSafeSocket.open
-        ZMQ_XPUB
-        ( Options.sockopt ZMQ_RCVHWM 0 -- don't drop subscriptions
-            <> Options.sockopt ZMQ_XPUB_NODROP 1 -- not lossy
-            <> options
-        )
+    Socket.openSocket
+      ZMQ_XPUB
+      ( Options.sockopt ZMQ_RCVHWM 0 -- don't drop subscriptions
+          <> Options.sockopt ZMQ_XPUB_NODROP 1 -- not lossy
+          <> options
+      )
+      Socket.XPubExtra
 
 -- | Bind an __xpublisher__ to an __endpoint__.
 --

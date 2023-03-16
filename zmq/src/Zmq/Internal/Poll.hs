@@ -67,7 +67,7 @@ keepingSocketsAlive (Sockets pollables0 _len) action =
     go = \case
       [] -> action
       pollable : pollables ->
-        Socket.keepingSocketAlive (pollableSocket pollable) (go pollables)
+        Socket.zhs_keepalive (pollableSocket pollable) (go pollables)
 
 data PreparedSockets = PreparedSockets
   { -- The items that actually need to be polled. Each is either a non-REQ socket, or a REQ socket with an empty message

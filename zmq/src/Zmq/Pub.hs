@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Zmq.Pub
   ( Pub,
     defaultOptions,
@@ -15,7 +17,6 @@ where
 
 import Control.Monad (when)
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
@@ -23,30 +24,21 @@ import Numeric.Natural (Natural)
 import Zmq.Error (Error, catchingOkErrors, enrichError, throwOkError)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Socket (CanSend, Socket (withSocket))
+import Zmq.Internal.Socket (CanSend, Socket (..))
 import Zmq.Internal.Socket qualified as Socket
-import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
-import Zmq.Internal.ThreadSafeSocket qualified as ThreadSafeSocket
 
 -- | A thread-safe __publisher__ socket.
 --
 -- Valid peers: __subscriber__, __xsubscriber__
-newtype Pub
-  = Pub ThreadSafeSocket
-  deriving stock (Eq)
-  deriving anyclass
-    ( Options.CanSetLossy,
-      Options.CanSetSendQueueSize
-    )
+type Pub =
+  Socket "PUB"
+
+instance Options.CanSetLossy Pub
+
+instance Options.CanSetSendQueueSize Pub
 
 instance CanSend Pub where
   send_ = send
-
-instance Socket Pub where
-  openSocket = open
-  getSocket = coerce ThreadSafeSocket.raw
-  withSocket (Pub socket) = ThreadSafeSocket.with socket
-  socketName = coerce ThreadSafeSocket.name
 
 defaultOptions :: Options Pub
 defaultOptions =
@@ -64,13 +56,13 @@ sendQueueSize =
 open :: Options Pub -> IO (Either Error Pub)
 open options =
   catchingOkErrors do
-    coerce do
-      ThreadSafeSocket.open
-        ZMQ_PUB
-        ( Options.sockopt ZMQ_RCVHWM 0 -- don't drop subscriptions
-            <> Options.sockopt ZMQ_XPUB_NODROP 1 -- not lossy
-            <> options
-        )
+    Socket.openSocket
+      ZMQ_PUB
+      ( Options.sockopt ZMQ_RCVHWM 0 -- don't drop subscriptions
+          <> Options.sockopt ZMQ_XPUB_NODROP 1 -- not lossy
+          <> options
+      )
+      Socket.PubExtra
 
 -- | Bind a __publisher__ to an __endpoint__.
 --

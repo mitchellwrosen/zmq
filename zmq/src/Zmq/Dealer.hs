@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Zmq.Dealer
   ( Dealer,
     defaultOptions,
@@ -16,7 +18,6 @@ where
 
 import Control.Monad (when)
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
@@ -25,23 +26,19 @@ import Zmq.Error (Error (..), catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll (toPollable), Pollable (..))
-import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket))
+import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (..))
 import Zmq.Internal.Socket qualified as Socket
-import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
-import Zmq.Internal.ThreadSafeSocket qualified as ThreadSafeSocket
 
 -- | A thread-safe __dealer__ socket.
 --
 -- Valid peers: __dealer__, __replier__, __router__
-newtype Dealer
-  = Dealer ThreadSafeSocket
-  deriving stock (Eq)
-  deriving anyclass
-    ( Options.CanSetSendQueueSize
-    )
+type Dealer =
+  Socket "DEALER"
 
-instance CanPoll Dealer where
-  toPollable = PollableNonREQ . Socket.getSocket
+instance Options.CanSetSendQueueSize Dealer
+
+instance CanSend Dealer where
+  send_ = send
 
 instance CanReceive Dealer where
   receive_ = receive
@@ -49,14 +46,9 @@ instance CanReceive Dealer where
 instance CanReceives Dealer where
   receives_ = receives
 
-instance CanSend Dealer where
-  send_ = send
-
-instance Socket Dealer where
-  openSocket = open
-  getSocket = coerce ThreadSafeSocket.raw
-  withSocket (Dealer socket) = ThreadSafeSocket.with socket
-  socketName = coerce ThreadSafeSocket.name
+instance CanPoll Dealer where
+  toPollable Socket {zsocket} =
+    PollableNonREQ zsocket
 
 defaultOptions :: Options Dealer
 defaultOptions =
@@ -70,7 +62,7 @@ sendQueueSize =
 open :: Options Dealer -> IO (Either Error Dealer)
 open options =
   catchingOkErrors do
-    coerce (ThreadSafeSocket.open ZMQ_DEALER options)
+    Socket.openSocket ZMQ_DEALER options Socket.DealerExtra
 
 -- | Bind a __dealer__ to an __endpoint__.
 --
@@ -106,26 +98,26 @@ disconnect =
 --
 -- /Alias/: 'Zmq.send'
 send :: Dealer -> ByteString -> IO (Either Error ())
-send socket frame =
+send socket@Socket {zsocket} frame =
   catchingOkErrors loop
   where
     loop = do
       sent <- Socket.sendOneDontWait socket frame False
       when (not sent) do
-        Socket.blockUntilCanSend socket
+        Socket.blockUntilCanSend zsocket
         loop
 
 -- | Send a __multiframe message__ on a __dealer__ to one peer (round-robin).
 --
 -- This operation blocks until a peer can receive the message.
 sends :: Dealer -> [ByteString] -> IO (Either Error ())
-sends socket = \case
+sends socket@Socket {zsocket} = \case
   [] -> pure (Right ())
   frame : frames -> do
     let loop = do
           sent <- Socket.sendManyDontWait socket (frame :| frames)
           when (not sent) do
-            Socket.blockUntilCanSend socket
+            Socket.blockUntilCanSend zsocket
             loop
     catchingOkErrors loop
 

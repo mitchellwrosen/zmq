@@ -2,12 +2,12 @@
 
 module Zmq.Internal.Socket
   ( Socket (..),
-    keepingSocketAlive,
+    Extra (..),
+    CanSend (..),
     CanReceive (..),
     CanReceives (..),
-    CanSend (..),
-    ThingAndCanary (..),
-    openWith,
+    openSocket,
+    usingSocket,
     bind,
     unbind,
     connect,
@@ -22,6 +22,9 @@ module Zmq.Internal.Socket
     receiveMany,
     blockUntilCanSend,
     blockUntilCanReceive,
+
+    -- ** Low-level
+    zhs_keepalive,
   )
 where
 
@@ -32,6 +35,7 @@ import Control.Monad (when)
 import Data.Bits ((.&.))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as ByteString
+import Data.Coerce (coerce)
 import Data.Foldable (for_)
 import Data.Functor ((<&>))
 import Data.IORef
@@ -46,9 +50,12 @@ import Data.Text.Lazy qualified as Text.Lazy
 import Data.Text.Lazy.Builder qualified as Text (Builder)
 import Data.Text.Lazy.Builder qualified as Text.Builder
 import Data.Word (Word8)
+import Foreign (Ptr)
 import Foreign.C.Types (CInt, CShort)
-import GHC.Exts (TYPE, UnliftedRep, keepAlive#)
+import GHC.Base (Symbol)
+import GHC.Exts (keepAlive#)
 import GHC.IO (IO (..), unIO)
+import GHC.MVar (MVar (..))
 import Libzmq
 import Libzmq.Bindings qualified
 import Numeric (showHex)
@@ -57,108 +64,156 @@ import System.IO.Unsafe (unsafePerformIO)
 import System.Posix.Types (Fd (..))
 import Zmq.Error (Error, catchingOkErrors, enrichError, throwOkError, unexpectedError)
 import Zmq.Internal.Context (globalContextRef, globalSocketFinalizersRef)
-import {-# SOURCE #-} Zmq.Internal.Options (Options)
+import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.SocketFinalizer (makeSocketFinalizer)
-import Foreign (Ptr)
-import Data.Coerce (coerce)
+import Zmq.Internal.X (X)
 
-class Socket socket where
-  openSocket :: Options socket -> IO (Either Error socket)
-  openSocket = undefined -- hide "minimal complete definition" haddock
+type role Socket nominal
 
-  getSocket :: socket -> Zmq_socket
-  getSocket = undefined -- hide "minimal complete definition" haddock
+data Socket (a :: Symbol) = Socket
+  { zsocket :: !Zmq_socket,
+    lock :: !(MVar ()),
+    name :: !Text,
+    extra :: !(Extra a)
+  }
 
-  withSocket :: socket -> IO a -> IO a
-  withSocket = undefined -- hide "minimal complete definition" haddock
+instance Eq (Socket a) where
+  Socket x _ _ _ == Socket y _ _ _ = x == y
+  Socket x _ _ _ /= Socket y _ _ _ = x /= y
 
-  socketName :: socket -> Text
-  socketName = undefined -- hide "minimal complete definition" haddock
+instance Ord (Socket a) where
+  compare (Socket x _ _ _) (Socket y _ _ _) = compare x y
+  Socket x _ _ _ < Socket y _ _ _ = x < y
+  Socket x _ _ _ <= Socket y _ _ _ = x <= y
+  Socket x _ _ _ > Socket y _ _ _ = x > y
+  Socket x _ _ _ >= Socket y _ _ _ = x >= y
 
-keepingSocketAlive :: Zmq_socket -> IO a -> IO a
-keepingSocketAlive socket action =
-  IO \s -> keepAlive# socket s (unIO action)
+instance X (Socket "DEALER")
 
-class Socket socket => CanReceive socket where
-  receive_ :: socket -> IO (Either Error ByteString)
-  receive_ = undefined -- hide "minimal complete definition" haddock
+instance X (Socket "PAIR")
 
-class Socket socket => CanReceives socket where
-  receives_ :: socket -> IO (Either Error [ByteString])
-  receives_ = undefined -- hide "minimal complete definition" haddock
+instance X (Socket "PUB")
 
-class Socket socket => CanSend socket where
-  send_ :: socket -> ByteString -> IO (Either Error ())
+instance X (Socket "PULL")
+
+instance X (Socket "PUSH")
+
+instance X (Socket "REP")
+
+instance X (Socket "REQ")
+
+instance X (Socket "ROUTER")
+
+instance X (Socket "SUB")
+
+instance X (Socket "XPUB")
+
+instance X (Socket "XSUB")
+
+data Extra (a :: Symbol) where
+  DealerExtra :: Extra "DEALER"
+  PairExtra :: Extra "PAIR"
+  PubExtra :: Extra "PUB"
+  PullExtra :: Extra "PULL"
+  PushExtra :: Extra "PUSH"
+  RepExtra :: Extra "REP"
+  -- The last message we received, if any. See Note [Req message buffer] for details.
+  ReqExtra :: !(IORef (Maybe (List.NonEmpty ByteString))) -> Extra "REQ"
+  RouterExtra :: Extra "ROUTER"
+  SubExtra :: Extra "SUB"
+  XPubExtra :: Extra "XPUB"
+  XSubExtra :: Extra "XSUB"
+
+class X a => CanSend a where
+  send_ :: a -> ByteString -> IO (Either Error ())
   send_ = undefined -- hide "minimal complete definition" haddock
 
-data ThingAndCanary a
-  = forall (canary# :: TYPE UnliftedRep).
-    ThingAndCanary !a canary#
+class X a => CanReceive a where
+  receive_ :: a -> IO (Either Error ByteString)
+  receive_ = undefined -- hide "minimal complete definition" haddock
+
+class X a => CanReceives a where
+  receives_ :: a -> IO (Either Error [ByteString])
+  receives_ = undefined -- hide "minimal complete definition" haddock
 
 -- Throws ok errors
-openWith :: (Zmq_socket -> IO (ThingAndCanary a)) -> Zmq_socket_type -> IO a
-openWith wrap socketType = do
+openSocket :: Zmq_socket_type -> Options.Options (Socket a) -> Extra a -> IO (Socket a)
+openSocket socketType options extra = do
   context <- readIORef globalContextRef
-  mask_ do
-    socket <- zhs_socket context socketType
-    ThingAndCanary thing canary <- wrap socket
-    finalizer <- makeSocketFinalizer (zmq_close socket) canary
-    atomicModifyIORef' globalSocketFinalizersRef \finalizers -> (finalizer : finalizers, ())
-    pure thing
+  lock@(MVar canary#) <- newMVar ()
+  zsocket <-
+    mask_ do
+      zsocket <- zhs_socket context socketType
+      finalizer <- makeSocketFinalizer (zmq_close zsocket) canary#
+      atomicModifyIORef' globalSocketFinalizersRef \finalizers -> (finalizer : finalizers, ())
+      pure zsocket
+  Options.setSocketOptions zsocket options
+  pure
+    Socket
+      { zsocket,
+        lock,
+        name = Options.optionsName options,
+        extra
+      }
+
+usingSocket :: Socket a -> IO b -> IO b
+usingSocket Socket {lock, zsocket} action =
+  withMVar lock \_ ->
+    IO \s -> keepAlive# zsocket s (unIO action)
 
 -- | Bind a __socket__ to an __endpoint__.
-bind :: Socket socket => socket -> Text -> IO (Either Error ())
+bind :: Socket a -> Text -> IO (Either Error ())
 bind socket endpoint =
   catchingOkErrors do
-    withSocket socket do
-      zhs_bind (getSocket socket) endpoint
+    usingSocket socket do
+      zhs_bind (zsocket socket) endpoint
 
 -- | Unbind a __socket__ from an __endpoint__.
-unbind :: Socket socket => socket -> Text -> IO ()
+unbind :: Socket a -> Text -> IO ()
 unbind socket endpoint =
-  withSocket socket do
-    zhs_unbind (getSocket socket) endpoint
+  usingSocket socket do
+    zhs_unbind (zsocket socket) endpoint
 
 -- | Connect a __socket__ to an __endpoint__.
-connect :: Socket socket => socket -> Text -> IO (Either Error ())
+connect :: Socket a -> Text -> IO (Either Error ())
 connect socket endpoint =
   catchingOkErrors do
     connect_ socket endpoint
 
 -- Throws ok errors
-connect_ :: Socket socket => socket -> Text -> IO ()
+connect_ :: Socket a -> Text -> IO ()
 connect_ socket endpoint =
-  withSocket socket do
-    zhs_connect (getSocket socket) endpoint
+  usingSocket socket do
+    zhs_connect (zsocket socket) endpoint
 
 -- | Disconnect a __socket__ from an __endpoint__.
-disconnect :: Socket socket => socket -> Text -> IO ()
+disconnect :: Socket a -> Text -> IO ()
 disconnect socket endpoint =
-  withSocket socket do
-    zhs_disconnect (getSocket socket) endpoint
+  usingSocket socket do
+    zhs_disconnect (zsocket socket) endpoint
 
 -- Send a single frame with ZMQ_DONTWAIT; on EAGAIN, returns False
 -- Throws ok errors
-sendOneDontWait :: Socket socket => socket -> ByteString -> Bool -> IO Bool
+sendOneDontWait :: Socket a -> ByteString -> Bool -> IO Bool
 sendOneDontWait socket frame more = do
   when debug (debugPrintFrames socket Outgoing (frame :| []))
-  withSocket socket do
-    zhs_send_frame_dontwait (getSocket socket) frame more
+  usingSocket socket do
+    zhs_send_frame_dontwait (zsocket socket) frame more
 
 -- Like sendOneDontWait, but for when we know EAGAIN is impossble (so we dont set ZMQ_DONTWAIT)
 -- Throws ok errors
-sendOneWontBlock :: Socket socket => socket -> ByteString -> Bool -> IO ()
+sendOneWontBlock :: Socket a -> ByteString -> Bool -> IO ()
 sendOneWontBlock socket frame more = do
   when debug (debugPrintFrames socket Outgoing (frame :| []))
-  withSocket socket do
-    zhs_send_frame_wontblock (getSocket socket) frame more
+  usingSocket socket do
+    zhs_send_frame_wontblock (zsocket socket) frame more
 
 -- Throws ok errors
-sendMany :: Socket socket => socket -> List.NonEmpty ByteString -> IO ()
+sendMany :: Socket a -> List.NonEmpty ByteString -> IO ()
 sendMany socket frames = do
   when debug (debugPrintFrames socket Outgoing frames)
-  withSocket socket do
-    zsendMany (getSocket socket) frames
+  usingSocket socket do
+    zsendMany (zsocket socket) frames
 
 -- Throws ok errors
 zsendMany :: Zmq_socket -> List.NonEmpty ByteString -> IO ()
@@ -170,11 +225,11 @@ zsendMany socket = \case
       zsendManyWontBlock0 socket frames
 
 -- Throws ok errors
-sendManyDontWait :: Socket socket => socket -> List.NonEmpty ByteString -> IO Bool
+sendManyDontWait :: Socket a -> List.NonEmpty ByteString -> IO Bool
 sendManyDontWait socket frames = do
   when debug (debugPrintFrames socket Outgoing frames)
-  withSocket socket do
-    zsendManyDontWait (getSocket socket) frames
+  usingSocket socket do
+    zsendManyDontWait (zsocket socket) frames
 
 -- Throws ok errors
 zsendManyDontWait :: Zmq_socket -> List.NonEmpty ByteString -> IO Bool
@@ -189,11 +244,11 @@ zsendManyDontWait socket = \case
           pure True
 
 -- Throws ok errors
-sendManyWontBlock :: Socket socket => socket -> List.NonEmpty ByteString -> IO ()
+sendManyWontBlock :: Socket a -> List.NonEmpty ByteString -> IO ()
 sendManyWontBlock socket frames = do
   when debug (debugPrintFrames socket Outgoing frames)
-  withSocket socket do
-    zsendManyWontBlock1 (getSocket socket) frames
+  usingSocket socket do
+    zsendManyWontBlock1 (zsocket socket) frames
 
 zsendManyWontBlock1 :: Zmq_socket -> List.NonEmpty ByteString -> IO ()
 zsendManyWontBlock1 socket = \case
@@ -216,24 +271,24 @@ zsendManyWontBlock0 socket =
 
 -- Receive one frame
 -- Throws ok errors
-receiveOne :: Socket socket => socket -> IO ByteString
-receiveOne socket =
+receiveOne :: Socket a -> IO ByteString
+receiveOne socket@Socket {zsocket} =
   loop
   where
     loop =
       receiveOneDontWait socket >>= \case
         Nothing -> do
-          blockUntilCanReceive socket
+          blockUntilCanReceive zsocket
           loop
         Just frame -> pure frame
 
 -- Receive one frame, or Nothing on EAGAIN
 -- Throws ok errors
-receiveOneDontWait :: Socket socket => socket -> IO (Maybe ByteString)
-receiveOneDontWait socket =
+receiveOneDontWait :: Socket a -> IO (Maybe ByteString)
+receiveOneDontWait socket@Socket {zsocket} =
   if not debug
     then do
-      withSocket socket do
+      usingSocket socket do
         mask_ do
           zhs_recv_frame_dontwait zsocket >>= \case
             Again -> pure Nothing
@@ -246,27 +301,25 @@ receiveOneDontWait socket =
       receiveManyDontWait socket <&> \case
         Nothing -> Nothing
         Just (frame :| _) -> Just frame
-  where
-    zsocket = getSocket socket
 
 -- Receive all frames of a message
 -- Throws ok errors
-receiveMany :: Socket socket => socket -> IO (List.NonEmpty ByteString)
-receiveMany socket = do
+receiveMany :: Socket a -> IO (List.NonEmpty ByteString)
+receiveMany socket@Socket {zsocket} =
   loop
   where
     loop =
       receiveManyDontWait socket >>= \case
         Nothing -> do
-          blockUntilCanReceive socket
+          blockUntilCanReceive zsocket
           loop
         Just frames -> pure frames
 
 -- Receive all frames of a message, or Nothing on EAGAIN
 -- Throws ok errors
-receiveManyDontWait :: Socket socket => socket -> IO (Maybe (List.NonEmpty ByteString))
-receiveManyDontWait socket =
-  withSocket socket do
+receiveManyDontWait :: Socket a -> IO (Maybe (List.NonEmpty ByteString))
+receiveManyDontWait socket@Socket {zsocket} =
+  usingSocket socket do
     maybeFrames <-
       mask_ do
         zhs_recv_frame_dontwait zsocket >>= \case
@@ -277,8 +330,6 @@ receiveManyDontWait socket =
           NoMore frame -> pure (Just (frame :| []))
     when debug (for_ maybeFrames (debugPrintFrames socket Incoming))
     pure maybeFrames
-  where
-    zsocket = getSocket socket
 
 -- Receive all frames of a message
 -- Throws ok errors
@@ -298,14 +349,14 @@ receiveRest_ socket =
     True -> receiveRest_ socket
 
 -- Throws ok errors
-blockUntilCanSend :: Socket socket => socket -> IO ()
+blockUntilCanSend :: Zmq_socket -> IO ()
 blockUntilCanSend socket =
-  blockUntilEvent (getSocket socket) Libzmq.Bindings._ZMQ_POLLOUT
+  blockUntilEvent socket Libzmq.Bindings._ZMQ_POLLOUT
 
 -- Throws ok errors
-blockUntilCanReceive :: Socket socket => socket -> IO ()
+blockUntilCanReceive :: Zmq_socket -> IO ()
 blockUntilCanReceive socket =
-  blockUntilEvent (getSocket socket) Libzmq.Bindings._ZMQ_POLLIN
+  blockUntilEvent socket Libzmq.Bindings._ZMQ_POLLIN
 
 -- Throws ok errors
 blockUntilEvent :: Zmq_socket -> CShort -> IO ()
@@ -336,6 +387,10 @@ zhs_socket context socketType = do
             ETERM -> throwOkError err
             _ -> unexpectedError err
     Right socket -> pure socket
+
+zhs_keepalive :: Zmq_socket -> IO a -> IO a
+zhs_keepalive zsocket (IO action) =
+  IO \s -> keepAlive# zsocket s action
 
 zhs_getsockopt_int :: Zmq_socket -> CInt -> IO Int
 zhs_getsockopt_int socket option =
@@ -542,24 +597,22 @@ data Direction
   = Outgoing
   | Incoming
 
-debugPrintFrames :: Socket socket => socket -> Direction -> List.NonEmpty ByteString -> IO ()
+debugPrintFrames :: Socket a -> Direction -> List.NonEmpty ByteString -> IO ()
 debugPrintFrames socket direction frames = do
   let !message =
         Text.encodeUtf8 $
           Text.Lazy.toStrict $
             Text.Builder.toLazyText $
               "== "
-                <> ( if Text.null name
-                       then "Socket " <> Text.Builder.fromString (show (coerce @Zmq_socket @(Ptr ()) (getSocket socket)))
-                       else Text.Builder.fromText name
+                <> ( if Text.null (name socket)
+                       then "Socket " <> Text.Builder.fromString (show (coerce @Zmq_socket @(Ptr ()) (zsocket socket)))
+                       else Text.Builder.fromText (name socket)
                    )
                 <> " ==\n"
                 <> foldMap (formatFrame direction) frames
                 <> "\n"
   withMVar debuglock \_ ->
     ByteString.hPut IO.stderr message
-  where
-    name = socketName socket
 
 formatFrame :: Direction -> ByteString -> Text.Builder
 formatFrame direction frame =

@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Zmq.Router
   ( Router,
     defaultOptions,
@@ -13,7 +15,6 @@ module Zmq.Router
 where
 
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
@@ -22,32 +23,23 @@ import Zmq.Error (Error, catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll (toPollable), Pollable (..))
-import Zmq.Internal.Socket (CanReceives, Socket (withSocket))
+import Zmq.Internal.Socket (CanReceives, Socket (..))
 import Zmq.Internal.Socket qualified as Socket
-import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
-import Zmq.Internal.ThreadSafeSocket qualified as ThreadSafeSocket
 
 -- | A thread-safe __router__ socket.
 --
 -- Valid peers: __dealer__, __requester__, __router__
-newtype Router
-  = Router (ThreadSafeSocket)
-  deriving stock (Eq)
-  deriving anyclass
-    ( Options.CanSetSendQueueSize
-    )
+type Router =
+  Socket "ROUTER"
 
-instance CanPoll Router where
-  toPollable = PollableNonREQ . Socket.getSocket
+instance Options.CanSetSendQueueSize Router
 
 instance CanReceives Router where
   receives_ = receives
 
-instance Socket Router where
-  openSocket = open
-  getSocket = coerce ThreadSafeSocket.raw
-  withSocket (Router socket) = ThreadSafeSocket.with socket
-  socketName = coerce ThreadSafeSocket.name
+instance CanPoll Router where
+  toPollable Socket {zsocket} =
+    PollableNonREQ zsocket
 
 defaultOptions :: Options Router
 defaultOptions =
@@ -61,7 +53,10 @@ sendQueueSize =
 open :: Options Router -> IO (Either Error Router)
 open options =
   catchingOkErrors do
-    coerce (ThreadSafeSocket.open ZMQ_ROUTER (Options.sockopt ZMQ_ROUTER_MANDATORY 1 <> options))
+    Socket.openSocket
+      ZMQ_ROUTER
+      (Options.sockopt ZMQ_ROUTER_MANDATORY 1 <> options)
+      Socket.RouterExtra
 
 -- | Bind a __router__ to an __endpoint__.
 --

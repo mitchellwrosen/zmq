@@ -8,7 +8,6 @@ module Zmq
 
     -- * Socket
     Socket.Socket,
-    open,
     monitor,
 
     -- ** Options
@@ -110,16 +109,12 @@ import Zmq.Subscription (pattern Subscribe, pattern Unsubscribe)
 import Zmq.XPub (XPub)
 import Zmq.XSub (XSub)
 
-open :: Socket.Socket socket => Options.Options socket -> IO (Either Error socket)
-open =
-  Socket.openSocket
-
-monitor :: Socket.Socket socket => socket -> IO (Either Error (IO (Either Error [ByteString])))
-monitor socket = do
+monitor :: Socket.Socket a -> IO (Either Error (IO (Either Error [ByteString])))
+monitor Socket.Socket {zsocket, name} = do
   endpointBytes <- Random.uniformShortByteString 16 Random.globalStdGen
   let endpoint = Text.Short.toText ("inproc://" <> Base64.encodeBase64Unpadded endpointBytes)
   catchingOkErrors do
-    zmq_socket_monitor (Socket.getSocket socket) endpoint ZMQ_EVENT_ALL >>= \case
+    zmq_socket_monitor zsocket endpoint ZMQ_EVENT_ALL >>= \case
       Left errno ->
         let err = enrichError "zmq_socket_monitor" errno
          in case errno of
@@ -131,8 +126,6 @@ monitor socket = do
         pair <- Pair.open_ (if Text.null name then Options.name (name <> "-monitor") else Options.defaultOptions)
         Pair.connect_ pair endpoint
         pure (Pair.receives pair)
-  where
-    name = Socket.socketName socket
 
 send :: Socket.CanSend socket => socket -> ByteString -> IO (Either Error ())
 send =

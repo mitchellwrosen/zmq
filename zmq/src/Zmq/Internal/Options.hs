@@ -52,10 +52,8 @@ instance Semigroup (Options socket) where
   SocketOptions x0 x1 <> SocketOptions y0 y1 = SocketOptions (x0 <> y0) (if Text.null y1 then x1 else y1)
   _ <> _ = DefaultOptions -- type system should prevent this
 
--- class X socket => CanSetLossy socket
 class CanSetLossy socket
 
--- class X socket => CanSetSendQueueSize socket
 class CanSetSendQueueSize socket
 
 -- | Default options.
@@ -130,7 +128,7 @@ setSocketOptions socket = \case
   _ -> pure ()
 
 -- | Become a CURVE client.
-curveClient :: Socket socket => CurveSecretKey -> CurvePublicKey -> Options socket
+curveClient :: CurveSecretKey -> CurvePublicKey -> Options (Socket a)
 curveClient clientSecretKey (CurvePublicKey serverPublicKey) =
   SocketOptions f Text.empty
   where
@@ -144,7 +142,7 @@ curveClient clientSecretKey (CurvePublicKey serverPublicKey) =
       setSocketOption socket ZMQ_CURVE_SECRETKEY (coerce @CurveSecretKey @ByteString clientSecretKey)
 
 -- | Become a CURVE server.
-curveServer :: Socket socket => CurveSecretKey -> Options socket
+curveServer :: CurveSecretKey -> Options (Socket a)
 curveServer (CurveSecretKey secretKey) =
   SocketOptions f Text.empty
   where
@@ -156,7 +154,7 @@ lossy :: CanSetLossy socket => Options socket
 lossy =
   sockopt ZMQ_XPUB_NODROP 0
 
-name :: Socket socket => Text -> Options socket
+name :: Text -> Options (Socket a)
 name =
   SocketOptions mempty
 

@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Zmq.Sub
   ( Sub,
     defaultOptions,
@@ -15,7 +17,6 @@ module Zmq.Sub
 where
 
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
@@ -24,23 +25,16 @@ import Zmq.Error
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll (toPollable), Pollable (PollableNonREQ))
-import Zmq.Internal.Socket (CanReceive, CanReceives, Socket (withSocket))
+import Zmq.Internal.Socket (CanReceive, CanReceives, Socket (..))
 import Zmq.Internal.Socket qualified as Socket
-import Zmq.Internal.ThreadSafeSocket (ThreadSafeSocket)
-import Zmq.Internal.ThreadSafeSocket qualified as ThreadSafeSocket
 
 -- | A thread-safe __subscriber__ socket.
 --
 -- Valid peers: __publisher__, __xpublisher__
-newtype Sub
-  = Sub (ThreadSafeSocket)
-  deriving stock (Eq)
-  deriving anyclass
-    ( Options.CanSetSendQueueSize
-    )
+type Sub =
+  Socket "SUB"
 
-instance CanPoll Sub where
-  toPollable = PollableNonREQ . Socket.getSocket
+instance Options.CanSetSendQueueSize Sub
 
 instance CanReceive Sub where
   receive_ = receive
@@ -48,11 +42,9 @@ instance CanReceive Sub where
 instance CanReceives Sub where
   receives_ = receives
 
-instance Socket Sub where
-  openSocket = open
-  getSocket = coerce ThreadSafeSocket.raw
-  withSocket (Sub socket) = ThreadSafeSocket.with socket
-  socketName = coerce ThreadSafeSocket.name
+instance CanPoll Sub where
+  toPollable Socket {zsocket} =
+    PollableNonREQ zsocket
 
 defaultOptions :: Options Sub
 defaultOptions =
@@ -66,12 +58,12 @@ sendQueueSize =
 open :: Options Sub -> IO (Either Error Sub)
 open options =
   catchingOkErrors do
-    coerce do
-      ThreadSafeSocket.open
-        ZMQ_SUB
-        ( Options.sockopt ZMQ_SNDHWM 0 -- don't drop subscriptions
-            <> options
-        )
+    Socket.openSocket
+      ZMQ_SUB
+      ( Options.sockopt ZMQ_SNDHWM 0 -- don't drop subscriptions
+          <> options
+      )
+      Socket.SubExtra
 
 -- | Bind a __subscriber__ to an __endpoint__.
 --
@@ -105,17 +97,17 @@ disconnect =
 --
 -- To subscribe to all topics, subscribe to the empty string.
 subscribe :: Sub -> ByteString -> IO (Either Error ())
-subscribe socket prefix =
+subscribe socket@Socket {zsocket} prefix =
   catchingOkErrors do
-    withSocket socket do
-      Options.setSocketOptions (Socket.getSocket socket) (Options.sockopt ZMQ_SUBSCRIBE prefix)
+    Socket.usingSocket socket do
+      Options.setSocketOptions zsocket (Options.sockopt ZMQ_SUBSCRIBE prefix)
 
 -- | Unsubscribe a __subscriber__ from a previously-subscribed __topic__.
 unsubscribe :: Sub -> ByteString -> IO (Either Error ())
-unsubscribe socket prefix =
+unsubscribe socket@Socket {zsocket} prefix =
   catchingOkErrors do
-    withSocket socket do
-      Options.setSocketOptions (Socket.getSocket socket) (Options.sockopt ZMQ_UNSUBSCRIBE prefix)
+    Socket.usingSocket socket do
+      Options.setSocketOptions zsocket (Options.sockopt ZMQ_UNSUBSCRIBE prefix)
 
 -- | Receive a __message__ on a __subscriber__ from any peer (fair-queued).
 --

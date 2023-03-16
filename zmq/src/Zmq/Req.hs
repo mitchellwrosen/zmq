@@ -27,8 +27,8 @@ import Zmq.Error (Error (..), catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll (toPollable), Pollable (..))
-import Zmq.Internal.Socket1 (CanReceive, CanReceives, CanSend, Socket (..))
-import Zmq.Internal.Socket1 qualified as Socket
+import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (..))
+import Zmq.Internal.Socket qualified as Socket
 
 -- | A __requester__ socket.
 --
