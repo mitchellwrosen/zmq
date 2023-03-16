@@ -4,4 +4,4 @@ packages:
   zmq,
   zmq-guide-examples
 
-with-compiler: ghc-9.2.4
+with-compiler: ghc-9.2.2
