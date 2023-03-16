@@ -38,9 +38,8 @@ type Req =
 
 instance Options.CanSetSendQueueSize Req
 
-instance CanPoll Req where
-  toPollable Socket {zsocket, extra = Socket.ReqExtra messageBuffer} =
-    PollableREQ zsocket messageBuffer
+instance CanSend Req where
+  send_ = send
 
 instance CanReceive Req where
   receive_ = receive
@@ -48,8 +47,9 @@ instance CanReceive Req where
 instance CanReceives Req where
   receives_ = receives
 
-instance CanSend Req where
-  send_ = send
+instance CanPoll Req where
+  toPollable Socket {zsocket, extra = Socket.ReqExtra messageBuffer} =
+    PollableREQ zsocket messageBuffer
 
 defaultOptions :: Options Req
 defaultOptions =

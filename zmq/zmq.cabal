@@ -71,6 +71,6 @@ library
     Zmq.Internal.Socket1
     Zmq.Internal.SocketFinalizer
     Zmq.Internal.ThreadSafeSocket
-    Zmq.Internal.ThreadUnsafeSocket
+    Zmq.Internal.X
     Zmq.Error
     Zmq.Subscription

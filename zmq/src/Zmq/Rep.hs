@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Zmq.Rep
   ( Rep,
     defaultOptions,
@@ -15,7 +17,6 @@ module Zmq.Rep
 where
 
 import Data.ByteString (ByteString)
-import Data.Coerce (coerce)
 import Data.List.NonEmpty (pattern (:|))
 import Data.Text (Text)
 import Libzmq
@@ -24,23 +25,19 @@ import Zmq.Error (Error, catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.Poll (CanPoll (toPollable), Pollable (..))
-import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (withSocket))
-import Zmq.Internal.Socket qualified as Socket
-import Zmq.Internal.ThreadUnsafeSocket (ThreadUnsafeSocket)
-import Zmq.Internal.ThreadUnsafeSocket qualified as ThreadUnsafeSocket
+import Zmq.Internal.Socket1 (CanReceive, CanReceives, CanSend, Socket (..))
+import Zmq.Internal.Socket1 qualified as Socket
 
 -- | A __replier__ socket.
 --
 -- Valid peers: __dealer__, __requester__
-newtype Rep
-  = Rep ThreadUnsafeSocket
-  deriving stock (Eq)
-  deriving anyclass
-    ( Options.CanSetSendQueueSize
-    )
+type Rep =
+  Socket "REP"
 
-instance CanPoll Rep where
-  toPollable = PollableNonREQ . Socket.getSocket
+instance Options.CanSetSendQueueSize Rep
+
+instance CanSend Rep where
+  send_ = send
 
 instance CanReceive Rep where
   receive_ = receive
@@ -48,14 +45,9 @@ instance CanReceive Rep where
 instance CanReceives Rep where
   receives_ = receives
 
-instance CanSend Rep where
-  send_ = send
-
-instance Socket Rep where
-  openSocket = open
-  getSocket = coerce ThreadUnsafeSocket.raw
-  withSocket (Rep socket) = ThreadUnsafeSocket.with socket
-  socketName = coerce ThreadUnsafeSocket.name
+instance CanPoll Rep where
+  toPollable Socket {zsocket} =
+    PollableNonREQ zsocket
 
 defaultOptions :: Options Rep
 defaultOptions =
@@ -69,7 +61,7 @@ sendQueueSize =
 open :: Options Rep -> IO (Either Error Rep)
 open options =
   catchingOkErrors do
-    coerce (ThreadUnsafeSocket.open ZMQ_REP options)
+    Socket.openSocket ZMQ_REP options Socket.RepExtra
 
 -- | Bind a __replier__ to an __endpoint__.
 --

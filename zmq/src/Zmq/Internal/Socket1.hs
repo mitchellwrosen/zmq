@@ -72,6 +72,17 @@ data Socket (a :: Symbol) = Socket
     extra :: !(Extra a)
   }
 
+instance Eq (Socket a) where
+  Socket x _ _ _ == Socket y _ _ _ = x == y
+  Socket x _ _ _ /= Socket y _ _ _ = x /= y
+
+instance Ord (Socket a) where
+  compare (Socket x _ _ _) (Socket y _ _ _) = compare x y
+  Socket x _ _ _ < Socket y _ _ _ = x < y
+  Socket x _ _ _ <= Socket y _ _ _ = x <= y
+  Socket x _ _ _ > Socket y _ _ _ = x > y
+  Socket x _ _ _ >= Socket y _ _ _ = x >= y
+
 instance X (Socket "DEALER")
 
 instance X (Socket "PAIR")
@@ -95,8 +106,18 @@ instance X (Socket "XPUB")
 instance X (Socket "XSUB")
 
 data Extra (a :: Symbol) where
+  DealerExtra :: Extra "DEALER"
+  PairExtra :: Extra "PAIR"
+  PubExtra :: Extra "PUB"
+  PullExtra :: Extra "PULL"
+  PushExtra :: Extra "PUSH"
+  RepExtra :: Extra "REP"
   -- The last message we received, if any. See Note [Req message buffer] for details.
   ReqExtra :: !(IORef (Maybe (List.NonEmpty ByteString))) -> Extra "REQ"
+  RouterExtra :: Extra "ROUTER"
+  SubExtra :: Extra "SUB"
+  XPubExtra :: Extra "XPUB"
+  XSubExtra :: Extra "XSUB"
 
 class X a => CanSend a where
   send_ :: a -> ByteString -> IO (Either Error ())
