@@ -20,6 +20,8 @@ import Data.Int (Int64)
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet
 import Data.List.NonEmpty qualified as List (NonEmpty)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Word (Word64)
 import GHC.Clock (getMonotonicTimeNSec)
 import Libzmq
@@ -73,30 +75,32 @@ data PreparedSockets = PreparedSockets
     -- buffer.
     pollitems :: StorableArray Int Zmq_pollitem,
     -- The indices of `pollitems` that correspond to REQ sockets
-    reqPollitems :: IntSet
+    reqPollitems :: IntSet,
+    -- The indices of the original sockets that correspond to REQ sockets with a message in the buffer
+    -- Why not IntSet: we want O(1) size
+    fullReqSockets :: Set Int
   }
 
 prepareSockets :: Sockets -> IO PreparedSockets
 prepareSockets (Sockets pollables0 len) = do
-  loop (len - 1) [] IntSet.empty pollables0
+  loop (len - 1) [] IntSet.empty Set.empty pollables0
   where
-    loop :: Int -> [Zmq_pollitem] -> IntSet -> [Pollable] -> IO PreparedSockets
-    loop !i pollitemsList !reqPollitems = \case
+    loop :: Int -> [Zmq_pollitem] -> IntSet -> Set Int -> [Pollable] -> IO PreparedSockets
+    loop !i pollitemsList !reqPollitems !fullReqSockets = \case
       [] -> do
         pollitems <- MArray.newListArray (0, len) pollitemsList
-        pure PreparedSockets {pollitems, reqPollitems}
+        pure PreparedSockets {pollitems, reqPollitems, fullReqSockets}
       PollableNonREQ socket : pollables -> do
         let pollitem = Zmq_pollitem_socket socket ZMQ_POLLIN
-        loop (i - 1) (pollitem : pollitemsList) reqPollitems pollables
+        loop (i - 1) (pollitem : pollitemsList) reqPollitems fullReqSockets pollables
       PollableREQ socket messageBuffer : pollables ->
         readIORef messageBuffer >>= \case
           Nothing -> do
             let pollitem = Zmq_pollitem_socket socket ZMQ_POLLIN
-            loop (i - 1) (pollitem : pollitemsList) (IntSet.insert i reqPollitems) pollables
-          -- FIXME don't want to add to pollitems here
-          Just _message -> do
-            let pollitem = Zmq_pollitem_socket socket ZMQ_POLLIN
-            loop (i - 1) (pollitem : pollitemsList) reqPollitems pollables
+            -- FIXME `i` isn't right because we don't poll full REQ sockets
+            loop (i - 1) (pollitem : pollitemsList) (IntSet.insert i reqPollitems) fullReqSockets pollables
+          Just _message ->
+            loop (i - 1) pollitemsList reqPollitems (Set.insert i fullReqSockets) pollables
 
 -- Get indices that have fired
 socketsArrayIndices :: StorableArray Int Zmq_pollitem -> IO IntSet
@@ -115,9 +119,11 @@ socketsArrayIndices array = do
 -- TODO make Sockets wrap the StorableArray so we don't allocate it anew each time
 poll :: Sockets -> IO (Either Error (Int -> Bool))
 poll sockets = do
-  PreparedSockets {pollitems, reqPollitems} <- prepareSockets sockets
+  PreparedSockets {pollitems, reqPollitems, fullReqSockets} <- prepareSockets sockets
   keepingSocketsAlive sockets do
-    zpoll pollitems (-1) >>= \case
+    -- Poll indefinitely, unless we already have at least one full REQ socket, in which case we do a non-blocking poll
+    let timeout = if Set.null fullReqSockets then (-1) else 0
+    zpoll pollitems timeout >>= \case
       Left err -> pure (Left err)
       Right _n -> do
         indices <- socketsArrayIndices pollitems
@@ -130,7 +136,7 @@ pollFor sockets timeout =
 
 pollFor_ :: Sockets -> Int64 -> IO (Either Error (Maybe (Int -> Bool)))
 pollFor_ sockets timeout = do
-  PreparedSockets {pollitems, reqPollitems} <- prepareSockets sockets
+  PreparedSockets {pollitems, reqPollitems, fullReqSockets} <- prepareSockets sockets
   keepingSocketsAlive sockets do
     zpoll pollitems timeout >>= \case
       Left err -> pure (Left err)
