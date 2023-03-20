@@ -13,11 +13,12 @@ module Zmq.Internal.Poll
 where
 
 import Control.Exception
-import Data.Array (Array)
 import Data.Array.Base qualified as Array
 import Data.Array.MArray qualified as MArray
 import Data.Array.Storable (StorableArray)
 import Data.Int (Int64)
+import Data.Primitive.Array qualified as Primitive (Array)
+import Data.Primitive.Array qualified as Primitive.Array
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Word (Word64)
@@ -68,21 +69,24 @@ also socket (Sockets pollables len) =
   Sockets (SomeSocket socket : pollables) (len + 1)
 
 -- Keep sockets alive for duration of IO action
-keepingSocketsAlive :: Array Int SomeSocket -> IO a -> IO a
-keepingSocketsAlive sockets action = do
-  let (lo, hi) = Array.bounds sockets
-  let go !i =
-        if i > hi
-          then action
-          else case sockets Array.! i of
-            SomeSocket Socket {zsocket} ->
-              Socket.zhs_keepalive zsocket (go (i + 1))
-  go lo
+keepingSocketsAlive :: Primitive.Array SomeSocket -> IO a -> IO a
+keepingSocketsAlive sockets action =
+  go 0
+  where
+    go !i =
+      if i >= numSockets
+        then action
+        else case Primitive.Array.indexArray sockets i of
+          SomeSocket Socket {zsocket} ->
+            Socket.zhs_keepalive zsocket (go (i + 1))
+
+    numSockets =
+      Primitive.Array.sizeofArray sockets
 
 data PreparedSockets = PreparedSockets
   { -- The subset of the input sockets that actually need to be polled. Each is either a non-REQ socket, or a REQ socket
     -- with an empty message buffer.
-    socketsToPoll :: Array Int SomeSocket,
+    socketsToPoll :: Primitive.Array SomeSocket,
     -- The same sockets as `socketsToPoll`, to pass to libzmq
     socketsToPoll2 :: StorableArray Int Zmq_pollitem
   }
@@ -93,7 +97,7 @@ prepareSockets (Sockets sockets0 len) = do
   socketsToPoll2 <- MArray.newListArray (0, len - 1) (map someSocketToPollitem sockets1)
   pure
     PreparedSockets
-      { socketsToPoll = Array.listArray (0, len - 1) sockets1,
+      { socketsToPoll = Primitive.Array.arrayFromListN len sockets1,
         socketsToPoll2
       }
 
@@ -112,7 +116,7 @@ socketsArrayPs PreparedSockets {socketsToPoll, socketsToPoll2} = do
             pollitem <- Array.unsafeRead socketsToPoll2 i
             if Libzmq.Bindings.revents pollitem == 0
               then loop acc (i + 1)
-              else loop (Set.insert (socketsToPoll Array.! i) acc) (i + 1)
+              else loop (Set.insert (Primitive.Array.indexArray socketsToPoll i) acc) (i + 1)
   loop Set.empty lo
 
 -- TODO make Sockets wrap the StorableArray so we don't allocate it anew each time

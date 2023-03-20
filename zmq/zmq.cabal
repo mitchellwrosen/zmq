@@ -38,6 +38,7 @@ common component
 library
   import: component
   build-depends:
+    -- FIXME want to get rid of array, primitive es mejor
     array ^>= 0.5.3,
     base ^>= 4.16 || ^>= 4.17 || ^>= 4.18,
     base64 ^>= 0.4,
@@ -45,6 +46,7 @@ library
     containers ^>= 0.6,
     libzmq,
     libzmq-bindings,
+    primitive ^>= 0.8,
     random ^>= 1.2,
     text ^>= 2.0,
     text-short ^>= 0.1.5,
