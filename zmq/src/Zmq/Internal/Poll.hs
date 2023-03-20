@@ -114,9 +114,9 @@ readySockets PreparedSockets {socketsToPoll, socketsToPoll2} = do
 poll :: Sockets -> IO (Either Error Ready)
 poll sockets = do
   preparedSockets <- prepareSockets sockets
-  keepAlive (socketsToPoll preparedSockets) do
+  keepAlive sockets do
     -- Poll indefinitely, unless we already have at least one full REQ socket, in which case we do a non-blocking poll
-    let timeout = if False then (-1) else (0 :: Int64)
+    let timeout = if True then (-1) else (0 :: Int64)
     zhs_poll (socketsToPoll2 preparedSockets) timeout >>= \case
       Left err -> pure (Left err)
       Right _n -> Right <$> readySockets preparedSockets
@@ -129,7 +129,7 @@ pollFor sockets timeout =
 pollFor_ :: Sockets -> Int64 -> IO (Either Error (Maybe Ready))
 pollFor_ sockets timeout = do
   preparedSockets <- prepareSockets sockets
-  keepAlive (socketsToPoll preparedSockets) do
+  keepAlive sockets do
     zhs_poll (socketsToPoll2 preparedSockets) timeout >>= \case
       Left err -> pure (Left err)
       Right n ->
