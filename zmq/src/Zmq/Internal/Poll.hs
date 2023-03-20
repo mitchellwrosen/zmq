@@ -16,6 +16,7 @@ import Control.Exception
 import Data.Array.Base qualified as Array
 import Data.Array.MArray qualified as MArray
 import Data.Array.Storable (StorableArray)
+import Data.IORef (readIORef)
 import Data.Int (Int64)
 import Data.Primitive.Array qualified as Primitive (Array)
 import Data.Primitive.Array qualified as Primitive.Array
@@ -28,6 +29,7 @@ import Libzmq.Bindings qualified
 import Zmq.Error (Error, enrichError, unexpectedError)
 import Zmq.Internal.IO (keepAlive)
 import Zmq.Internal.Socket (Socket (..))
+import Zmq.Internal.Socket qualified as Socket
 import Zmq.Internal.SomeSocket (SomeSocket (..))
 
 class CanPoll a
@@ -76,18 +78,32 @@ data PreparedSockets = PreparedSockets
     -- with an empty message buffer.
     socketsToPoll :: Primitive.Array SomeSocket,
     -- The same sockets as `socketsToPoll`, to pass to libzmq
-    socketsToPoll2 :: StorableArray Int Zmq_pollitem
+    socketsToPoll2 :: StorableArray Int Zmq_pollitem,
+    -- The subset of input sockets that don't need to be polled, because they are REQs with a full message buffer.
+    readyREQs :: Set SomeSocket
   }
 
 prepareSockets :: Sockets -> IO PreparedSockets
 prepareSockets (Sockets sockets0 len) = do
-  let sockets1 = reverse sockets0
+  (readyREQs, sockets1) <- partitionSockets Set.empty [] sockets0
   socketsToPoll2 <- MArray.newListArray (0, len - 1) (map someSocketToPollitem sockets1)
   pure
     PreparedSockets
       { socketsToPoll = Primitive.Array.arrayFromListN len sockets1,
-        socketsToPoll2
+        socketsToPoll2,
+        readyREQs
       }
+  where
+    partitionSockets :: Set SomeSocket -> [SomeSocket] -> [SomeSocket] -> IO (Set SomeSocket, [SomeSocket])
+    partitionSockets readyREQs notReadyREQs = \case
+      [] -> pure (readyREQs, notReadyREQs)
+      someSocket@(SomeSocket socket) : someSockets ->
+        case extra socket of
+          Socket.ReqExtra messageBuffer ->
+            readIORef messageBuffer >>= \case
+              Nothing -> partitionSockets readyREQs (someSocket : notReadyREQs) someSockets
+              Just _ -> partitionSockets (Set.insert someSocket readyREQs) notReadyREQs someSockets
+          _ -> partitionSockets readyREQs (someSocket : notReadyREQs) someSockets
 
 someSocketToPollitem :: SomeSocket -> Zmq_pollitem
 someSocketToPollitem (SomeSocket Socket {zsocket}) =
