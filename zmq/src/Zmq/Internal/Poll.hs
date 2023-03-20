@@ -3,6 +3,7 @@
 module Zmq.Internal.Poll
   ( CanPoll,
     Sockets,
+    Ready (..),
     the,
     also,
     poll,
@@ -12,12 +13,11 @@ module Zmq.Internal.Poll
 where
 
 import Control.Exception
+import Data.Array (Array)
 import Data.Array.Base qualified as Array
 import Data.Array.MArray qualified as MArray
 import Data.Array.Storable (StorableArray)
 import Data.Int (Int64)
-import Data.IntSet (IntSet)
-import Data.IntSet qualified as IntSet
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Word (Word64)
@@ -56,8 +56,22 @@ data Sockets
       -- length of pollables
       !Int
 
+data Ready
+  = Ready (forall a. Socket a -> Bool)
+
 data P
   = forall a. P (Socket a)
+
+instance Eq P where
+  P x == P y = zsocket x == zsocket y
+
+-- TODO other methods
+instance Ord P where
+  compare (P x) (P y) = compare (zsocket x) (zsocket y)
+
+ppollitem :: P -> Zmq_pollitem
+ppollitem (P Socket {zsocket}) =
+  Zmq_pollitem_socket zsocket ZMQ_POLLIN
 
 the :: CanPoll a => Socket a -> Sockets
 the socket =
@@ -68,81 +82,78 @@ also socket (Sockets pollables len) =
   Sockets (P socket : pollables) (len + 1)
 
 -- Keep sockets alive for duration of IO action
-keepingSocketsAlive :: Sockets -> IO a -> IO a
-keepingSocketsAlive (Sockets pollables0 _len) action =
-  go pollables0
-  where
-    go = \case
-      [] -> action
-      P Socket {zsocket} : pollables ->
-        Socket.zhs_keepalive zsocket (go pollables)
+keepingSocketsAlive :: Array Int P -> IO a -> IO a
+keepingSocketsAlive sockets action = do
+  let (lo, hi) = Array.bounds sockets
+  let go !i =
+        if i > hi
+          then action
+          else case sockets Array.! i of
+            P Socket {zsocket} ->
+              Socket.zhs_keepalive zsocket (go (i + 1))
+  go lo
 
 data PreparedSockets = PreparedSockets
-  { -- The items that actually need to be polled. Each is either a non-REQ socket, or a REQ socket with an empty message
-    -- buffer.
-    pollitems :: StorableArray Int Zmq_pollitem
+  { -- The subset of the input sockets that actually need to be polled. Each is either a non-REQ socket, or a REQ socket
+    -- with an empty message buffer.
+    socketsToPoll :: Array Int P,
+    -- The same sockets as `socketsToPoll`, to pass to libzmq
+    socketsToPoll2 :: StorableArray Int Zmq_pollitem
   }
 
 prepareSockets :: Sockets -> IO PreparedSockets
-prepareSockets (Sockets pollables0 len) = do
-  loop (len - 1) [] IntSet.empty Set.empty pollables0
-  where
-    loop :: Int -> [Zmq_pollitem] -> IntSet -> Set Int -> [P] -> IO PreparedSockets
-    loop !i pollitemsList !reqPollitems !fullReqSockets = \case
-      [] -> do
-        pollitems <- MArray.newListArray (0, len) pollitemsList
-        pure PreparedSockets {pollitems}
-      P Socket {zsocket} : pollables -> do
-        let pollitem = Zmq_pollitem_socket zsocket ZMQ_POLLIN
-        loop (i - 1) (pollitem : pollitemsList) reqPollitems fullReqSockets pollables
+prepareSockets (Sockets sockets0 len) = do
+  let sockets1 = reverse sockets0
+  socketsToPoll2 <- MArray.newListArray (0, len - 1) (map ppollitem sockets1)
+  pure
+    PreparedSockets
+      { socketsToPoll = Array.listArray (0, len - 1) sockets1,
+        socketsToPoll2
+      }
 
--- Get indices that have fired
-socketsArrayIndices :: StorableArray Int Zmq_pollitem -> IO IntSet
-socketsArrayIndices array = do
-  (lo, hi) <- MArray.getBounds array
-  let loop !acc !i =
+socketsArrayPs :: PreparedSockets -> IO Ready
+socketsArrayPs PreparedSockets {socketsToPoll, socketsToPoll2} = do
+  (lo, hi) <- MArray.getBounds socketsToPoll2
+  let loop :: Set P -> Int -> IO Ready
+      loop !acc !i =
         if i > hi
-          then pure acc
+          then pure (Ready \socket -> Set.member (P socket) acc)
           else do
-            pollitem <- Array.unsafeRead array i
+            pollitem <- Array.unsafeRead socketsToPoll2 i
             if Libzmq.Bindings.revents pollitem == 0
               then loop acc (i + 1)
-              else loop (IntSet.insert i acc) (i + 1)
-  loop IntSet.empty lo
+              else loop (Set.insert (socketsToPoll Array.! i) acc) (i + 1)
+  loop Set.empty lo
 
 -- TODO make Sockets wrap the StorableArray so we don't allocate it anew each time
-poll :: Sockets -> IO (Either Error (Int -> Bool))
+poll :: Sockets -> IO (Either Error Ready)
 poll sockets = do
-  PreparedSockets {pollitems} <- prepareSockets sockets
-  keepingSocketsAlive sockets do
+  preparedSockets <- prepareSockets sockets
+  keepingSocketsAlive (socketsToPoll preparedSockets) do
     -- Poll indefinitely, unless we already have at least one full REQ socket, in which case we do a non-blocking poll
     let timeout = if False then (-1) else (0 :: Int64)
-    zpoll pollitems timeout >>= \case
+    zhs_poll (socketsToPoll2 preparedSockets) timeout >>= \case
       Left err -> pure (Left err)
-      Right _n -> do
-        indices <- socketsArrayIndices pollitems
-        pure (Right (`IntSet.member` indices))
+      Right _n -> Right <$> socketsArrayPs preparedSockets
 
 -- | milliseconds
-pollFor :: Sockets -> Int -> IO (Either Error (Maybe (Int -> Bool)))
+pollFor :: Sockets -> Int -> IO (Either Error (Maybe Ready))
 pollFor sockets timeout =
   pollFor_ sockets (fromIntegral @Int @Int64 timeout)
 
-pollFor_ :: Sockets -> Int64 -> IO (Either Error (Maybe (Int -> Bool)))
+pollFor_ :: Sockets -> Int64 -> IO (Either Error (Maybe Ready))
 pollFor_ sockets timeout = do
-  PreparedSockets {pollitems} <- prepareSockets sockets
-  keepingSocketsAlive sockets do
-    zpoll pollitems timeout >>= \case
+  preparedSockets <- prepareSockets sockets
+  keepingSocketsAlive (socketsToPoll preparedSockets) do
+    zhs_poll (socketsToPoll2 preparedSockets) timeout >>= \case
       Left err -> pure (Left err)
       Right n ->
         if n == 0
           then pure (Right Nothing)
-          else do
-            indices <- socketsArrayIndices pollitems
-            pure (Right (Just (`IntSet.member` indices)))
+          else Right . Just <$> socketsArrayPs preparedSockets
 
 -- | monotonic time as reported by 'getMonotonicTimeNSec'
-pollUntil :: Sockets -> Word64 -> IO (Either Error (Maybe (Int -> Bool)))
+pollUntil :: Sockets -> Word64 -> IO (Either Error (Maybe Ready))
 pollUntil sockets deadline = do
   now <- getMonotonicTimeNSec
   let timeout =
@@ -152,8 +163,8 @@ pollUntil sockets deadline = do
             fromIntegral @Word64 @Int64 ((deadline - now) `div` 1_000_000)
   pollFor_ sockets timeout
 
-zpoll :: StorableArray Int Zmq_pollitem -> Int64 -> IO (Either Error Int)
-zpoll pollitems timeout = do
+zhs_poll :: StorableArray Int Zmq_pollitem -> Int64 -> IO (Either Error Int)
+zhs_poll pollitems timeout = do
   zmq_poll pollitems timeout >>= \case
     Left errno ->
       let err = enrichError "zmq_poll" errno

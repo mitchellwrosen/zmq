@@ -238,14 +238,14 @@ mspoller =
       let items =
             Zmq.the receiver
               & Zmq.also subscriber
-      ready <- unwrap (Zmq.poll items)
-      when (ready 0) do
+      Zmq.Ready ready <- unwrap (Zmq.poll items)
+      when (ready receiver) do
         Zmq.receive receiver >>= \case
           Left _ -> pure ()
           Right _ ->
             -- Process task
             pure ()
-      when (ready 1) do
+      when (ready subscriber) do
         Zmq.receive subscriber >>= \case
           Left _ -> pure ()
           Right _ ->
@@ -304,11 +304,11 @@ rrbroker =
             & Zmq.also backend
     -- Switch messages between sockets
     forever do
-      ready <- unwrap (Zmq.poll items)
-      when (ready 0) do
+      Zmq.Ready ready <- unwrap (Zmq.poll items)
+      when (ready frontend) do
         message <- unwrap (Zmq.receives frontend)
         unwrap (Zmq.Dealer.sends backend message)
-      when (ready 1) do
+      when (ready backend) do
         message <- unwrap (Zmq.receives backend)
         unwrap (Zmq.Router.sends frontend message)
 
@@ -329,11 +329,11 @@ wuproxy =
           Zmq.the frontend
             & Zmq.also backend
     forever do
-      ready <- unwrap (Zmq.poll items)
-      when (ready 0) do
+      Zmq.Ready ready <- unwrap (Zmq.poll items)
+      when (ready frontend) do
         message <- unwrap (Zmq.receives frontend)
         unwrap (Zmq.XPub.sends backend message)
-      when (ready 1) do
+      when (ready backend) do
         message <- unwrap (Zmq.receives backend)
         unwrap (Zmq.XSub.sends frontend message)
 
@@ -360,15 +360,15 @@ taskwork2 =
           let items =
                 Zmq.the receiver
                   & Zmq.also controller
-          ready <- unwrap (Zmq.poll items)
-          when (ready 0) do
+          Zmq.Ready ready <- unwrap (Zmq.poll items)
+          when (ready receiver) do
             string <- unwrap (Zmq.receive receiver)
             printf "%s." (ByteString.Char8.unpack string) -- Show progress
             hFlush stdout
             threadDelay (read (ByteString.Char8.unpack string) * 1_000) -- Do the work
             unwrap (Zmq.send sender "")
           -- Any waiting controller command acts as 'KILL'
-          when (not (ready 1)) do
+          when (not (ready controller)) do
             loop
     loop
 
@@ -434,11 +434,11 @@ mtserver =
             Zmq.the clients
               & Zmq.also workers
       forever do
-        ready <- unwrap (Zmq.poll items)
-        when (ready 0) do
+        Zmq.Ready ready <- unwrap (Zmq.poll items)
+        when (ready clients) do
           message <- unwrap (Zmq.receives clients)
           unwrap (Zmq.Dealer.sends workers message)
-        when (ready 1) do
+        when (ready workers) do
           message <- unwrap (Zmq.receives workers)
           unwrap (Zmq.Router.sends clients message)
 
@@ -676,10 +676,10 @@ lbbroker =
                     & if not (null workerQueue) then Zmq.also frontend else id
             Zmq.poll items >>= \case
               Left _ -> pure () -- Interrupted
-              Right ready -> do
+              Right (Zmq.Ready ready) -> do
                 -- Handle worker activity on backend
                 (clientNbr1, workerQueue1) <-
-                  if ready 0
+                  if ready backend
                     then do
                       -- Queue worker identity for load-balancing
                       -- Second frame is request id (ZMQ_REQ_CORRELATE)
@@ -697,7 +697,7 @@ lbbroker =
 
                 when (clientNbr1 > 0) do
                   workerQueue2 <-
-                    case (ready 1, workerQueue1) of
+                    case (ready frontend, workerQueue1) of
                       -- Here is how we handle a client request:
                       (True, (workerId, workerRequestId) : workerQueue2) -> do
                         -- Now get next client request, route to last-used worker
@@ -814,11 +814,11 @@ asyncsrv =
           let items =
                 Zmq.the frontend
                   & Zmq.also backend
-          ready <- unwrap (Zmq.poll items)
-          when (ready 0) do
+          Zmq.Ready ready <- unwrap (Zmq.poll items)
+          when (ready frontend) do
             message <- unwrap (Zmq.receives frontend)
             unwrap (Zmq.Dealer.sends backend message)
-          when (ready 1) do
+          when (ready backend) do
             message <- unwrap (Zmq.receives backend)
             unwrap (Zmq.Router.sends frontend message)
 

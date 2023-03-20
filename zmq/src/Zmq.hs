@@ -30,6 +30,7 @@ module Zmq
 
     -- ** IO multiplexing
     Sockets,
+    Ready (..),
     the,
     also,
     poll,
@@ -94,7 +95,7 @@ import Zmq.Error (Error (..), catchingOkErrors, enrichError, throwOkError, unexp
 import Zmq.Internal.Context
 import Zmq.Internal.Curve
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Poll (CanPoll, Sockets, also, poll, pollFor, pollUntil, the)
+import Zmq.Internal.Poll (CanPoll, Ready (..), Sockets, also, poll, pollFor, pollUntil, the)
 import Zmq.Internal.Socket qualified as Socket
 import Zmq.Pair (Pair)
 import Zmq.Pair qualified as Pair
