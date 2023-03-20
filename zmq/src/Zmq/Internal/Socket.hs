@@ -22,9 +22,6 @@ module Zmq.Internal.Socket
     receiveMany,
     blockUntilCanSend,
     blockUntilCanReceive,
-
-    -- ** Low-level
-    zhs_keepalive,
   )
 where
 
@@ -53,8 +50,6 @@ import Data.Word (Word8)
 import Foreign (Ptr)
 import Foreign.C.Types (CInt, CShort)
 import GHC.Base (Symbol)
-import GHC.Exts (keepAlive#)
-import GHC.IO (IO (..))
 import GHC.MVar (MVar (..))
 import Libzmq
 import Libzmq.Bindings qualified
@@ -67,6 +62,7 @@ import Zmq.Internal.Context (globalContextRef, globalSocketFinalizersRef)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.SocketFinalizer (makeSocketFinalizer)
 import Zmq.Internal.X (X)
+import Zmq.Internal.IO (keepAlive)
 
 type role Socket nominal
 
@@ -159,7 +155,7 @@ openSocket socketType options extra = do
 usingSocket :: Socket a -> IO b -> IO b
 usingSocket Socket {lock, zsocket} action =
   withMVar lock \_ ->
-    zhs_keepalive zsocket action
+    keepAlive zsocket action
 
 -- | Bind a __socket__ to an __endpoint__.
 bind :: Socket a -> Text -> IO (Either Error ())
@@ -387,10 +383,6 @@ zhs_socket context socketType = do
             ETERM -> throwOkError err
             _ -> unexpectedError err
     Right socket -> pure socket
-
-zhs_keepalive :: Zmq_socket -> IO a -> IO a
-zhs_keepalive zsocket (IO action) =
-  IO \s -> keepAlive# zsocket s action
 
 zhs_getsockopt_int :: Zmq_socket -> CInt -> IO Int
 zhs_getsockopt_int socket option =
