@@ -24,7 +24,6 @@ import Numeric.Natural (Natural)
 import Zmq.Error
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Poll (CanPoll (toPollable), Pollable (PollableNonREQ))
 import Zmq.Internal.Socket (CanReceive, CanReceives, Socket (..))
 import Zmq.Internal.Socket qualified as Socket
 
@@ -41,10 +40,6 @@ instance CanReceive Sub where
 
 instance CanReceives Sub where
   receives_ = receives
-
-instance CanPoll Sub where
-  toPollable Socket {zsocket} =
-    PollableNonREQ zsocket
 
 defaultOptions :: Options Sub
 defaultOptions =

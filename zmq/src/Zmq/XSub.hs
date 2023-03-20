@@ -24,7 +24,6 @@ import Libzmq
 import Zmq.Error (Error, catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Poll (CanPoll (toPollable), Pollable (PollableNonREQ))
 import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (..))
 import Zmq.Internal.Socket qualified as Socket
 import Zmq.Subscription (pattern Subscribe, pattern Unsubscribe)
@@ -43,10 +42,6 @@ instance CanReceive XSub where
 
 instance CanReceives XSub where
   receives_ = receives
-
-instance CanPoll XSub where
-  toPollable Socket {zsocket} =
-    PollableNonREQ zsocket
 
 defaultOptions :: Options XSub
 defaultOptions =

@@ -22,7 +22,6 @@ import Numeric.Natural (Natural)
 import Zmq.Error (Error, catchingOkErrors)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Poll (CanPoll (toPollable), Pollable (..))
 import Zmq.Internal.Socket (CanReceives, Socket (..))
 import Zmq.Internal.Socket qualified as Socket
 
@@ -36,10 +35,6 @@ instance Options.CanSetSendQueueSize Router
 
 instance CanReceives Router where
   receives_ = receives
-
-instance CanPoll Router where
-  toPollable Socket {zsocket} =
-    PollableNonREQ zsocket
 
 defaultOptions :: Options Router
 defaultOptions =

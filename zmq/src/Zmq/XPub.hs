@@ -26,7 +26,6 @@ import Numeric.Natural (Natural)
 import Zmq.Error (Error, catchingOkErrors, enrichError, throwOkError)
 import Zmq.Internal.Options (Options)
 import Zmq.Internal.Options qualified as Options
-import Zmq.Internal.Poll (CanPoll (toPollable), Pollable (..))
 import Zmq.Internal.Socket (CanReceive, CanReceives, CanSend, Socket (..))
 import Zmq.Internal.Socket qualified as Socket
 
@@ -48,10 +47,6 @@ instance CanReceives XPub where
 
 instance CanSend XPub where
   send_ = send
-
-instance CanPoll XPub where
-  toPollable Socket {zsocket} =
-    PollableNonREQ zsocket
 
 defaultOptions :: Options XPub
 defaultOptions =

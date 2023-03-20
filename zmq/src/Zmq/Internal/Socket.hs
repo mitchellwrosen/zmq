@@ -54,7 +54,7 @@ import Foreign (Ptr)
 import Foreign.C.Types (CInt, CShort)
 import GHC.Base (Symbol)
 import GHC.Exts (keepAlive#)
-import GHC.IO (IO (..), unIO)
+import GHC.IO (IO (..))
 import GHC.MVar (MVar (..))
 import Libzmq
 import Libzmq.Bindings qualified
@@ -159,7 +159,7 @@ openSocket socketType options extra = do
 usingSocket :: Socket a -> IO b -> IO b
 usingSocket Socket {lock, zsocket} action =
   withMVar lock \_ ->
-    IO \s -> keepAlive# zsocket s (unIO action)
+    zhs_keepalive zsocket action
 
 -- | Bind a __socket__ to an __endpoint__.
 bind :: Socket a -> Text -> IO (Either Error ())
