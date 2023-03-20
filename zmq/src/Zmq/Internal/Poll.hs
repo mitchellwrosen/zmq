@@ -27,6 +27,7 @@ import Libzmq.Bindings qualified
 import Zmq.Error (Error, enrichError, unexpectedError)
 import Zmq.Internal.Socket (Socket (..))
 import Zmq.Internal.Socket qualified as Socket
+import Zmq.Internal.SomeSocket (SomeSocket (..))
 
 class CanPoll a
 
@@ -50,53 +51,38 @@ instance CanPoll "XSUB"
 
 data Sockets
   = Sockets
-      -- pollables in reverse order of how they were added (with postfix syntax), e.g.
-      -- the X & also Y & also Z = [Z, Y, X]
-      ![P]
-      -- length of pollables
+      -- socket in reverse order of how they were added (with postfix syntax), e.g. the X & also Y & also Z = [Z, Y, X]
+      ![SomeSocket]
+      -- number of sockets in the list
       !Int
 
 data Ready
   = Ready (forall a. Socket a -> Bool)
 
-data P
-  = forall a. P (Socket a)
-
-instance Eq P where
-  P x == P y = zsocket x == zsocket y
-
--- TODO other methods
-instance Ord P where
-  compare (P x) (P y) = compare (zsocket x) (zsocket y)
-
-ppollitem :: P -> Zmq_pollitem
-ppollitem (P Socket {zsocket}) =
-  Zmq_pollitem_socket zsocket ZMQ_POLLIN
-
 the :: CanPoll a => Socket a -> Sockets
 the socket =
-  Sockets [P socket] 1
+  Sockets [SomeSocket socket] 1
 
 also :: CanPoll a => Socket a -> Sockets -> Sockets
 also socket (Sockets pollables len) =
-  Sockets (P socket : pollables) (len + 1)
+  Sockets (SomeSocket socket : pollables) (len + 1)
 
 -- Keep sockets alive for duration of IO action
-keepingSocketsAlive :: Array Int P -> IO a -> IO a
+keepingSocketsAlive :: Array Int SomeSocket -> IO a -> IO a
 keepingSocketsAlive sockets action = do
   let (lo, hi) = Array.bounds sockets
   let go !i =
         if i > hi
           then action
           else case sockets Array.! i of
-            P Socket {zsocket} ->
+            SomeSocket Socket {zsocket} ->
               Socket.zhs_keepalive zsocket (go (i + 1))
   go lo
 
 data PreparedSockets = PreparedSockets
   { -- The subset of the input sockets that actually need to be polled. Each is either a non-REQ socket, or a REQ socket
     -- with an empty message buffer.
-    socketsToPoll :: Array Int P,
+    socketsToPoll :: Array Int SomeSocket,
     -- The same sockets as `socketsToPoll`, to pass to libzmq
     socketsToPoll2 :: StorableArray Int Zmq_pollitem
   }
@@ -104,20 +90,24 @@ data PreparedSockets = PreparedSockets
 prepareSockets :: Sockets -> IO PreparedSockets
 prepareSockets (Sockets sockets0 len) = do
   let sockets1 = reverse sockets0
-  socketsToPoll2 <- MArray.newListArray (0, len - 1) (map ppollitem sockets1)
+  socketsToPoll2 <- MArray.newListArray (0, len - 1) (map someSocketToPollitem sockets1)
   pure
     PreparedSockets
       { socketsToPoll = Array.listArray (0, len - 1) sockets1,
         socketsToPoll2
       }
 
+someSocketToPollitem :: SomeSocket -> Zmq_pollitem
+someSocketToPollitem (SomeSocket Socket {zsocket}) =
+  Zmq_pollitem_socket zsocket ZMQ_POLLIN
+
 socketsArrayPs :: PreparedSockets -> IO Ready
 socketsArrayPs PreparedSockets {socketsToPoll, socketsToPoll2} = do
   (lo, hi) <- MArray.getBounds socketsToPoll2
-  let loop :: Set P -> Int -> IO Ready
+  let loop :: Set SomeSocket -> Int -> IO Ready
       loop !acc !i =
         if i > hi
-          then pure (Ready \socket -> Set.member (P socket) acc)
+          then pure (Ready \socket -> Set.member (SomeSocket socket) acc)
           else do
             pollitem <- Array.unsafeRead socketsToPoll2 i
             if Libzmq.Bindings.revents pollitem == 0
