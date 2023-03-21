@@ -59,10 +59,9 @@ import System.IO.Unsafe (unsafePerformIO)
 import System.Posix.Types (Fd (..))
 import Zmq.Error (Error, catchingOkErrors, enrichError, throwOkError, unexpectedError)
 import Zmq.Internal.Context (globalContextRef, globalSocketFinalizersRef)
+import Zmq.Internal.IO (keepAlive)
 import Zmq.Internal.Options qualified as Options
 import Zmq.Internal.SocketFinalizer (makeSocketFinalizer)
-import Zmq.Internal.X (X)
-import Zmq.Internal.IO (keepAlive)
 
 type role Socket nominal
 
@@ -84,28 +83,6 @@ instance Ord (Socket a) where
   Socket x _ _ _ > Socket y _ _ _ = x > y
   Socket x _ _ _ >= Socket y _ _ _ = x >= y
 
-instance X (Socket "DEALER")
-
-instance X (Socket "PAIR")
-
-instance X (Socket "PUB")
-
-instance X (Socket "PULL")
-
-instance X (Socket "PUSH")
-
-instance X (Socket "REP")
-
-instance X (Socket "REQ")
-
-instance X (Socket "ROUTER")
-
-instance X (Socket "SUB")
-
-instance X (Socket "XPUB")
-
-instance X (Socket "XSUB")
-
 data Extra (a :: Symbol) where
   DealerExtra :: Extra "DEALER"
   PairExtra :: Extra "PAIR"
@@ -120,15 +97,15 @@ data Extra (a :: Symbol) where
   XPubExtra :: Extra "XPUB"
   XSubExtra :: Extra "XSUB"
 
-class X a => CanSend a where
+class CanSend a where
   send_ :: a -> ByteString -> IO (Either Error ())
   send_ = undefined -- hide "minimal complete definition" haddock
 
-class X a => CanReceive a where
+class CanReceive a where
   receive_ :: a -> IO (Either Error ByteString)
   receive_ = undefined -- hide "minimal complete definition" haddock
 
-class X a => CanReceives a where
+class CanReceives a where
   receives_ :: a -> IO (Either Error [ByteString])
   receives_ = undefined -- hide "minimal complete definition" haddock
 
