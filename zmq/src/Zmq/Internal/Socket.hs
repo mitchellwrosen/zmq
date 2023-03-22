@@ -539,7 +539,16 @@ zhs_recv_frame_wontblock_ socket =
 
 zhs_with_frame :: (Zmq_msg -> IO a) -> IO a
 zhs_with_frame =
-  bracket zmq_msg_init zmq_msg_close
+  bracket zmq_msg_init \message -> do
+    result <- zmq_msg_close message
+    zmq_msg_free message
+    case result of
+      Left errno ->
+        let err = enrichError "zmq_msg_close" errno
+         in case errno of
+              EFAULT -> throwIO err
+              _ -> unexpectedError err
+      Right () -> undefined
 
 zhs_frame :: Zmq_msg -> IO (Frame a)
 zhs_frame frame = do
