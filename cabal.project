@@ -1,7 +1,17 @@
 packages: 
-  libzmq-bindings, 
-  libzmq, 
   zmq,
   zmq-guide-examples
+
+source-repository-package
+  type: git
+  location: git@github.com:mitchellwrosen/libzmq
+  tag: 073e5d1f1f2ecc030356d7d3ad1d0d75986eb354
+  subdir: libzmq-bindings
+
+source-repository-package
+  type: git
+  location: git@github.com:mitchellwrosen/libzmq
+  tag: 073e5d1f1f2ecc030356d7d3ad1d0d75986eb354
+  subdir: libzmq
 
 with-compiler: ghc-9.2.2
