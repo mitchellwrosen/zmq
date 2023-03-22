@@ -2,7 +2,20 @@ module Main (main) where
 
 import Data.Coerce (coerce)
 import Foreign (alloca, peek, sizeOf)
-import Foreign.C (CInt, Errno (..), eFAULT, eINVAL)
+import Foreign.C
+  ( CInt,
+    Errno (..),
+    eAGAIN,
+    eBADF,
+    eFAULT,
+    eINTR,
+    eINVAL,
+    eMFILE,
+    eNODEV,
+    eNOENT,
+    eNOMEM,
+    peekCString,
+  )
 import Libzmq.Bindings
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -17,6 +30,7 @@ tests =
     testGroup "zmq_ctx_set" zmq_ctx_set_tests,
     testGroup "zmq_ctx_shutdown" zmq_ctx_shutdown_tests,
     testGroup "zmq_ctx_term" zmq_ctx_term_tests,
+    testGroup "zmq_strerror" zmq_strerror_tests,
     testGroup "zmq_version" zmq_version_tests
   ]
 
@@ -123,8 +137,8 @@ zmq_ctx_term_tests =
       zmq_errno >>= (@?= _EFAULT)
   ]
 
-zmq_version_tests :: [TestTree]
-zmq_version_tests =
+zmq_strerror_tests :: [TestTree]
+zmq_strerror_tests =
   [ testCase "returns the libzmq version" do
       (x, y, z) <-
         alloca \px ->
@@ -135,13 +149,79 @@ zmq_version_tests =
       (x, y, z) @?= (4, 3, 4)
   ]
 
+zmq_version_tests :: [TestTree]
+zmq_version_tests =
+  [ testCase "translates error codes to error strings" do
+      peekCString (zmq_strerror _EADDRINUSE) >>= (@?= "Address already in use")
+      peekCString (zmq_strerror _EADDRNOTAVAIL) >>= (@?= "Can't assign requested address")
+      peekCString (zmq_strerror _EAFNOSUPPORT) >>= (@?= "Address family not supported by protocol family")
+      peekCString (zmq_strerror _EAGAIN) >>= (@?= "Resource temporarily unavailable")
+      peekCString (zmq_strerror _EBADF) >>= (@?= "Bad file descriptor")
+      peekCString (zmq_strerror _ECONNABORTED) >>= (@?= "Software caused connection abort")
+      peekCString (zmq_strerror _ECONNREFUSED) >>= (@?= "Connection refused")
+      peekCString (zmq_strerror _ECONNRESET) >>= (@?= "Connection reset by peer")
+      peekCString (zmq_strerror _EFAULT) >>= (@?= "Bad address")
+      peekCString (zmq_strerror _EFSM) >>= (@?= "Operation cannot be accomplished in current state")
+      peekCString (zmq_strerror _EHOSTUNREACH) >>= (@?= "Host unreachable")
+      peekCString (zmq_strerror _EINPROGRESS) >>= (@?= "Operation now in progress")
+      peekCString (zmq_strerror _EINTR) >>= (@?= "Interrupted system call")
+      peekCString (zmq_strerror _EINVAL) >>= (@?= "Invalid argument")
+      peekCString (zmq_strerror _EMFILE) >>= (@?= "Too many open files")
+      peekCString (zmq_strerror _EMSGSIZE) >>= (@?= "Message too long")
+      peekCString (zmq_strerror _EMTHREAD) >>= (@?= "No thread available")
+      peekCString (zmq_strerror _ENETDOWN) >>= (@?= "Network is down")
+      peekCString (zmq_strerror _ENETRESET) >>= (@?= "Network dropped connection on reset")
+      peekCString (zmq_strerror _ENETUNREACH) >>= (@?= "Network is unreachable")
+      peekCString (zmq_strerror _ENOBUFS) >>= (@?= "No buffer space available")
+      peekCString (zmq_strerror _ENOCOMPATPROTO) >>= (@?= "The protocol is not compatible with the socket type")
+      peekCString (zmq_strerror _ENODEV) >>= (@?= "Operation not supported by device")
+      peekCString (zmq_strerror _ENOENT) >>= (@?= "No such file or directory")
+      peekCString (zmq_strerror _ENOMEM) >>= (@?= "Cannot allocate memory")
+      peekCString (zmq_strerror _ENOTCONN) >>= (@?= "Socket is not connected")
+      peekCString (zmq_strerror _ENOTSOCK) >>= (@?= "Socket operation on non-socket")
+      peekCString (zmq_strerror _ENOTSUP) >>= (@?= "Operation not supported")
+      peekCString (zmq_strerror _EPROTONOSUPPORT) >>= (@?= "Protocol not supported")
+      peekCString (zmq_strerror _ETERM) >>= (@?= "Context was terminated")
+      peekCString (zmq_strerror _ETIMEDOUT) >>= (@?= "Operation timed out"),
+    testCase "complains about unknown error codes" do
+      peekCString (zmq_strerror 0) >>= (@?= "Undefined error: 0")
+  ]
+
 ------------------------------------------------------------------------------------------------------------------------
 -- Helpers
+
+_EAGAIN :: CInt
+_EAGAIN =
+  coerce @Errno @CInt eAGAIN
+
+_EBADF :: CInt
+_EBADF =
+  coerce @Errno @CInt eBADF
 
 _EFAULT :: CInt
 _EFAULT =
   coerce @Errno @CInt eFAULT
 
+_EINTR :: CInt
+_EINTR =
+  coerce @Errno @CInt eINTR
+
 _EINVAL :: CInt
 _EINVAL =
   coerce @Errno @CInt eINVAL
+
+_EMFILE :: CInt
+_EMFILE =
+  coerce @Errno @CInt eMFILE
+
+_ENODEV :: CInt
+_ENODEV =
+  coerce @Errno @CInt eNODEV
+
+_ENOENT :: CInt
+_ENOENT =
+  coerce @Errno @CInt eNOENT
+
+_ENOMEM :: CInt
+_ENOMEM =
+  coerce @Errno @CInt eNOMEM
