@@ -68,6 +68,7 @@ library
     Zmq.Internal.Context
     Zmq.Internal.Curve
     Zmq.Internal.IO
+    Zmq.Internal.Monitor
     Zmq.Internal.Options
     Zmq.Internal.Poll
     Zmq.Internal.Socket

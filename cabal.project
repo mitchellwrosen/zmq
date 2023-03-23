@@ -1,17 +1,17 @@
-packages: 
+packages:
   zmq,
   zmq-guide-examples
 
 source-repository-package
   type: git
   location: git@github.com:mitchellwrosen/libzmq
-  tag: 349632939259d9ac7e7f18c2c44de9ff93ce7c97
+  tag: 7083ef3020840d74bd17a1620e5ae4e2c87291a1
   subdir: libzmq-bindings
 
 source-repository-package
   type: git
   location: git@github.com:mitchellwrosen/libzmq
-  tag: 349632939259d9ac7e7f18c2c44de9ff93ce7c97
+  tag: 7083ef3020840d74bd17a1620e5ae4e2c87291a1
   subdir: libzmq
 
 with-compiler: ghc-9.2.2
