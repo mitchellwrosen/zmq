@@ -548,7 +548,7 @@ zhs_with_frame =
          in case errno of
               EFAULT -> throwIO err
               _ -> unexpectedError err
-      Right () -> undefined
+      Right () -> pure ()
 
 zhs_frame :: Zmq_msg -> IO (Frame a)
 zhs_frame frame = do
