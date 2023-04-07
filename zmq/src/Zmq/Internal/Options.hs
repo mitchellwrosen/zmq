@@ -68,6 +68,9 @@ optionsName = \case
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Context options
+--
+-- Intentionally omitted: ZMQ_THREAD_PRIORITY getter, ZMQ_SOCKET_LIMIT setter. They are broken.
+-- https://github.com/zeromq/libzmq/pull/3364
 
 setContextOption :: Zmq_ctx -> Zmq_ctx_option -> Int -> IO ()
 setContextOption context option value =

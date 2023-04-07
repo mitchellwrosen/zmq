@@ -13,5 +13,3 @@ source-repository-package
   location: git@github.com:mitchellwrosen/libzmq
   tag: 7083ef3020840d74bd17a1620e5ae4e2c87291a1
   subdir: libzmq
-
-with-compiler: ghc-9.2.2
